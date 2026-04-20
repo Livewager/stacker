@@ -1,30 +1,50 @@
 # Bundle baseline
 
-Snapshot taken as part of POLISH-100. Re-run with `npm run analyze` and
-diff against this doc before shipping anything that touches a dependency
-or a route-level import graph.
+Snapshot refreshed for POLISH-204. Re-run with `npm run analyze` (or
+`npm run build:check`) and diff the `Route` table and `Largest chunks`
+table against this doc before shipping anything that touches a
+dependency or a route-level import graph.
 
-## Route First-Load JS (uncompressed, from `next build`)
+All values below are **uncompressed**. With typical Brotli/gzip
+ratios (~3×), the largest First-Load-JS (`/dunk` at 295 kB uncompressed)
+lands around **100 kB over the wire**. That's inside the ~200 kB
+gzipped budget POLISH-100 set, so no routes are carved up today.
 
-| Route          | Route-only | First Load JS |
-|----------------|-----------:|--------------:|
-| `/_not-found`  |     208 B  |      102 kB   |
-| `/account`     |    17.7 kB |      237 kB   |
-| `/deposit`     |    10.8 kB |      227 kB   |
-| `/dunk`        |    49.7 kB |      293 kB   |
-| `/leaderboard` |    11.6 kB |      227 kB   |
-| `/play`        |     9.9 kB |      266 kB   |
-| `/send`        |     5.4 kB |      228 kB   |
-| `/settings`    |     9.1 kB |      225 kB   |
-| `/stacker`     |    13.3 kB |      266 kB   |
-| `/wallet`      |     4.6 kB |      231 kB   |
-| `/withdraw`    |     4.6 kB |      227 kB   |
-| shared baseline |          |      102 kB   |
+## Route First-Load JS
 
-All First Load JS values are uncompressed. With typical Brotli/gzip
-ratios (~3×), the largest route (`/dunk`) ships roughly **95 kB**
-over the wire. None are above the 200 kB-gzipped budget the ticket
-named, so POLISH-100 closed without carving anything up.
+Measured from `next build` output (Next.js 15.1.7, Node 20).
+
+| Route          | Route-only | First Load JS | vs prior baseline |
+|----------------|-----------:|--------------:|------------------:|
+| `/_not-found`  |     208 B  |      102 kB   |                 — |
+| `/account`     |    6.35 kB |      244 kB   |            +7 kB  |
+| `/deposit`     |    7.18 kB |      240 kB   |           +13 kB  |
+| `/dunk`        |    49.4 kB |      295 kB   |            +2 kB  |
+| `/leaderboard` |    10.2 kB |      232 kB   |            +5 kB  |
+| `/play`        |    8.35 kB |      271 kB   |            +5 kB  |
+| `/send`        |    10.4 kB |      232 kB   |            +4 kB  |
+| `/settings`    |    9.37 kB |      231 kB   |            +6 kB  |
+| `/stacker`     |    13.2 kB |      267 kB   |            +1 kB  |
+| `/wallet`      |    9.27 kB |      235 kB   |            +4 kB  |
+| `/withdraw`    |    8.44 kB |      230 kB   |            +3 kB  |
+| shared baseline |         — |      102 kB   |                 — |
+
+Drift since the POLISH-100 snapshot is modest — **median +4 kB per
+route**, all attributable to features shipped between then and
+POLISH-204:
+
+- `/account` +7 kB: POLISH-200 sparkline tooltip, POLISH-197 recent-tip
+  chips, POLISH-91 II anchor last-used chip.
+- `/deposit` +13 kB: POLISH-140 watch-address QR (qrcode dep loaded on
+  this route for the first time), POLISH-164 LTC amount field.
+- `/play` +5 kB: POLISH-66 parallax tilt, POLISH-157 empty-state
+  launcher, POLISH-97 "new" badge.
+- `/settings` +6 kB: POLISH-146 StorageUsage + POLISH-193 diagnostics.
+- `/wallet` +4 kB: POLISH-142 Advanced section + POLISH-126 pending
+  pill + POLISH-183 buy cap.
+
+None of these are unexpected — the new features shipped explicitly,
+and each route still sits well under the 200-kB-gzipped budget.
 
 ## Largest chunks (uncompressed)
 
@@ -38,16 +58,29 @@ named, so POLISH-100 closed without carving anything up.
 | 124 K | `5996-*.js`             | Likely framer-motion                     |
 | 112 K | `polyfills-*.js`        | Core-js polyfills (Next default)         |
 
-The 296 K @dfinity chunk is **not** in any route's First Load JS —
-it's split cleanly and only pulled on routes that instantiate an
-agent (wallet-adjacent). If that ever lands in the baseline, the
-split point in `src/lib/icp/*` has regressed; check the import
-graph before adding another top-level import.
+**Unchanged since POLISH-100.** The 296 K `@dfinity` chunk is still
+*not* in any route's First Load JS — it's split cleanly and only
+pulled on routes that instantiate an agent. If that 296 K number ever
+lands in the baseline total, a top-level import has regressed the
+split-point in `src/lib/icp/*`.
 
 ## When to re-run
 
-- Before any release where a dependency was added
-- When a new route ships
-- After refactors that move code between client components and
-  server components (this can accidentally bundle server-only
-  paths into the client build)
+- Before any release where a dependency was added (bumps `package.json`).
+- When a new route ships.
+- After refactors that move code between client components and server
+  components (can accidentally bundle server-only paths into the client).
+- **POLISH-204 convention**: bump this doc when median drift exceeds
+  +10 kB, or when any single route jumps more than +20 kB, whichever
+  comes first.
+
+## How to re-run
+
+```bash
+npm run build:check   # runs next build + warning gate
+npm run analyze       # runs next build + largest-chunks table
+```
+
+The `build:check` script (POLISH-202) fails the process if unexpected
+warnings appear, so a dep upgrade that introduces a new warning will
+trip the gate before this baseline needs updating.

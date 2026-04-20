@@ -20,9 +20,16 @@
  *   npm run build:check
  *
  * Exits 0 on green, non-zero on any unexpected warning or a build
- * failure. The dev server is left alone (this spawns its own `next
- * build` in the same working directory — safe to run while `npm run
- * dev` is active on port 3002).
+ * failure.
+ *
+ * Caveat: running this while `npm run dev` is active on port 3002
+ * will overwrite the dev server's `.next/` directory. The dev server
+ * will 500 on any route it had cached until that route's source
+ * file is touched (HMR forces a rebuild of just that route). Any
+ * trivial edit — even a whitespace change — is enough. This is a
+ * Next.js limitation, not something this script can paper over.
+ * Easiest workflow: stop `npm run dev`, run `build:check`, then
+ * restart dev.
  */
 
 import { spawn } from "node:child_process";
