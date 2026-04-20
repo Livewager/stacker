@@ -42,9 +42,11 @@ const TONE_GRADIENTS: Record<ButtonTone, string> = {
   emerald: "linear-gradient(90deg,#6ee7b7,#059669)",
 };
 
+// Minimums hit the 44px target for primary touch actions at md/lg.
+// "sm" is reserved for inline secondary affordances where 36px is fine.
 const SIZE_CLS: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-xs",
-  md: "h-10 px-4 text-sm",
+  sm: "h-9 px-3 text-xs",
+  md: "h-11 px-4 text-sm",
   lg: "h-12 px-5 text-base",
 };
 

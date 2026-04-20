@@ -93,24 +93,30 @@ export function WalletNav() {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Balance pill */}
+    <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+      {/* Balance pill. On small screens we drop the "LWP" label and
+          show fewer decimals so the header never overflows. */}
       <div
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] text-xs md:text-sm font-mono tabular-nums"
+        className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] text-xs md:text-sm font-mono tabular-nums min-w-0"
         aria-live="polite"
       >
         <span className="text-cyan-300">◎</span>
-        <span className="text-white">
-          {balance !== null ? formatLWP(balance, 4) : "—"}
+        <span className="text-white truncate max-w-[96px] md:max-w-none">
+          <span className="md:hidden">
+            {balance !== null ? formatLWP(balance, 2) : "—"}
+          </span>
+          <span className="hidden md:inline">
+            {balance !== null ? formatLWP(balance, 4) : "—"}
+          </span>
         </span>
-        <span className="text-gray-400 text-[10px] md:text-[11px] uppercase tracking-widest">
+        <span className="hidden md:inline text-gray-400 text-[11px] uppercase tracking-widest">
           LWP
         </span>
       </div>
       {/* Deposit CTA — scrolls to the wallet card. */}
       <a
         href="#drop-wallet"
-        className="text-xs md:text-sm px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-black font-bold transition hover:brightness-110"
+        className="text-xs md:text-sm px-3 md:px-4 py-2 md:py-2 h-9 md:h-auto inline-flex items-center rounded-lg text-black font-bold transition hover:brightness-110 shrink-0"
         style={{ background: "linear-gradient(90deg,#fdba74,#f97316)" }}
       >
         Deposit
