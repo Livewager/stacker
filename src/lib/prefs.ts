@@ -132,6 +132,10 @@ export const PREF_KEYS = {
   // wait 1.8s of blocking calibration on every round. Null until the
   // first calibration settles. { gamma, beta } — both in degrees.
   tiltCalibration: "tiltCalibration",
+
+  // ActivityFeed filter pill selection. Values: "all" | "mint" |
+  // "burn" | "transfer" | "approve". Narrowed at the hook site.
+  activityFilter: "activityFilter",
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];

@@ -22,6 +22,21 @@ import {
 } from "@/lib/icp";
 import { Principal } from "@dfinity/principal";
 import { useCopyable } from "@/lib/clipboard";
+import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
+
+type ActivityFilter = "all" | "mint" | "burn" | "transfer" | "approve";
+const FILTERS: { key: ActivityFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "mint", label: "Mint" },
+  { key: "burn", label: "Burn" },
+  { key: "transfer", label: "Transfer" },
+  { key: "approve", label: "Approve" },
+];
+function narrowFilter(v: string): ActivityFilter {
+  return v === "mint" || v === "burn" || v === "transfer" || v === "approve"
+    ? v
+    : "all";
+}
 
 export interface ActivityFeedProps {
   principal?: string;
@@ -45,7 +60,21 @@ export default function ActivityFeed({
   const [events, setEvents] = useState<BlockEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [rawFilter, setRawFilter] = useLocalPref<ActivityFilter>(
+    PREF_KEYS.activityFilter,
+    "all",
+  );
+  const filter = narrowFilter(rawFilter);
   const mounted = useRef(true);
+
+  // Filtered view of the fetched events. Applied client-side so the
+  // fetch cost doesn't change when the user flips pills — the canister
+  // still returns the full window; we just render a subset.
+  const visibleEvents = useMemo(() => {
+    if (!events) return null;
+    if (filter === "all") return events;
+    return events.filter((e) => e.kind === filter);
+  }, [events, filter]);
 
   const ownerBytes = useMemo<Uint8Array | null>(() => {
     if (!principal) return null;
@@ -141,6 +170,45 @@ export default function ActivityFeed({
         </button>
       </div>
 
+      {/* Filter pills — hidden in compact (sidebar) mode where the
+          horizontal space is tight, and hidden while events are null
+          (skeleton state) so flipping pills doesn't race with the
+          initial load. */}
+      {!compact && events !== null && events.length > 0 && (
+        <div
+          role="tablist"
+          aria-label="Activity filter"
+          className="flex items-center gap-1.5 px-4 py-2 border-b border-white/5 overflow-x-auto"
+        >
+          {FILTERS.map((f) => {
+            const active = filter === f.key;
+            // Count per-bucket so empty filters look empty at a glance.
+            const count =
+              f.key === "all"
+                ? events.length
+                : events.filter((e) => e.kind === f.key).length;
+            return (
+              <button
+                key={f.key}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setRawFilter(f.key)}
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
+                  active
+                    ? "border-cyan-300/40 bg-cyan-300/[0.08] text-cyan-200"
+                    : "border-white/10 bg-white/[0.02] text-gray-400 hover:text-white hover:border-white/25"
+                }`}
+              >
+                {f.label}
+                <span className={`font-mono tabular-nums ${active ? "text-cyan-100" : "text-gray-500"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {error && (
         <div className="px-4 py-3 text-xs text-red-300 bg-red-500/5 border-t border-red-500/20">
           Couldn&apos;t read the ledger: {error}. Is the local replica running?
@@ -149,11 +217,42 @@ export default function ActivityFeed({
 
       {events === null ? (
         <ActivitySkeleton rows={4} compact={compact} />
-      ) : events.length === 0 ? (
-        <EmptyState principal={!!principal} />
+      ) : visibleEvents === null || visibleEvents.length === 0 ? (
+        events.length === 0 ? (
+          <EmptyState principal={!!principal} />
+        ) : (
+          <FilteredEmpty filter={filter} onClear={() => setRawFilter("all")} />
+        )
       ) : (
-        <GroupedEvents events={events} compact={compact} />
+        <GroupedEvents events={visibleEvents} compact={compact} />
       )}
+    </div>
+  );
+}
+
+/** Shown when the feed has events but the active filter matches none
+ *  of them. Distinguishes "no activity" from "no matching activity"
+ *  — different fix (sign in / play a round vs. flip the filter). */
+function FilteredEmpty({
+  filter,
+  onClear,
+}: {
+  filter: ActivityFilter;
+  onClear: () => void;
+}) {
+  return (
+    <div className="px-6 py-6 text-center text-sm text-gray-400">
+      No{" "}
+      <span className="text-white font-semibold">{filter}</span> events in the
+      last window.{" "}
+      <button
+        type="button"
+        onClick={onClear}
+        className="text-cyan-300 hover:text-cyan-200 underline-offset-2 hover:underline"
+      >
+        Show all
+      </button>
+      .
     </div>
   );
 }
