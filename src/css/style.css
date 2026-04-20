@@ -494,3 +494,25 @@ body {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
 }
+
+/* POLISH-254 — safe-area-aware horizontal padding.
+   Tailwind's arbitrary-value syntax can express `max(1rem,
+   env(safe-area-inset-left))`, but pairing it with a responsive
+   breakpoint (1rem mobile → 2rem desktop) reads as a soup of
+   brackets. A named utility is clearer and keeps call sites terse.
+   Used today on /leaderboard where the hero title + long-board
+   sparkline-heavy rows were clipping under iPhone 14+ camera notch
+   in landscape. Safe to apply anywhere a full-width container needs
+   to honor iOS rotated-orientation insets without sacrificing the
+   desktop gutter. Desktop browsers report env(safe-area-inset-*) as
+   0, so max(2rem, 0) = 2rem and nothing changes off-iOS. */
+.lw-safe-x {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+@media (min-width: 768px) {
+  .lw-safe-x {
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+  }
+}

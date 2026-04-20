@@ -92,7 +92,17 @@ export default function LeaderboardPage() {
   return (
     <>
       <AppHeader />
-      <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 md:py-12">
+      {/* Safe-area-aware horizontal padding. Default px-4 / md:px-8 on
+          their own left the hero title + sparkline-heavy rows clipping
+          under the camera notch on iPhone 14+ landscape. The
+          lw-safe-x class picks the larger of the baseline padding
+          (1rem mobile, 2rem desktop via media query) or the device
+          inset — portrait + desktop stay identical, and landscape
+          shifts inward just enough to clear the rounded corner /
+          notch. Defined in src/css/style.css; arbitrary Tailwind
+          couldn't express the max(env(), responsive-baseline) pair
+          without inline styles losing the md: breakpoint. */}
+      <div className="mx-auto max-w-6xl lw-safe-x py-8 md:py-12">
         <HeroHeader msToReset={msToReset} myRank={myDunkRank} myHandle={myHandle} />
 
         <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
