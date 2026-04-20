@@ -11,6 +11,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import AppHeader from "@/components/AppHeader";
 import OnboardingNudge from "@/components/OnboardingNudge";
 
@@ -23,6 +24,7 @@ type Game = {
   accent: string; // css gradient for the card header bar
   bestKey: string | null; // localStorage key or null
   status: "live" | "beta";
+  preview: "pour" | "stacker";
 };
 
 const GAMES: Game[] = [
@@ -40,6 +42,7 @@ const GAMES: Game[] = [
     accent: "linear-gradient(90deg,#22d3ee,#0891b2)",
     bestKey: null,
     status: "live",
+    preview: "pour",
   },
   {
     href: "/stacker",
@@ -55,6 +58,7 @@ const GAMES: Game[] = [
     accent: "linear-gradient(90deg,#fdba74,#f97316)",
     bestKey: "livewager-stacker-best",
     status: "live",
+    preview: "stacker",
   },
 ];
 
@@ -143,6 +147,10 @@ export default function PlayHubPage() {
                     {g.tagline}
                   </p>
 
+                  <div className="mb-4 rounded-xl overflow-hidden border border-white/5 bg-black/40 aspect-[5/2]">
+                    <GamePreview kind={g.preview} />
+                  </div>
+
                   <ul className="space-y-1.5 mb-5">
                     {g.bullets.map((b) => (
                       <li
@@ -181,5 +189,208 @@ export default function PlayHubPage() {
         </section>
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------
+// Per-game animated previews. Inline SVG + framer-motion so the
+// cards render a living peek at each mechanic. Loops continuously
+// rather than hover-only so mobile sees them too.
+// ---------------------------------------------------------------
+
+function GamePreview({ kind }: { kind: "pour" | "stacker" }) {
+  return kind === "pour" ? <PourPreview /> : <StackerPreview />;
+}
+
+function PourPreview() {
+  const reduced = useReducedMotion();
+  return (
+    <svg
+      viewBox="0 0 200 80"
+      className="w-full h-full"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden
+    >
+      {/* Background wash */}
+      <defs>
+        <linearGradient id="pour-bg" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#0c2437" />
+          <stop offset="100%" stopColor="#020b18" />
+        </linearGradient>
+        <linearGradient id="pour-water" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#22d3ee" />
+          <stop offset="100%" stopColor="#0891b2" />
+        </linearGradient>
+      </defs>
+      <rect width="200" height="80" fill="url(#pour-bg)" />
+
+      {/* Target line */}
+      <line
+        x1="120"
+        x2="180"
+        y1="30"
+        y2="30"
+        stroke="#22d3ee"
+        strokeOpacity="0.5"
+        strokeDasharray="2 3"
+        strokeWidth="1"
+      />
+      <text
+        x="180"
+        y="28"
+        fontSize="6"
+        fontFamily="ui-monospace, SFMono-Regular, monospace"
+        fill="#22d3ee"
+        textAnchor="end"
+        opacity="0.7"
+      >
+        LINE
+      </text>
+
+      {/* Tilting pitcher + water stream */}
+      <motion.g
+        style={{ transformOrigin: "60px 35px" }}
+        initial={{ rotate: 10 }}
+        animate={reduced ? { rotate: 35 } : { rotate: [10, 55, 20, 40, 10] }}
+        transition={{
+          duration: 5,
+          repeat: reduced ? 0 : Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        {/* Pitcher body */}
+        <path
+          d="M 48 20 L 72 20 L 70 42 L 50 42 Z"
+          fill="rgba(255,255,255,0.9)"
+        />
+        {/* Handle */}
+        <path
+          d="M 72 24 Q 80 28 72 38"
+          fill="none"
+          stroke="rgba(255,255,255,0.9)"
+          strokeWidth="1.6"
+        />
+        {/* Spout */}
+        <path d="M 48 20 L 44 17 L 46 22 Z" fill="rgba(255,255,255,0.9)" />
+      </motion.g>
+
+      {/* Water stream — loops in sync with pitcher peak tilt */}
+      {!reduced && (
+        <motion.path
+          d="M 46 22 Q 70 40 120 60 L 180 60 L 180 75 L 120 75 Z"
+          fill="url(#pour-water)"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.7, 0.95, 0.7, 0] }}
+          transition={{ duration: 5, repeat: Infinity, times: [0, 0.25, 0.5, 0.75, 1] }}
+        />
+      )}
+
+      {/* Cup filling up */}
+      <rect x="120" y="38" width="60" height="32" rx="2" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" />
+      <motion.rect
+        x="122"
+        y="55"
+        width="56"
+        height="13"
+        rx="1"
+        fill="url(#pour-water)"
+        initial={{ height: 2, y: 66 }}
+        animate={reduced ? { height: 20, y: 48 } : { height: [2, 20, 6, 16, 2], y: [66, 48, 62, 52, 66] }}
+        transition={{ duration: 5, repeat: reduced ? 0 : Infinity, times: [0, 0.3, 0.55, 0.8, 1] }}
+      />
+    </svg>
+  );
+}
+
+function StackerPreview() {
+  const reduced = useReducedMotion();
+  const BASE_BLOCKS = 4; // four stacked blocks at the bottom
+  return (
+    <svg
+      viewBox="0 0 200 80"
+      className="w-full h-full"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id="stk-bg" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#0c2437" />
+          <stop offset="100%" stopColor="#020b18" />
+        </linearGradient>
+        <linearGradient id="stk-block" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#fdba74" />
+          <stop offset="100%" stopColor="#f97316" />
+        </linearGradient>
+      </defs>
+      <rect width="200" height="80" fill="url(#stk-bg)" />
+
+      {/* Grid dots */}
+      {Array.from({ length: 10 }, (_, c) =>
+        Array.from({ length: 4 }, (_, r) => (
+          <circle
+            key={`${c}-${r}`}
+            cx={20 + c * 18}
+            cy={20 + r * 16}
+            r="0.6"
+            fill="rgba(255,255,255,0.06)"
+          />
+        )),
+      )}
+
+      {/* Stacked blocks */}
+      {Array.from({ length: BASE_BLOCKS }, (_, i) => (
+        <rect
+          key={i}
+          x={60}
+          y={70 - i * 10}
+          width={80}
+          height={8}
+          rx={1.5}
+          fill="url(#stk-block)"
+          opacity={0.92}
+        />
+      ))}
+
+      {/* Moving slider on top */}
+      <motion.rect
+        y={20}
+        width={80}
+        height={8}
+        rx={1.5}
+        fill="#fdba74"
+        initial={{ x: 20 }}
+        animate={reduced ? { x: 60 } : { x: [20, 100, 20] }}
+        transition={{
+          duration: 3.2,
+          repeat: reduced ? 0 : Infinity,
+          ease: "easeInOut",
+        }}
+        style={{
+          filter: "drop-shadow(0 0 6px rgba(253,186,116,0.45))",
+        }}
+      />
+
+      {/* "TAP" prompt pulsing to hint the mechanic */}
+      {!reduced && (
+        <motion.g
+          initial={{ opacity: 0.2 }}
+          animate={{ opacity: [0.2, 0.85, 0.2] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <rect x="160" y="6" width="32" height="12" rx="2" fill="rgba(253,186,116,0.15)" stroke="rgba(253,186,116,0.6)" strokeWidth="0.6" />
+          <text
+            x="176"
+            y="14"
+            fontSize="6"
+            fontFamily="ui-monospace, SFMono-Regular, monospace"
+            fill="#fdba74"
+            textAnchor="middle"
+            letterSpacing="1"
+          >
+            TAP
+          </text>
+        </motion.g>
+      )}
+    </svg>
   );
 }
