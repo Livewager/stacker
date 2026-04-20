@@ -77,6 +77,33 @@ export function WalletAdvanced() {
           id="wallet-advanced-panel"
           className="border-t border-white/5 px-5 py-4 space-y-3 lw-reveal"
         >
+          {/* Copy-all shortcut: dumps every row as a YAML-ish block
+              so a power user can paste "balance + canister + host"
+              into a support thread in one action, instead of a
+              five-tap tour through the individual copy buttons. Mirrors
+              the "Copy diagnostics" button pattern from /settings. */}
+          <div className="flex items-center justify-between -mt-1 mb-1">
+            <span className="text-[10px] uppercase tracking-widest text-gray-500">
+              Raw values
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const lines = [
+                  `raw_balance: ${rawBalance}`,
+                  `decimals: ${LWP_DECIMALS}`,
+                  `symbol: ${LWP_SYMBOL}`,
+                  `ledger_canister: ${canisterId}`,
+                  `gateway_host: ${host}`,
+                ];
+                copy(lines.join("\n"), { label: "Advanced values" });
+              }}
+              className="rounded-md border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-widest text-gray-300 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+              aria-label="Copy all advanced values as a YAML-ish block"
+            >
+              Copy all
+            </button>
+          </div>
           <AdvancedRow
             label="Raw balance"
             value={rawBalance}
