@@ -672,6 +672,19 @@ npm run typecheck      # tsc --noEmit
 npm test               # node:test contract suite
 ```
 
+- **CommandPalette async quick-actions** (audited POLISH-384).
+  Every `run: async () => {...}` in CommandPalette.tsx calls
+  `setOpen(false)` synchronously FIRST, then fires the side
+  effect. The palette unmounts before the await resolves, so
+  the focus-trap concern (palette still open during an async
+  action) doesn't apply — BottomSheet.tsx L147-154 restores
+  focus to `previouslyFocused` on unmount, which lands on the
+  original Cmd+K trigger. If a future action needs to stay
+  open while awaiting (e.g. inline loading UI inside the
+  palette), the action must skip the `setOpen(false)` call
+  AND manage its own focus-trap + busy state — but today,
+  nothing does that. Async actions also guard re-entry via
+  `authBusy` refs so Cmd+K mid-action doesn't double-fire.
 - **Money-flow compose-card shape** (audited POLISH-373).
   `/send` and `/withdraw` compose-stage and review-stage cards share
   exactly `rounded-2xl border border-white/10 bg-white/[0.02] p-5
