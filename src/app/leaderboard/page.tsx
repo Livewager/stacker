@@ -283,6 +283,25 @@ function LiveHourPanel({
           nextHandle: myIdx > 0 ? board[myIdx - 1].handle : null,
         }
       : null;
+  // POLISH-364 — "I'm here but not on the board yet" empty state.
+  // Triggers only when: player has a handle (identity signal), the
+  // board has entries (others played this hour), and player isn't
+  // one of them. Skip when allBoardsEmpty: the header already says
+  // "play a round to open the hour," and the per-tab EmptyBoard
+  // below will carry the CTA. Skip when !myHandle: a fully anon
+  // user shouldn't see a "you haven't played" nudge; they haven't
+  // even picked a handle yet.
+  const notOnBoardYet =
+    myHandle !== "" && myCallout === null && board.length > 0;
+  // Per-tab CTA routing. The tab the user is looking at is the game
+  // they're curious about; sending them there is the right nudge
+  // (versus a generic "pick a game" fork). /dunk is the Tilt Pour
+  // game route; /stacker is Stacker; Pour-on-leaderboard is also
+  // the /dunk route (Pour lives inside /dunk).
+  const tabCta =
+    tab === "stacker"
+      ? { href: "/stacker", label: "Play Stacker", tone: "orange" as const }
+      : { href: "/dunk", label: "Play Tilt Pour", tone: "cyan" as const };
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
@@ -355,7 +374,9 @@ function LiveHourPanel({
         className={
           myCallout
             ? "flex items-center justify-between gap-3 border-b border-white/5 bg-cyan-300/[0.03] px-4 py-2.5 text-xs"
-            : "sr-only"
+            : notOnBoardYet
+              ? "flex items-center justify-between gap-3 border-b border-white/5 bg-white/[0.02] px-4 py-2.5 text-xs"
+              : "sr-only"
         }
       >
         {myCallout && (
@@ -380,6 +401,31 @@ function LiveHourPanel({
                 </>
               ) : null}
             </div>
+          </>
+        )}
+        {!myCallout && notOnBoardYet && (
+          <>
+            <div className="flex items-center gap-2 min-w-0 text-gray-300">
+              <span className="inline-flex items-center rounded-full border border-white/15 bg-white/[0.03] px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-gray-400">
+                unranked
+              </span>
+              <span className="truncate">
+                <span className="text-white font-semibold">@{myHandle}</span>
+                {" · "}
+                <span className="text-gray-400">no round yet this hour</span>
+              </span>
+            </div>
+            <Link
+              href={tabCta.href}
+              className={`shrink-0 inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
+                tabCta.tone === "orange"
+                  ? "border-orange-400/40 bg-orange-400/[0.08] text-orange-200 hover:bg-orange-400/[0.15]"
+                  : "border-cyan-300/40 bg-cyan-300/[0.08] text-cyan-200 hover:bg-cyan-300/[0.15]"
+              }`}
+            >
+              {tabCta.label}
+              <span aria-hidden>→</span>
+            </Link>
           </>
         )}
       </div>
