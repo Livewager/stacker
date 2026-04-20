@@ -8,6 +8,7 @@
     "start": "next start -p 3002",
     "typecheck": "tsc --noEmit",
     "analyze": "next build && du -ch .next/static/chunks/*.js | sort -hr | head -20",
+    "build:check": "node scripts/prod-build-check.mjs",
     "test": "node --test test/**/*.test.mjs"
   },
   "dependencies": {
