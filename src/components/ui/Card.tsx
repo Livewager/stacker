@@ -8,6 +8,22 @@
  * eyebrow + optional trailing meta consistently. Tone changes the
  * eyebrow color without touching the card body so sections stay
  * visually calm.
+ *
+ * Density ladder is aligned to the POLISH-265 audit distribution
+ * across existing ad-hoc card-shaped divs (`rounded-2xl border-
+ * white/10`):
+ *     sm  →  p-3              (compact inline cards / skeletons)
+ *     md  →  p-5 md:p-6       (most common panel shape — 6+ hits)
+ *     lg  →  p-6 md:p-10      (hero / dashboard primary card)
+ * Previously md was just `p-5` which matched none of the dominant
+ * mobile-then-desktop responsive patterns. If you're porting an
+ * existing ad-hoc div and the padding doesn't fit a rung, prefer
+ * the nearest rung over inventing a fourth — visual drift is more
+ * expensive than a 2px padding mismatch. A handful of outliers
+ * (p-5 md:p-7, p-5 md:p-8) keep their inline shapes today; don't
+ * mass-migrate, adopt Card opportunistically when writing new
+ * panels. Primitive adoption is currently zero; documenting the
+ * shape here matters more than backfilling call sites.
  */
 
 import type { HTMLAttributes, ReactNode } from "react";
@@ -46,7 +62,11 @@ export function Card({
   ...rest
 }: CardProps) {
   const pad =
-    density === "sm" ? "p-3" : density === "lg" ? "p-6 md:p-8" : "p-5";
+    density === "sm"
+      ? "p-3"
+      : density === "lg"
+        ? "p-6 md:p-10"
+        : "p-5 md:p-6";
   const bg = elevated ? "bg-white/[0.035]" : "bg-white/[0.02]";
   return (
     <div
