@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
-import { formatLWP } from "@/lib/icp";
+import { formatLWP, resolveCanisterId, resolveHost } from "@/lib/icp";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import ActivityFeed from "@/components/dunk/ActivityFeed";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
@@ -188,6 +188,8 @@ export default function AccountPage() {
                   <StatItem label="Idle timeout" value="30 min" />
                 </dl>
               </section>
+
+              <CandidUiLink />
             </div>
 
             {/* Right: quick tip chips + activity feed */}
@@ -307,6 +309,68 @@ function SessionChip() {
         <>authed {since} ago · {remain} left</>
       )}
     </div>
+  );
+}
+
+/**
+ * Power-user link to the local replica's Candid UI for the
+ * points_ledger canister. Only rendered when we're actually talking
+ * to a local host — Candid UI isn't available at mainnet and the
+ * link would just 404. The link uses the "?canisterId=<UI>&id=<target>"
+ * pattern dfx generates; we let the user provide NEXT_PUBLIC_CANDID_UI
+ * for the UI canister id (varies per replica). Without it we fall
+ * back to a "?id=" form that many dfx setups handle directly.
+ */
+function CandidUiLink() {
+  const [href, setHref] = useState<string | null>(null);
+  const [canisterIdText, setCanisterIdText] = useState<string>("");
+  useEffect(() => {
+    try {
+      const host = resolveHost();
+      // Only surface on local — mainnet has no Candid UI at this host.
+      if (!host.includes("127.0.0.1") && !host.includes("localhost")) {
+        return;
+      }
+      const ledger = resolveCanisterId().toString();
+      setCanisterIdText(ledger);
+      const uiCanister =
+        (typeof process !== "undefined" &&
+          process.env.NEXT_PUBLIC_CANDID_UI) ||
+        "";
+      const url = uiCanister
+        ? `${host}/?canisterId=${uiCanister}&id=${ledger}`
+        : `${host}/?id=${ledger}`;
+      setHref(url);
+    } catch {
+      /* resolver can throw on malformed env; stay hidden */
+    }
+  }, []);
+  if (!href) return null;
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-6">
+      <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-3">
+        Power user
+      </div>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-sm text-cyan-300 hover:text-cyan-200 transition underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 rounded-sm"
+      >
+        Open in Candid UI
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
+          <path d="M11 3a1 1 0 1 0 0 2h2.586l-6.293 6.293a1 1 0 1 0 1.414 1.414L15 6.414V9a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-5Z" />
+          <path d="M5 5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-3a1 1 0 1 0-2 0v3H5V7h3a1 1 0 0 0 0-2H5Z" />
+        </svg>
+      </a>
+      <div className="mt-2 text-[11px] font-mono text-gray-500 break-all">
+        {canisterIdText}
+      </div>
+      <div className="mt-2 text-[11px] text-gray-500 leading-snug">
+        Local replica only. Set NEXT_PUBLIC_CANDID_UI to the dfx Candid
+        UI canister id for the full browse UI.
+      </div>
+    </section>
   );
 }
 
