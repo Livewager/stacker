@@ -89,6 +89,15 @@
     display: none !important;
   }
 
+  /* Dark-only theme, declared at the CSS layer so native UI (form
+     controls, scrollbars, autofill backgrounds, ::selection hints)
+     pick up the correct palette even if the <meta name="color-scheme">
+     gets stripped by a proxy or cached stale. Pairs with the Viewport
+     `colorScheme: "dark"` export in app/layout.tsx — belt-and-braces. */
+  html {
+    color-scheme: dark;
+  }
+
   /* Smooth anchor scrolling + comfortable landing offset. On mobile,
      page-level scroll-snap proximity helps long landings like /stacker
      feel less lurchy without forcing hard snaps that fight free
