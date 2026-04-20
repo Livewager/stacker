@@ -47,6 +47,15 @@ export default function SettingsPage() {
     PREF_KEYS.stackerShowSeed,
     false,
   );
+  // Onboarding nudge replay affordance. The nudge dismisses on
+  // first interaction and then hides forever via the
+  // hasSeenOnboarding pref. This setter lets power users re-watch
+  // or hand a fresh intro to a demo viewer without clearing all
+  // device data.
+  const [, setHasSeenOnboarding] = useLocalPref<boolean>(
+    PREF_KEYS.hasSeenOnboarding,
+    false,
+  );
   const toast = useToast();
   const { identity, logout, principal } = useWalletState();
 
@@ -215,6 +224,35 @@ export default function SettingsPage() {
               checked={stackerShowSeed}
               onChange={setStackerShowSeed}
             />
+            <div className="border-t border-white/5" />
+            {/* Onboarding replay. Re-flips hasSeenOnboarding to false
+                so the tip-bar reappears on the next route load. Fires
+                a toast confirm since the nudge itself only materializes
+                post-hydration — users won't see the state change
+                otherwise and might tap twice. */}
+            <div className="flex items-center justify-between gap-3 py-1">
+              <div className="min-w-0">
+                <div className="text-sm text-gray-100">Replay onboarding tip</div>
+                <div className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                  Re-shows the first-visit tip bar on the next route.
+                  Useful for demos or if you dismissed it accidentally.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setHasSeenOnboarding(false);
+                  toast.push({
+                    kind: "info",
+                    title: "Onboarding tip reset",
+                    description: "Next route load will show it again.",
+                  });
+                }}
+                className="shrink-0 rounded-md border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+              >
+                Replay
+              </button>
+            </div>
           </Section>
 
           {/* ---- Audio + haptics ---- */}
