@@ -201,6 +201,7 @@ export function BottomNav() {
                   onClick={() => tapFeedback(active, it.label)}
                   className={[
                     "flex flex-col items-center justify-center gap-0.5 h-14 text-[10px] uppercase tracking-widest transition",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300/60",
                     active ? "text-cyan-300" : "text-gray-400 hover:text-white",
                     it.emphasize ? "relative" : "",
                   ].join(" ")}
