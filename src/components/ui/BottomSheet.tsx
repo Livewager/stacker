@@ -89,12 +89,33 @@ export function BottomSheet({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    // Initial-focus fallback chain (POLISH-282 audit):
+    //   1. [data-autofocus] — explicit caller opt-in (palette input,
+    //      Connect primary CTA, settings sign-out confirm)
+    //   2. First focusable inside the panel — widened the selector
+    //      past "button, a, input" so a sheet rendering only a
+    //      textarea (memo-heavy forms) or a tabindex=0 region
+    //      doesn't skip past its content and land on the panel div.
+    //      Matches the same selector the Tab-trap handler above uses,
+    //      so the "first" target on arrival equals the "first" the
+    //      trap wraps to on Shift+Tab-from-start.
+    //   3. Panel div itself — tabIndex=-1 on the wrapper makes
+    //      programmatic .focus() work even with no interactive
+    //      descendants. preventScroll so the focus call doesn't
+    //      bump a long page's scroll position (caller's trigger
+    //      may be far from the sheet's overlay entry point).
     const t = window.setTimeout(() => {
       const focusTarget =
         panelRef.current?.querySelector<HTMLElement>("[data-autofocus]") ||
-        panelRef.current?.querySelector<HTMLElement>("button, a, input") ||
+        panelRef.current?.querySelector<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+        ) ||
         panelRef.current;
-      focusTarget?.focus();
+      try {
+        focusTarget?.focus({ preventScroll: true });
+      } catch {
+        /* .focus() can race with a rapid remount; ignore */
+      }
     }, 40);
 
     return () => {
