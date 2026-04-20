@@ -15,7 +15,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { WalletNav } from "@/components/dunk/WalletNav";
 import { ROUTES } from "@/lib/routes";
@@ -50,6 +50,52 @@ export default function AppHeader() {
     PREF_KEYS.hasOpenedPalette,
     false,
   );
+  // Magic-ink underline: one shared element positioned via transform
+  // against the active tab's bounding rect. Cheaper visually (one
+  // composited layer that slides) and means the underline tracks
+  // nav resizes like viewport changes or font-loading shifts.
+  const navRef = useRef<HTMLElement | null>(null);
+  const tabRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const [ink, setInk] = useState<{ x: number; w: number; show: boolean }>({
+    x: 0,
+    w: 0,
+    show: false,
+  });
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const active = TABS.find((t) => isActive(pathname, t.href));
+    const el = active ? tabRefs.current.get(active.href) : undefined;
+    if (!nav || !el) {
+      setInk((v) => ({ ...v, show: false }));
+      return;
+    }
+    const navRect = nav.getBoundingClientRect();
+    const tabRect = el.getBoundingClientRect();
+    setInk({
+      x: tabRect.left - navRect.left + 12, // matches the px-3 tab padding
+      w: tabRect.width - 24,
+      show: true,
+    });
+  }, [pathname]);
+  // Reposition on viewport changes (responsive paddings, font load)
+  // so the underline doesn't drift from its tab.
+  useEffect(() => {
+    const onResize = () => {
+      const nav = navRef.current;
+      const active = TABS.find((t) => isActive(pathname, t.href));
+      const el = active ? tabRefs.current.get(active.href) : undefined;
+      if (!nav || !el) return;
+      const navRect = nav.getBoundingClientRect();
+      const tabRect = el.getBoundingClientRect();
+      setInk({
+        x: tabRect.left - navRect.left + 12,
+        w: tabRect.width - 24,
+        show: true,
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [pathname]);
   // Mobile breadcrumb: first matching tab wins. Desktop shows the
   // full tab strip so this label stays hidden at md+.
   const activeTab = TABS.find((t) => isActive(pathname, t.href));
@@ -101,8 +147,9 @@ export default function AppHeader() {
         )}
 
         <nav
+          ref={navRef}
           aria-label="Primary"
-          className="hidden md:flex items-stretch gap-1 ml-4 text-sm"
+          className="relative hidden md:flex items-stretch gap-1 ml-4 text-sm"
         >
           {TABS.map((t) => {
             const active = isActive(pathname, t.href);
@@ -110,6 +157,10 @@ export default function AppHeader() {
               <Link
                 key={t.href}
                 href={t.href}
+                ref={(el) => {
+                  if (el) tabRefs.current.set(t.href, el);
+                  else tabRefs.current.delete(t.href);
+                }}
                 aria-current={active ? "page" : undefined}
                 className={[
                   "relative inline-flex items-center rounded-md px-3 py-1.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70",
@@ -119,16 +170,28 @@ export default function AppHeader() {
                 ].join(" ")}
               >
                 {t.label}
-                {active && (
-                  <span
-                    aria-hidden
-                    className="absolute left-3 right-3 -bottom-[7px] h-[2px] rounded-full"
-                    style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
-                  />
-                )}
               </Link>
             );
           })}
+          {/* Magic-ink underline — one shared composited layer that
+              slides between tabs via transform + width. Hidden on
+              first paint until the layout effect measures; spawns
+              without a transition so it doesn't zoom in from 0,0.
+              Respects reduced motion via the global rule in
+              style.css (transition-duration: 0.001ms). */}
+          <span
+            aria-hidden
+            className="absolute bottom-[-7px] h-[2px] rounded-full pointer-events-none"
+            style={{
+              background: "linear-gradient(90deg,#22d3ee,#0891b2)",
+              transform: `translateX(${ink.x}px)`,
+              width: ink.w,
+              opacity: ink.show ? 1 : 0,
+              transition:
+                "transform 260ms cubic-bezier(0.2,0.8,0.2,1), width 260ms cubic-bezier(0.2,0.8,0.2,1), opacity 120ms linear",
+              willChange: "transform, width",
+            }}
+          />
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
