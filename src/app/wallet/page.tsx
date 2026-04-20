@@ -160,8 +160,33 @@ export default function WalletPage() {
                   </div>
                 </div>
 
-                {/* Action rail */}
-                <div className="mt-6 grid grid-cols-4 gap-2 md:gap-3">
+                {/* Action rail. role="tablist" + arrow-key shuffling
+                    so keyboard users can cycle Buy → Deposit → Send
+                    → Withdraw without tabbing through every element
+                    in between. W3C pattern: focus follows selection,
+                    wraps at edges. */}
+                <div
+                  role="tablist"
+                  aria-label="Wallet quick actions"
+                  className="mt-6 grid grid-cols-4 gap-2 md:gap-3"
+                  onKeyDown={(e) => {
+                    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                    e.preventDefault();
+                    const i = QUICK_TABS.indexOf(tab);
+                    if (i < 0) return;
+                    const delta = e.key === "ArrowLeft" ? -1 : 1;
+                    const next =
+                      QUICK_TABS[(i + delta + QUICK_TABS.length) % QUICK_TABS.length];
+                    setTab(next);
+                    // Shift focus to the newly-active tile so screen
+                    // readers announce it and the visual focus ring
+                    // keeps up.
+                    const container = e.currentTarget as HTMLElement;
+                    const idx = QUICK_TABS.indexOf(next);
+                    const btn = container.children[idx] as HTMLButtonElement | undefined;
+                    btn?.focus?.();
+                  }}
+                >
                   <ActionTile
                     label="Buy"
                     active={tab === "buy"}
@@ -387,11 +412,16 @@ function ActionTile({
           : "text-rose-300";
   return (
     <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      // Roving tabindex: only the active tile is reachable via Tab.
+      // Arrow keys move between tiles via the container-level handler.
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-3 transition ${
         active ? activeCls : `border-white/10 bg-white/[0.03] ${base}`
       }`}
-      aria-pressed={active}
     >
       <span className={`${fg}`}>{icon}</span>
       <span className="text-xs font-semibold text-white">{label}</span>
