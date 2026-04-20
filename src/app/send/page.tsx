@@ -7,6 +7,7 @@ import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
+import { AmountField } from "@/components/ui/AmountField";
 
 // Must mirror canisters/points_ledger/src/lib.rs TRANSFER_FEE.
 const TRANSFER_FEE_BASE = 10_000n; // 0.0001 LWP at 8 decimals
@@ -175,33 +176,25 @@ export default function SendPage() {
               />
             </Field>
 
-            {/* Amount */}
-            <Field
+            {/* Amount: balance passed fee-reduced so "Max" chip auto-
+                subtracts the 0.0001 LWP transfer fee the ledger will
+                charge. Exceeds-balance guard uses the same reduced
+                budget, matching validation.amount's fee-inclusive check. */}
+            <AmountField
+              id="send-amount"
               label="Amount"
+              value={amount}
+              onChange={setAmount}
+              tone="violet"
               error={validation.amount}
               hint={`Fee: ${feeLwp.toFixed(4)} LWP (burned).`}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.0001"
-                  placeholder="0.0000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="flex-1 rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-right text-white focus:border-violet-300/60 focus:outline-none"
-                />
-                <span className="text-[11px] font-mono text-gray-400 shrink-0">LWP</span>
-                <button
-                  type="button"
-                  onClick={setMax}
-                  className="rounded-md border border-white/15 px-3 py-2 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition"
-                >
-                  Max
-                </button>
-              </div>
-            </Field>
+              balanceLwp={
+                balance !== null
+                  ? Number(balance > TRANSFER_FEE_BASE ? balance - TRANSFER_FEE_BASE : 0n) /
+                    1e8
+                  : null
+              }
+            />
 
             {/* Memo */}
             <Field
