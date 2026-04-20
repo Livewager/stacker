@@ -150,10 +150,20 @@ export function AmountField({
   return (
     <div className={className}>
       {label && (
-        <div className="flex items-baseline justify-between mb-1.5">
+        // POLISH-272 audit: preset chips are already on their own
+        // row with flex-wrap gap-1.5, so the 4 chips (25/50/75/Max)
+        // reflow cleanly at any viewport. The real 320px-class gap
+        // the audit turned up: the label row (label + optional
+        // error) uses plain `flex justify-between`, so a longer
+        // future error string (e.g. a cause-specific shortfall
+        // message) could clip the label. Added flex-wrap +
+        // gap-y-0.5 so a too-long error wraps under the label
+        // instead of clipping, and shrink-0 on the label so it
+        // keeps its width and the error is the one that wraps.
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 mb-1.5">
           <label
             htmlFor={fieldId}
-            className="text-[10px] uppercase tracking-widest text-gray-400"
+            className="shrink-0 text-[10px] uppercase tracking-widest text-gray-400"
           >
             {label}
           </label>
