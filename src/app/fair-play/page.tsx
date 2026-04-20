@@ -80,7 +80,8 @@ export default function FairPlayPage() {
             <p>
               The points_ledger canister holds the seed, re-simulates the
               round from your signed tap transcript, and only mints a score
-              that matches byte-for-byte. No replay, no prize.
+              that matches byte-for-byte. If the replay doesn&apos;t match,
+              the claim is rejected — no prize.
             </p>
           </Card>
 
@@ -155,9 +156,10 @@ export default function FairPlayPage() {
             </DiagramRow>
             <p>
               Inter-tap delta variance, autocorrelation, touch radius and
-              pressure when available. Humans drift; scripts don't. Flagged
-              distributions raise risk score, they don't auto-ban — false
-              positives are a feature only at the review layer.
+              pressure when available. Humans drift; scripts don&apos;t.
+              Flagged distributions raise the risk score — they don&apos;t
+              auto-ban. A false positive just means a human reviewer takes
+              a second look, not that an account dies.
             </p>
           </Card>
 
@@ -189,7 +191,7 @@ export default function FairPlayPage() {
         <Tier
           n="T3"
           title="Supporting signals · rare"
-          subtitle="Only when a round is already flagged, or at large-payout withdrawal."
+          subtitle="Only when a round is already flagged, or on large-payout withdrawals."
           accent="orange"
         >
           <Card
@@ -209,7 +211,7 @@ export default function FairPlayPage() {
               Sub-degree hand tremor is hard to fake at scale. We only sample
               it when Tier 2 raises your risk score mid-round — or when you
               voluntarily enable high-trust mode. A clean motion signature
-              reduces risk, absence doesn't prove anything.
+              reduces risk; absence doesn&apos;t prove anything on its own.
             </p>
           </Card>
 
@@ -238,10 +240,11 @@ export default function FairPlayPage() {
             anomalies plus payout behavior do. Flagged accounts get held for
             manual review, not instant account death.
           </Principle>
-          <Principle accent="emerald" heading="No video. No constant camera.">
+          <Principle accent="emerald" heading="What you see is what the ledger records.">
             No hidden outcome manipulation. The game logic is deterministic
-            and server-authoritative. What you see on screen is what the
-            ledger records.
+            and server-authoritative. The canister replays every round from
+            your signed transcript, so the score on your screen is the score
+            that gets minted — or it doesn&apos;t get minted at all.
           </Principle>
         </section>
       </div>
