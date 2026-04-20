@@ -11,6 +11,7 @@ import { useToast } from "@/components/dunk/Toast";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { ROUTES } from "@/lib/routes";
 import { useCopyable } from "@/lib/clipboard";
+import { sfx, unlockAudio } from "@/lib/audio";
 
 import { shortenPrincipal } from "@/lib/principal";
 
@@ -214,7 +215,20 @@ export default function SettingsPage() {
               label="Sound effects"
               description="Pour splash, lock thunk, zone ding, tx success chimes."
               checked={sound}
-              onChange={setSound}
+              onChange={(next) => {
+                setSound(next);
+                // Preview chime on off → on. setSound wrote through
+                // the shared prefs pipeline synchronously, so
+                // soundEnabled() inside sfx.perfect() will see the
+                // new value by the time playTone runs. unlockAudio
+                // handles browsers that suspend the AudioContext
+                // until a user gesture. Off → no confirm sound;
+                // flipping off silently is itself the confirmation.
+                if (next) {
+                  unlockAudio();
+                  sfx.perfect();
+                }
+              }}
             />
             <div className="border-t border-white/5" />
             <Toggle
