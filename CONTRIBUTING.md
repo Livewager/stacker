@@ -255,6 +255,16 @@ encode real tiers. Before "consolidating" one of these, check here:
   button → /lg, input → /md, pill → /full. Don't mix tiers on
   the same hierarchy level (e.g. a card with /xl buttons inside
   /2xl container — the button reads as a mini-card).
+  Hero-CTA exception (audited POLISH-349). The /dunk landing's
+  "Play Pour" / "Play Stacker" and the TryGame buttons use
+  `rounded-xl` rather than `/lg`. That's deliberate: they're
+  marketing-surface CTAs sitting against a full-bleed hero, not
+  form controls, and matching the surrounding 2xl cards one rung
+  smaller reads as "major action" rather than "submit form."
+  Stays an exception — don't escalate form-control buttons to /xl,
+  and don't demote these to /lg just because the Button primitive
+  uses that rung. Inner cards (tier cards in /fair-play, stat
+  chips on /dunk) at /xl are the tile rung working correctly.
 - **Route-accent eyebrow colors** — each primary route has a
   canonical accent (audited POLISH-301, all 10 routes clean):
   - /wallet, /leaderboard, /account, /stacker, /settings →
