@@ -493,6 +493,15 @@ export default function StackerGame({
 
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
 
+    // Prefers-contrast probe. Beefier strokes + brighter stack
+    // outlines when the OS or app-level pref asks for more contrast.
+    // Re-check per-frame is cheap; avoids a separate event listener
+    // and keeps the render loop self-contained.
+    const contrastMq =
+      typeof window !== "undefined" && window.matchMedia
+        ? window.matchMedia("(prefers-contrast: more)")
+        : null;
+
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
@@ -587,6 +596,12 @@ export default function StackerGame({
         }
       }
 
+      // When the user asks for more contrast, stack borders are
+      // stronger (full-alpha stroke, 1.8× line width) and the bottom
+      // of the gradient doesn't fade as much, so each block reads as
+      // a distinct element even on a dim display.
+      const highContrast = contrastMq?.matches ?? false;
+
       const drawBlock = (
         col: number,
         row: number,
@@ -600,16 +615,19 @@ export default function StackerGame({
         const h = cellH;
         const pad = Math.min(cellW, cellH) * 0.06;
         const grad = ctx.createLinearGradient(x, y, x, y + h);
-        grad.addColorStop(0, rgba(color, 0.95 * alpha));
-        grad.addColorStop(1, rgba(color, 0.65 * alpha));
+        const topAlpha = highContrast ? 1 : 0.95;
+        const bottomAlpha = highContrast ? 0.85 : 0.65;
+        grad.addColorStop(0, rgba(color, topAlpha * alpha));
+        grad.addColorStop(1, rgba(color, bottomAlpha * alpha));
         ctx.fillStyle = grad;
         ctx.beginPath();
         const rx = Math.min(8 * dpr, h * 0.18);
         ctx.roundRect(x + pad, y + pad, w - pad * 2, h - pad * 2, rx);
         ctx.fill();
-        // Inner highlight.
-        ctx.strokeStyle = rgba(color, 0.35 * alpha);
-        ctx.lineWidth = 1 * dpr;
+        // Inner highlight. High-contrast mode draws a full-alpha
+        // outline at 1.8× line width.
+        ctx.strokeStyle = rgba(color, (highContrast ? 0.9 : 0.35) * alpha);
+        ctx.lineWidth = (highContrast ? 1.8 : 1) * dpr;
         ctx.stroke();
       };
 
@@ -738,17 +756,27 @@ export default function StackerGame({
         const dh = h * popScale;
 
         const grad = ctx.createLinearGradient(cx, cy - dh / 2, cx, cy + dh / 2);
-        grad.addColorStop(0, rgba(color, 0.95));
-        grad.addColorStop(1, rgba(color, 0.6));
+        grad.addColorStop(0, rgba(color, highContrast ? 1 : 0.95));
+        grad.addColorStop(1, rgba(color, highContrast ? 0.85 : 0.6));
         ctx.fillStyle = grad;
         ctx.beginPath();
         const rx = Math.min(8 * dpr, dh * 0.18);
         ctx.roundRect(cx - dw / 2 + pad, cy - dh / 2 + pad, dw - pad * 2, dh - pad * 2, rx);
         ctx.fill();
-        ctx.shadowColor = rgba(color, 0.6);
-        ctx.shadowBlur = 14 * dpr;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        // High-contrast mode emphasises the outline over the glow so
+        // the slider silhouette reads clearly even on dim screens.
+        if (highContrast) {
+          ctx.strokeStyle = rgba(color, 1);
+          ctx.lineWidth = 2.2 * dpr;
+          ctx.stroke();
+        } else {
+          ctx.shadowColor = rgba(color, 0.6);
+          ctx.shadowBlur = 14 * dpr;
+          ctx.strokeStyle = rgba(color, 0.7);
+          ctx.lineWidth = 1 * dpr;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
       }
 
       // Perfect flash (full-board warm tint). Brief, gentle.
