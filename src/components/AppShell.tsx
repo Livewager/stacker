@@ -15,6 +15,7 @@ import { ToastHost } from "@/components/dunk/Toast";
 import { WalletProvider } from "@/components/dunk/WalletContext";
 import { BottomNav } from "@/components/BottomNav";
 import CommandPalette from "@/components/CommandPalette";
+import AppFooter from "@/components/AppFooter";
 import { ANCHORS } from "@/lib/routes";
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -27,6 +28,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <main id={ANCHORS.content.slice(1)} tabIndex={-1} className="outline-none">
           {children}
         </main>
+        <AppFooter />
         <BottomNav />
         <CommandPalette />
       </WalletProvider>
