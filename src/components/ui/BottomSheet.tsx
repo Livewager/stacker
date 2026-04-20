@@ -46,6 +46,14 @@ export function BottomSheet({
   // plus a display `dragY` state for the transform so the panel moves.
   const dragStart = useRef<{ y: number; t: number } | null>(null);
   const [dragY, setDragY] = useState(0);
+  // POLISH-363 — trailing-window velocity samples for release intent.
+  // The old `dy/dt` over the full drag span understated flick speed:
+  // a user who held for 400ms then flicked for the last 40ms got a
+  // velocity averaged across 440ms, well below the threshold. Toast
+  // (POLISH-181) already uses this pattern; bringing BottomSheet in
+  // line. Window = last ~80ms, which captures the wrist motion of a
+  // flick without including too much of the slow pre-amble.
+  const dragSamples = useRef<Array<{ y: number; t: number }>>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -154,6 +162,7 @@ export function BottomSheet({
     // Only track primary button / first touch, and only on mobile layout.
     if (e.pointerType === "mouse" && e.button !== 0) return;
     dragStart.current = { y: e.clientY, t: performance.now() };
+    dragSamples.current = [{ y: e.clientY, t: performance.now() }];
     // Capture so subsequent move/up fire even if the pointer slips out.
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -164,6 +173,13 @@ export function BottomSheet({
     // Don't let the user drag the sheet *up* past its rest position —
     // that would just pull it above the viewport.
     setDragY(Math.max(0, dy));
+    // Ring-buffer the last ~80ms of samples for release-velocity.
+    // A cap of 16 entries is generous (~5ms resolution) for an 80ms
+    // window even on 120Hz displays, and avoids unbounded growth
+    // during slow drags. Prune off the head when it exceeds the cap.
+    const now = performance.now();
+    dragSamples.current.push({ y: e.clientY, t: now });
+    if (dragSamples.current.length > 16) dragSamples.current.shift();
   };
 
   const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -172,9 +188,32 @@ export function BottomSheet({
       return;
     }
     const dy = e.clientY - dragStart.current.y;
-    const dt = performance.now() - dragStart.current.t;
-    const velocity = dy / Math.max(1, dt); // px/ms
+    // POLISH-363 — trailing-window velocity. Before: `velocity =
+    // dy_total / dt_total` diluted a late flick across a slow
+    // pre-amble (hold 400ms, flick last 40ms → velocity averaged
+    // over 440ms, well below 0.8 px/ms threshold). Now: find the
+    // oldest sample within the last ~80ms and measure dy/dt from
+    // there. Matches the Toast drag-dismiss pattern (POLISH-181).
+    // Fallback to full-span velocity when fewer than 2 samples
+    // exist (pointer-down + pointer-up with no moves between).
+    const samples = dragSamples.current;
+    const now = performance.now();
+    const WINDOW_MS = 80;
+    const last = samples[samples.length - 1];
+    let first = samples[0];
+    for (let i = samples.length - 1; i >= 0; i--) {
+      if (now - samples[i].t <= WINDOW_MS) {
+        first = samples[i];
+      } else {
+        break;
+      }
+    }
+    const velocity =
+      last && first && last.t > first.t
+        ? (last.y - first.y) / (last.t - first.t)
+        : dy / Math.max(1, now - dragStart.current.t);
     dragStart.current = null;
+    dragSamples.current = [];
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
