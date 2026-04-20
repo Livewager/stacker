@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -59,6 +59,50 @@ export function ErrorScaffold({
   }, [secondsLeft, primary]);
   const cancelAutoRetry = () => {
     if (secondsLeft !== null) setSecondsLeft(null);
+  };
+
+  // Environment block — build SHA, user agent, URL, timestamp. Grabbed
+  // once on mount so rerenders don't regenerate a "now" that drifts
+  // from when the error actually fired. Everything here is information
+  // the user could include verbatim in a support request without
+  // leaking anything private (no principal, no balance — those aren't
+  // available inside the error boundary anyway).
+  const envBlock = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const sha = process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev";
+    const ua = navigator.userAgent;
+    const url = window.location.href;
+    const when = new Date().toISOString();
+    return { sha, ua, url, when };
+  }, []);
+
+  const fullDetail =
+    [
+      detail?.trim() || null,
+      envBlock
+        ? [
+            `---`,
+            `env:`,
+            `  build: ${envBlock.sha}`,
+            `  url: ${envBlock.url}`,
+            `  ts: ${envBlock.when}`,
+            `  ua: ${envBlock.ua}`,
+          ].join("\n")
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n") || undefined;
+
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    if (!fullDetail) return;
+    try {
+      await navigator.clipboard.writeText(fullDetail);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked — no-op, the <pre> is selectable */
+    }
   };
   return (
     <main
@@ -163,13 +207,26 @@ export function ErrorScaffold({
           </div>
         )}
 
-        {detail && (
+        {fullDetail && (
           <details className="mt-8 text-left rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 text-xs">
-            <summary className="cursor-pointer text-gray-400 uppercase tracking-widest text-[10px]">
-              Technical detail
+            <summary className="cursor-pointer text-gray-400 uppercase tracking-widest text-[10px] flex items-center justify-between gap-3">
+              <span>Technical detail</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  // Don't let the click toggle the <details> summary.
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onCopy();
+                }}
+                className="normal-case tracking-normal text-[10px] rounded-md border border-white/15 px-2 py-0.5 text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/40"
+                aria-label="Copy technical detail"
+              >
+                {copied ? "Copied" : "Copy"}
+              </button>
             </summary>
             <pre className="mt-2 font-mono text-[11px] text-gray-300 whitespace-pre-wrap break-words leading-snug">
-              {detail}
+              {fullDetail}
             </pre>
           </details>
         )}
