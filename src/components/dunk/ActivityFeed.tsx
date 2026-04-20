@@ -10,6 +10,7 @@
  * N ledger events regardless — useful as a "network activity" strip.
  */
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   decodeBlock,
@@ -23,6 +24,7 @@ import {
 import { Principal } from "@dfinity/principal";
 import { useCopyable } from "@/lib/clipboard";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
+import { ROUTES } from "@/lib/routes";
 
 type ActivityFilter = "all" | "mint" | "burn" | "transfer" | "approve";
 const FILTERS: { key: ActivityFilter; label: string }[] = [
@@ -620,6 +622,31 @@ function EmptyState({ principal }: { principal: boolean }) {
           ? "Your buys, deposits, and transfers will show up here."
           : "Once a wallet starts transacting, events will appear here."}
       </div>
+      {/* POLISH-310 — inline CTA for signed-in + zero activity. On
+          /account this is the only first-visit nav hint (no
+          WelcomeBanner there, unlike /wallet which has one from
+          POLISH-216 + a full quick-action rail). On /wallet it's
+          gracefully additive: the WelcomeBanner may have been
+          dismissed, and inline copy doesn't visually compete with
+          the adjacent quick-action Deposit tile (a button here
+          would be triple-redundant with the banner + tile). Small
+          underlined text link, not a pill or Button — it reads as
+          "here's the next step" instead of "another CTA to
+          process." Signed-out branch stays CTA-less because the
+          user can't act on /deposit without an II session; the
+          sign-in affordance lives in SignedOutPrompt higher up
+          the page. */}
+      {principal && (
+        <div className="mt-4 text-xs text-gray-500">
+          New here?{" "}
+          <Link
+            href={ROUTES.deposit}
+            className="text-cyan-300 hover:text-cyan-200 underline-offset-2 hover:underline focus:outline-none focus-visible:underline focus-visible:text-cyan-200 rounded-sm focus-visible:ring-2 focus-visible:ring-cyan-300/40"
+          >
+            Make your first deposit →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
