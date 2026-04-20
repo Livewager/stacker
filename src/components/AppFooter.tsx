@@ -115,8 +115,9 @@ export default function AppFooter() {
           {/* Canister id */}
           {info && (
             <button
+              type="button"
               onClick={() => copy(info.canister, { label: "Canister id" })}
-              className="font-mono text-gray-300 hover:text-white transition inline-flex items-center gap-1.5"
+              className="font-mono text-gray-300 hover:text-white transition inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
               title={`Click to copy · ${info.canister}`}
               aria-label={`Copy ledger canister id ${info.canister}`}
             >

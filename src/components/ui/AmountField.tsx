@@ -197,7 +197,7 @@ export function AmountField({
               if (tidy !== raw) onChange(tidy);
             }
           }}
-          className="flex-1 bg-transparent text-right text-white text-sm font-mono tabular-nums focus:outline-none placeholder:text-gray-600"
+          className="flex-1 bg-transparent text-right text-white text-sm font-mono tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 rounded-sm placeholder:text-gray-600"
         />
         <span className="text-[11px] font-mono text-gray-400 shrink-0">{symbol}</span>
       </div>

@@ -456,7 +456,7 @@ export default function CommandPalette() {
                 <button
                   onClick={c.run}
                   aria-current={isCurrent ? "page" : undefined}
-                  className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition focus:outline-none ${
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300/50 ${
                     isCurrent
                       ? "bg-cyan-300/[0.04] cursor-default"
                       : "hover:bg-white/[0.03] focus-visible:bg-white/[0.05]"

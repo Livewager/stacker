@@ -178,12 +178,19 @@ export function BottomSheet({
       aria-labelledby={!ariaLabel && title ? titleId : undefined}
       aria-describedby={description ? descId : undefined}
     >
+      {/* Scrim: clickable for pointer dismissal, but removed from the
+          tab sequence — keyboard users close via Escape (wired in the
+          global keydown handler above). A focus-trap panel with an
+          invisible full-screen close button as the first tab stop is
+          hostile; marking it aria-hidden + tabIndex -1 + removing the
+          aria-label routes SR announcements to the actual dialog
+          heading / description instead of "Close dialog" every open. */}
       <button
         type="button"
-        aria-label="Close dialog"
+        aria-hidden
+        tabIndex={-1}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-[fadeIn_120ms_ease-out]"
-        // Scrim fades with the drag so the visual ties together.
         style={{
           opacity: dragY > 0 ? Math.max(0.3, 1 - dragY / 320) : undefined,
         }}
