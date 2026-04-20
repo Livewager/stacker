@@ -100,11 +100,13 @@ export default function WalletPage() {
                 status === "sending" ||
                 status === "withdrawing") && (
                 <span
+                  role="status"
+                  aria-label={`Transaction in flight: ${status}. Balance will update when it lands.`}
                   className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/[0.08] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-amber-200"
-                  aria-live="polite"
                   title="A transaction is in flight — balance will update when it lands"
                 >
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
+                  <span aria-hidden>
                   {status === "buying"
                     ? "buying"
                     : status === "depositing"
@@ -112,6 +114,7 @@ export default function WalletPage() {
                       : status === "sending"
                         ? "sending"
                         : "withdrawing"}
+                  </span>
                 </span>
               )}
             </div>

@@ -119,9 +119,12 @@ export function WalletNav() {
         aria-hidden
       >
         {pending ? (
+          // Decorative — the sr-only sibling below carries the
+          // accessible announcement. No title attr: container is
+          // aria-hidden so titles wouldn't reach SR anyway, and
+          // keyboard users don't hover.
           <span
             className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse"
-            title="Transaction in flight"
           />
         ) : (
           <span className="text-cyan-300">◎</span>
