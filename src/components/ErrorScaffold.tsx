@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 import { usePrefs } from "@/lib/prefs";
@@ -39,6 +39,16 @@ export function ErrorScaffold({
    */
   autoRetrySeconds?: number;
 }) {
+  // POLISH-366 — stable id for an sr-only hint that points the
+  // primary Retry/Reload button at the "Technical detail"
+  // disclosure below. SR users reaching the button by landmark or
+  // tab currently hear "Try again, button" with no clue that a
+  // digest + message exists in a `<details>` further down the
+  // card. With aria-describedby pointing at the hint span, the
+  // accessible description becomes "Try again, button. Error
+  // details available; expand 'Technical detail' below to read."
+  const scaffoldId = useId();
+  const detailHintId = `${scaffoldId}-detail-hint`;
   const accent = tone === "danger" ? "#f87171" : "#22d3ee";
   // POLISH-306 — dual-gate reduced-motion disables auto-retry
   // entirely. The rationale: auto-retry on an error boundary is a
@@ -261,7 +271,10 @@ export function ErrorScaffold({
 
         <div className="flex items-center justify-center gap-3 flex-wrap">
           {primary.href ? (
-            <Link href={primary.href}>
+            <Link
+              href={primary.href}
+              aria-describedby={fullDetail ? detailHintId : undefined}
+            >
               <Button tone="cyan" size="lg">
                 {primary.label}
               </Button>
@@ -270,6 +283,7 @@ export function ErrorScaffold({
             <Button
               ref={primaryBtnRef}
               onClick={primary.onClick}
+              aria-describedby={fullDetail ? detailHintId : undefined}
               tone="cyan"
               size="lg"
             >
@@ -306,6 +320,19 @@ export function ErrorScaffold({
               cancel
             </button>
           </div>
+        )}
+
+        {/* POLISH-366 — sr-only hint referenced by the primary button's
+            aria-describedby. Phrased as "expand X below to read" so
+            the sighted affordance name ("Technical detail") is the
+            same token a SR user hears, which helps them find it via
+            the rotor or search. Only rendered when there's actually
+            a detail payload to describe. */}
+        {fullDetail && (
+          <span id={detailHintId} className="sr-only">
+            Error details available; expand the &ldquo;Technical detail&rdquo;
+            disclosure below to read the digest and message.
+          </span>
         )}
 
         {fullDetail && (
