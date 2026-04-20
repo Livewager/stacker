@@ -224,7 +224,7 @@ export function AmountField({
               type="button"
               onClick={() => applyChip(c.fraction)}
               disabled={disabled}
-              className="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-widest text-gray-300 hover:text-white hover:border-white/25 transition disabled:opacity-50"
+              className="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-widest text-gray-300 hover:text-white hover:border-white/25 transition disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             >
               {c.label}
             </button>
