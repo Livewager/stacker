@@ -6,11 +6,13 @@
  *   1. the build exits non-zero
  *   2. stderr contains unexpected warning lines
  *
- * An allow-list captures known-good noise: the one `⚠ Using edge
- * runtime on a page currently disables static generation` line that
- * our /dunk/opengraph-image route produces by design, plus the
- * Next.js experimental-API notice they emit when you opt into an
- * experimental flag. Anything else surfaces as a failure with the
+ * An allow-list captures known-good noise. No routes today trigger
+ * the `⚠ Using edge runtime on a page currently disables static
+ * generation` line (the one that used to fire on /dunk/opengraph-
+ * image before the rebrand), but the allow-list keeps the substring
+ * in case a future route opts into an edge runtime via next/og.
+ * Same story for the Next.js experimental-API notice they emit
+ * when you opt into an experimental flag. Anything else surfaces as a failure with the
  * offending lines printed, so a new dependency or config that starts
  * emitting a warning has to pass through this check or get explicitly
  * allow-listed here — keeps the baseline honest.
@@ -42,8 +44,10 @@ const root = resolve(fileURLToPath(import.meta.url), "../..");
 // Keep this list short and justify each entry — everything else is
 // signal we want to notice.
 const ALLOW = [
-  // Intentional: /dunk/opengraph-image is an edge runtime to use
-  // next/og. Next 15 emits one warn per edge route.
+  // Reserved: if a route ever opts into the edge runtime (next/og's
+  // default, for example), Next 15 emits one warn per edge route.
+  // Kept allow-listed so a future edge-runtime opt-in doesn't trip
+  // this gate unannounced.
   "using edge runtime on a page currently disables static generation",
   // Benign in our setup — Next surfaces it whenever you opt into an
   // experimental flag. We opt into none today, but leaving this in
