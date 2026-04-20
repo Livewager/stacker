@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -34,6 +34,13 @@ export function BottomSheet({
 }: Props) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  // Stable ids for the dialog's title / description labelling so
+  // SR announces "<title>. <description>." on arrival instead of
+  // only the title (or the ariaLabel fallback). Missing halves are
+  // simply omitted from the aria-* attribute below.
+  const autoId = useId();
+  const titleId = `bs-${autoId}-title`;
+  const descId = `bs-${autoId}-desc`;
 
   // Drag state — lives in a ref during motion (no per-frame re-render)
   // plus a display `dragY` state for the transform so the panel moves.
@@ -162,7 +169,14 @@ export function BottomSheet({
       className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label={ariaLabel || title || "Dialog"}
+      // Prefer the explicit ariaLabel override when given (legacy
+      // call sites). When a visible title exists, let the heading
+      // label the dialog via aria-labelledby so SR hears the same
+      // string sighted users see. Same for description. Fall back
+      // to the literal "Dialog" only when neither is available.
+      aria-label={ariaLabel || (!title ? "Dialog" : undefined)}
+      aria-labelledby={!ariaLabel && title ? titleId : undefined}
+      aria-describedby={description ? descId : undefined}
     >
       <button
         type="button"
@@ -202,10 +216,14 @@ export function BottomSheet({
         {(title || description) && (
           <div className="px-6 pt-4 pb-2">
             {title && (
-              <h2 className="text-lg font-semibold text-white">{title}</h2>
+              <h2 id={titleId} className="text-lg font-semibold text-white">
+                {title}
+              </h2>
             )}
             {description && (
-              <p className="mt-1 text-sm text-gray-400">{description}</p>
+              <p id={descId} className="mt-1 text-sm text-gray-400">
+                {description}
+              </p>
             )}
           </div>
         )}
