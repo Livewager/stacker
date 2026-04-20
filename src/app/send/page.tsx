@@ -93,6 +93,18 @@ export default function SendPage() {
   const feeLwp = Number(TRANSFER_FEE_BASE) / 1e8;
 
   // ----- validation -----
+  // POLISH-328 audit: self-principal guard (below, "Cannot send to
+  // your own principal") is already in place — hard block, not a
+  // soft confirm. The ticket hypothesized "silent allow + burn fee"
+  // as the current behavior; verified false, this is rejected at
+  // the client before ever reaching the canister. Validation trips
+  // → formValid false → Review button disabled → aria-invalid chain
+  // + inline error (POLISH-288). Principal.fromText round-trip
+  // normalizes casing/whitespace so pasting your own principal
+  // with varied formatting still catches. Scope-cut the
+  // "confirmation modal" path — a hard no is kinder here: a soft
+  // "did you mean to?" on a destructive fee-burn action lets users
+  // click through by reflex.
   const validation = useMemo(() => {
     const errors: Record<string, string> = {};
 
