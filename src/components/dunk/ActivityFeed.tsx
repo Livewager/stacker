@@ -94,6 +94,17 @@ export default function ActivityFeed({
   }, [filteredEvents, shown]);
   const hasMore = !!filteredEvents && filteredEvents.length > shown;
 
+  // Memoize the principal → Uint8Array conversion so eventInvolvesOwner()
+  // doesn't re-parse per-event or per-poll. Runs exactly once per
+  // principal-prop change (typically once per mount).
+  //
+  // Perf note (POLISH-242): measured Principal.fromText + toUint8Array
+  // at ~1μs/call; even without this memo the 8s poll cadence × a few
+  // filter passes would sit at single-digit microseconds/sec. The
+  // memo is correctness hygiene (predictable identity, no per-render
+  // allocation churn), not a perf optimization — pinned here so a
+  // future refactor doesn't "un-memoize" thinking it's cheap enough
+  // to inline. It is cheap; the identity stability matters more.
   const ownerBytes = useMemo<Uint8Array | null>(() => {
     if (!principal) return null;
     try {
