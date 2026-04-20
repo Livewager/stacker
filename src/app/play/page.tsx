@@ -1,12 +1,14 @@
 "use client";
 
 /**
- * Games hub. Two cards, two routes, one shared wallet.
+ * Games hub. Single game today (Stacker), but the hub stays a
+ * distinct route so adding a second mechanic later is a one-array-
+ * push edit.
  *
- * Kept deliberately simple: no auth required to browse, the cards link
- * directly to the game routes. Stats (best score, hourly rank) read
- * client-side from the same localStorage keys each game writes to, so
- * they just reflect whatever the user has already played.
+ * Kept deliberately simple: no auth required to browse, the card
+ * links directly to the game route. Best-score + last-played read
+ * client-side from localStorage so the surface always reflects what
+ * the user has already done.
  */
 
 import Link from "next/link";
@@ -27,7 +29,7 @@ type Game = {
   /** localStorage key for last-played epoch ms (JSON number). */
   lastPlayedKey: string | null;
   status: "live" | "beta";
-  preview: "pour" | "stacker";
+  preview: "stacker";
   /**
    * Ship date of the game on /play. When within NEW_BADGE_WINDOW_MS
    * of the current time, the card renders a small cyan "new" pill
@@ -45,24 +47,6 @@ type Game = {
 const NEW_BADGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const GAMES: Game[] = [
-  {
-    href: "/dunk",
-    tag: "Tilt Pour",
-    title: "Tilt. Pour. Don't spill.",
-    tagline:
-      "Phone-native skill game. Tilt your device to pour, steady your hand, and hit the line without overflowing.",
-    bullets: [
-      "20-second round",
-      "Gyroscope + keyboard fallback",
-      "Leaderboard integration",
-    ],
-    accent: "linear-gradient(90deg,#22d3ee,#0891b2)",
-    bestKey: null,
-    lastPlayedKey: "livewager-pref:pourLastPlayed",
-    status: "live",
-    preview: "pour",
-    shippedAt: Date.UTC(2026, 0, 15), // 2026-01-15
-  },
   {
     href: "/stacker",
     tag: "Stacker",
@@ -147,25 +131,11 @@ export default function PlayHubPage() {
     setPrefsLoaded(true);
   }, []);
 
-  // First-time visitor: no lastPlayed stamp for either game. Surfaces
-  // a "Start here" callout on the Stacker card (demo-friendly first
-  // choice — no motion permissions required) and a one-line header
-  // banner above the grid. Hidden as soon as either game gets played.
-  //
-  // POLISH-334 audit-closed 2026-04-20. Ticket hypothesized
-  // first-visit users see "Best: 0" or "Best: —" on every card, making
-  // the hub uninviting. That's not what happens — the Best chip below
-  // is gated on `best !== null && best !== undefined` so brand-new
-  // users see no score chip at all (cleaner than a placeholder).
-  // Combined with (a) the firstVisit banner above the grid, (b) the
-  // cyan accent on Stacker's card via `suggested`, and (c) the
-  // "First time? Try Stacker" CTA, the empty state is already doing
-  // the "First round on the house" framing the ticket proposed.
-  // Don't fall back to rendering "Best: 0" — the chip-absent state is
-  // the feature, not a gap.
+  // First-time visitor: no lastPlayed stamp yet. Highlights the card
+  // with a cyan accent so it reads as "start here" without needing a
+  // separate banner. Hidden once the user has played at least once.
   const firstVisit =
     prefsLoaded && GAMES.every((g) => !g.lastPlayedKey || !lastPlayed[g.lastPlayedKey]);
-  const suggestedHref = "/stacker";
 
   // Route-scoped number shortcuts: "1" → first game, "2" → second,
   // etc. Only while /play is the active view. Inert inside any text
@@ -203,44 +173,16 @@ export default function PlayHubPage() {
               Play
             </div>
             <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-2">
-              Pick a game.
+              Play Stacker.
             </h1>
             <p className="text-gray-400 text-sm md:text-base max-w-lg">
-              Same wallet, different skill surface. Points, prizes, and leaderboard
+              Non-custodial wallet. Arcade skill. Points, prizes, and leaderboard
               all live on the Internet Computer as ICRC-1 tokens. Every demo round
               is clearly labeled — nothing moves on-chain unless you ship it.
             </p>
           </div>
 
-          {/* First-visit nudge. Hidden once either game has been
-              played. Points at Stacker because it's the demo-friendly
-              first choice — no device-motion permission prompt, no
-              camera, works on desktop + mobile identically. */}
-          {firstVisit && (
-            <div className="lw-reveal mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300/30 bg-cyan-300/[0.05] px-4 py-3 text-sm">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[10px] uppercase tracking-widest text-cyan-300">
-                  Start here
-                </span>
-                <span className="text-gray-300 truncate">
-                  First time? Try{" "}
-                  <span className="text-white font-semibold">Stacker</span> —
-                  one tap to play, no permissions.
-                </span>
-              </div>
-              <Link
-                href={suggestedHref}
-                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-300/50 bg-cyan-300/10 px-3 py-1.5 text-[11px] uppercase tracking-widest text-cyan-100 hover:bg-cyan-300/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-              >
-                Play Stacker
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
-                  <path d="M7.3 4.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 0 1-1.4-1.4L11.58 10 7.3 5.7a1 1 0 0 1 0-1.4Z" />
-                </svg>
-              </Link>
-            </div>
-          )}
-
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:max-w-2xl">
             {GAMES.map((g, i) => {
               const best = g.bestKey ? bests[g.bestKey] : null;
               const lp = g.lastPlayedKey ? lastPlayed[g.lastPlayedKey] : null;
@@ -248,7 +190,7 @@ export default function PlayHubPage() {
                 lp && Number.isFinite(lp)
                   ? formatRelative(lp, Date.now())
                   : null;
-              const suggested = firstVisit && g.href === suggestedHref;
+              const suggested = firstVisit;
               return (
                 <ParallaxCard
                   key={g.href}
@@ -480,108 +422,11 @@ function ParallaxCard({
 // rather than hover-only so mobile sees them too.
 // ---------------------------------------------------------------
 
-function GamePreview({ kind }: { kind: "pour" | "stacker" }) {
-  return kind === "pour" ? <PourPreview /> : <StackerPreview />;
-}
-
-function PourPreview() {
-  const reduced = useReducedMotion();
-  return (
-    <svg
-      viewBox="0 0 200 80"
-      className="w-full h-full"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden
-    >
-      {/* Background wash */}
-      <defs>
-        <linearGradient id="pour-bg" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#0c2437" />
-          <stop offset="100%" stopColor="#020b18" />
-        </linearGradient>
-        <linearGradient id="pour-water" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="100%" stopColor="#0891b2" />
-        </linearGradient>
-      </defs>
-      <rect width="200" height="80" fill="url(#pour-bg)" />
-
-      {/* Target line */}
-      <line
-        x1="120"
-        x2="180"
-        y1="30"
-        y2="30"
-        stroke="#22d3ee"
-        strokeOpacity="0.5"
-        strokeDasharray="2 3"
-        strokeWidth="1"
-      />
-      <text
-        x="180"
-        y="28"
-        fontSize="6"
-        fontFamily="ui-monospace, SFMono-Regular, monospace"
-        fill="#22d3ee"
-        textAnchor="end"
-        opacity="0.7"
-      >
-        LINE
-      </text>
-
-      {/* Tilting pitcher + water stream */}
-      <motion.g
-        style={{ transformOrigin: "60px 35px" }}
-        initial={{ rotate: 10 }}
-        animate={reduced ? { rotate: 35 } : { rotate: [10, 55, 20, 40, 10] }}
-        transition={{
-          duration: 5,
-          repeat: reduced ? 0 : Infinity,
-          ease: "easeInOut",
-        }}
-      >
-        {/* Pitcher body */}
-        <path
-          d="M 48 20 L 72 20 L 70 42 L 50 42 Z"
-          fill="rgba(255,255,255,0.9)"
-        />
-        {/* Handle */}
-        <path
-          d="M 72 24 Q 80 28 72 38"
-          fill="none"
-          stroke="rgba(255,255,255,0.9)"
-          strokeWidth="1.6"
-        />
-        {/* Spout */}
-        <path d="M 48 20 L 44 17 L 46 22 Z" fill="rgba(255,255,255,0.9)" />
-      </motion.g>
-
-      {/* Water stream — loops in sync with pitcher peak tilt */}
-      {!reduced && (
-        <motion.path
-          d="M 46 22 Q 70 40 120 60 L 180 60 L 180 75 L 120 75 Z"
-          fill="url(#pour-water)"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.7, 0.95, 0.7, 0] }}
-          transition={{ duration: 5, repeat: Infinity, times: [0, 0.25, 0.5, 0.75, 1] }}
-        />
-      )}
-
-      {/* Cup filling up */}
-      <rect x="120" y="38" width="60" height="32" rx="2" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.2)" strokeWidth="0.8" />
-      <motion.rect
-        x="122"
-        y="55"
-        width="56"
-        height="13"
-        rx="1"
-        fill="url(#pour-water)"
-        initial={{ height: 2, y: 66 }}
-        animate={reduced ? { height: 20, y: 48 } : { height: [2, 20, 6, 16, 2], y: [66, 48, 62, 52, 66] }}
-        transition={{ duration: 5, repeat: reduced ? 0 : Infinity, times: [0, 0.3, 0.55, 0.8, 1] }}
-      />
-    </svg>
-  );
+function GamePreview({ kind }: { kind: "stacker" }) {
+  // Single game today — switch lives here so adding a second preview
+  // later stays a local edit.
+  void kind;
+  return <StackerPreview />;
 }
 
 function StackerPreview() {

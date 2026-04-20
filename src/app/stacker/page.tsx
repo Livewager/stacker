@@ -89,10 +89,10 @@ function StackerPageInner() {
         aria-label="Site"
         className="relative z-20 max-w-7xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-3"
       >
-        <Link href={ROUTES.stacker} className="flex items-center" aria-label="Livewager Dunk home">
+        <Link href={ROUTES.stacker} className="flex items-center" aria-label="Livewager Stacker home">
           <Image
             src="/assets/logo43.png"
-            alt="Livewager · Dunk"
+            alt="Livewager · Stacker"
             width={440}
             height={144}
             priority
@@ -290,9 +290,8 @@ function Hero() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.35 }}
             // Mobile: horizontal scroll with snap + chrome-free scrollbar.
-            // Desktop (sm+): falls back to the original flex-wrap. Mirrors
-            // the /dunk landing treatment so the two game hero strips stay
-            // siblings (POLISH-223).
+            // Desktop (sm+): falls back to the original flex-wrap so the
+            // stat chips never collide with the hero copy (POLISH-223).
             className="mt-8 flex items-center gap-x-6 gap-y-2 text-[11px] text-gray-500 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:snap-none"
           >
             <StatChip label="Grid" value="7 × 15" />

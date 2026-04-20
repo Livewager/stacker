@@ -26,7 +26,7 @@ export const DEMO_USD_PER_LWP = 1;
 
 /**
  * LWP minted per 1 LTC on the demo deposit rail. Mirrors the mock
- * oracle in /api/dunk/ltc-deposit so the client-side "Value" hints
+ * oracle in /api/wallet/ltc-deposit so the client-side "Value" hints
  * on /wallet + /withdraw never drift from what the API will quote.
  *
  * Not currently imported here by every call site (some routes still

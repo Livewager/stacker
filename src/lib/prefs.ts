@@ -137,7 +137,7 @@ export const PREF_KEYS = {
   stackerMode: "stackerMode", // "ranked" | "unranked"
   stackerLastPlayed: "stackerLastPlayed", // epoch ms | null
   pourLastPlayed: "pourLastPlayed", // epoch ms | null
-  leaderboardTab: "leaderboardTab", // "dunk" | "pour" | "stacker"
+  leaderboardTab: "leaderboardTab", // legacy three-tab days; Stacker-only today
   hasSeenOnboarding: "hasSeenOnboarding", // boolean
 
   // Auth session metadata (not user-settable; written by WalletContext)

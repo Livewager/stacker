@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DUNK livestream placeholder for the /stacker landing page.
+ * Livestream placeholder for the /stacker landing page.
  *
  * User-facing goal: give the empty space below the hero a sense of
  * "people are playing this right now" without actually shipping a
@@ -54,7 +54,7 @@ const POOL: ChatMsg[] = [
   { id: 2, user: "queenpour", tone: "amber", body: "nah the 12th row got me" },
   { id: 3, user: "ftboi", tone: "violet", body: "ranked only cowards" },
   { id: 4, user: "r3m", tone: "rose", body: "someone tip the streamer lmao" },
-  { id: 5, user: "atxdunk", tone: "emerald", body: "that perfect streak was nuts" },
+  { id: 5, user: "atxstax", tone: "emerald", body: "that perfect streak was nuts" },
   { id: 6, user: "lowroll", tone: "cyan", body: "im up 40 LWP tonight" },
   { id: 7, user: "mimic", tone: "amber", body: "go fair-play tier 3 bro" },
   { id: 8, user: "halfdecaf", tone: "violet", body: "seeds are public check fair play" },
@@ -132,7 +132,7 @@ export function Livestream() {
 
   return (
     <section
-      aria-label="DUNK livestream (demo placeholder)"
+      aria-label="Stacker livestream (demo placeholder)"
       className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12"
     >
       {/* POLISH-379 — pin the header to Shape 1 from CONTRIBUTING
@@ -147,7 +147,7 @@ export function Livestream() {
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-[10px] uppercase tracking-widest text-rose-300">
-            Live now · DUNK
+            Live now · Stacker
           </span>
           <Pill status="demo" size="xs" mono title="No real stream — placeholder">
             demo
@@ -198,7 +198,7 @@ export function Livestream() {
           {/* Top-right viewer/stream label. Plain text, no counter
               spin — over-the-top HUDs read as placeholder. */}
           <div className="absolute top-3 right-3 rounded-full border border-white/10 bg-black/60 backdrop-blur px-2.5 py-1 text-[10px] font-mono uppercase tracking-widest text-gray-300">
-            dunk · stacker
+stacker · livewager
           </div>
 
           {/* Center play glyph — the only "this is a video" cue.

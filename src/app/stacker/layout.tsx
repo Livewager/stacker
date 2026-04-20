@@ -4,7 +4,7 @@ const TITLE = "Stacker";
 const DESC =
   "Fifteen rows. A sliding block. One tap to lock. Miss the window and the stack narrows. Reach the top for a 3× demo prize. Non-custodial LWP on the Internet Computer.";
 
-// `title` uses the bare string so the root layout's "%s · Dunk"
+// `title` uses the bare string so the root layout's "%s · Stacker"
 // template fills in automatically. OG copy uses the full title for
 // share previews where the template doesn't apply.
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: DESC,
   alternates: { canonical: "/stacker" },
   openGraph: {
-    title: `${TITLE} · Dunk`,
+    title: TITLE,
     description: DESC,
     url: "/stacker",
     type: "website",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${TITLE} · Dunk`,
+    title: TITLE,
     description: DESC,
     images: ["/opengraph-image"],
   },

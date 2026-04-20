@@ -2,7 +2,7 @@
 
 /**
  * Opt-in QR view for a principal. Renders the raw principal string as
- * a QR code so another Stacker/Dunk user can point their camera at it
+ * a QR code so another Stacker user can point their camera at it
  * to paste it into /send without typing.
  *
  * Uses the `qrcode` package (MIT, ~30KB gzipped). The QR is rendered

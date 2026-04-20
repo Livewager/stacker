@@ -32,14 +32,14 @@ Every tick that changes code hits these ten routes and confirms 200
 before committing:
 
 ```
-/dunk  /stacker  /play  /wallet  /send
+/stacker  /stacker  /play  /wallet  /send
 /withdraw  /deposit  /account  /leaderboard  /settings
 ```
 
 One-liner:
 
 ```bash
-for r in /dunk /stacker /play /wallet /send /withdraw /deposit /account /leaderboard /settings; do
+for r in /stacker /stacker /play /wallet /send /withdraw /deposit /account /leaderboard /settings; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3002$r")
   echo "$code $r"
 done
@@ -98,7 +98,7 @@ POLISH-<N> <area>: <one-line summary>
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 ```
 
-Use `ANTICHEAT-T<n>`, `ICP-<n>`, `DUNK-<n>`, or `STACKER-<n>` prefixes
+Use `ANTICHEAT-T<n>`, `ICP-<n>`, `STACKER-<n>`, or `STACKER-<n>` prefixes
 for non-polish work. When a tick discovers new follow-ups, queue them
 as fresh tickets rather than expanding the one you're shipping —
 keeps each commit reviewable in isolation.
@@ -241,7 +241,7 @@ encode real tiers. Before "consolidating" one of these, check here:
      pills in CommandPalette and the address-copy code blocks in
      LtcDepositPanel.
   3. **Panel-prose on saturated marketing surfaces** — GamesHub
-     card descriptions, /dunk quote blockquote, /stacker tier
+     card descriptions, /stacker quote blockquote, /stacker tier
      body. These sit on gradient or tinted backgrounds where
      `text-gray-300` (the standard prose rung) would wash out.
      Use judiciously; if you're on the default `bg-background` or
@@ -289,7 +289,7 @@ encode real tiers. Before "consolidating" one of these, check here:
   button → /lg, input → /md, pill → /full. Don't mix tiers on
   the same hierarchy level (e.g. a card with /xl buttons inside
   /2xl container — the button reads as a mini-card).
-  Hero-CTA exception (audited POLISH-349). The /dunk landing's
+  Hero-CTA exception (audited POLISH-349). The /stacker landing's
   "Play Pour" / "Play Stacker" and the TryGame buttons use
   `rounded-xl` rather than `/lg`. That's deliberate: they're
   marketing-surface CTAs sitting against a full-bleed hero, not
@@ -298,13 +298,13 @@ encode real tiers. Before "consolidating" one of these, check here:
   Stays an exception — don't escalate form-control buttons to /xl,
   and don't demote these to /lg just because the Button primitive
   uses that rung. Inner cards (tier cards in /fair-play, stat
-  chips on /dunk) at /xl are the tile rung working correctly.
+  chips on /stacker) at /xl are the tile rung working correctly.
 - **`bg-white/[...]` surface-tint ladder** — a 5-rung elevation
   ramp, not drift (audited POLISH-367). Pick by role, not by
   "this one feels right":
   - `bg-white/[0.02]` (~42 hits) — default card rest. Card
     primitive default, skeletons, utility-route panels.
-  - `bg-white/[0.03]` (~58 hits) — elevated card rest. /dunk
+  - `bg-white/[0.03]` (~58 hits) — elevated card rest. /stacker
     hero panels, GamesHub tiles, TryGame surfaces, /play cards,
     DropWallet, any "pop this card a touch against a dark hero."
     Card primitive's `elevated=true` now emits this token too
@@ -316,10 +316,10 @@ encode real tiers. Before "consolidating" one of these, check here:
     state. Reads as "a small surface that's semi-active" — not
     a card, not hovered, but currently selected.
   - `bg-white/[0.05]` (~10 hits) — hover tint on clickable cards.
-    CommandPalette active row, /dunk + /play card hover, /deposit
+    CommandPalette active row, /stacker + /play card hover, /deposit
     hover tab. Pair with a 0.02/0.03 rest.
   - `bg-white/[0.06]` (1 site, POLISH-367 ceiling) — hottest
-    marketing-hero hover only. /dunk hero-card hover is the one
+    marketing-hero hover only. /stacker hero-card hover is the one
     legitimate use; anything else reaching for 0.06 should step
     back to 0.05. If a new hot-hover wants this rung, justify it
     or demote.
@@ -343,7 +343,7 @@ encode real tiers. Before "consolidating" one of these, check here:
   - /send → `text-violet-300`
   - /withdraw → `text-rose-300`
   - /deposit → `text-orange-300`
-  - /dunk → `text-cyan-300` (plus in-game accents on specific
+  - /stacker → `text-cyan-300` (plus in-game accents on specific
     states — warm-up amber, pour-feedback greens)
   Two intentional exceptions, NOT drift:
   1. Generic `InfoTile` eyebrows app-wide use `text-cyan-300`
@@ -494,7 +494,7 @@ encode real tiers. Before "consolidating" one of these, check here:
   double-time flicker (child opacity × parent opacity, each at
   2s cubic-bezier). The rule: `animate-pulse` goes on either the
   **single-element placeholder** (dynamic-import fallbacks like
-  /dunk's DropWallet loading slot, /stacker's game canvas slot —
+  /stacker's DropWallet loading slot, /stacker's game canvas slot —
   filled cards with no children) OR on the **individual
   SkeletonBlock children inside a static card container** — never
   both. The Skeleton primitive in `src/components/ui/Skeleton.tsx`
@@ -543,7 +543,7 @@ encode real tiers. Before "consolidating" one of these, check here:
   boundary is non-recoverable. Secondary action: the **nearest
   sibling the user was likely heading to**, NOT the marketing
   landing. Generic catch-all → `/wallet` (most-visited authed
-  surface). `/wallet` → `/dunk` (closest out if wallet itself
+  surface). `/wallet` → `/stacker` (closest out if wallet itself
   crashes). `/account` → `/wallet`. `/stacker` → `/play`.
   Eyebrow tone: `tone="danger"` only when the error implicates a
   money-touching surface (generic catch-all + /wallet);
@@ -592,7 +592,7 @@ encode real tiers. Before "consolidating" one of these, check here:
      `inline-flex rounded-full border border-{tone}-300/30
      bg-{tone}-300/[0.05] px-3 py-1` with a leading
      `h-1.5 w-1.5 rounded-full bg-{tone}-300` dot (animate-pulse
-     if "live"). Used by /dunk (live pulse), /fair-play (static),
+     if "live"). Used by /stacker (live pulse), /fair-play (static),
      /stacker (Pill primitive variant). These routes want heavier
      hierarchy because the hero is longer and the eyebrow reads
      as a signpost, not a section header.

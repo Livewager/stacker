@@ -9,7 +9,7 @@
  *
  * In production these steps come from real LTC confirmation events. In
  * the demo the parent component advances the active step alongside the
- * /api/dunk/ltc-deposit round-trip so the UI has the feel of a real
+ * /api/wallet/ltc-deposit round-trip so the UI has the feel of a real
  * oracle flow.
  */
 

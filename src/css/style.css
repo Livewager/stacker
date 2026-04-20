@@ -22,7 +22,7 @@
   }
 
   body {
-    /* Dunk-app: dark background + Satoshi as default typeface. No
+    /* Stacker app: dark background + Satoshi as default typeface. No
        custom Tailwind tokens so this file is portable. */
     @apply relative z-[1] text-base font-normal;
     font-family: Satoshi, system-ui, sans-serif;

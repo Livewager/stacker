@@ -7,11 +7,11 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Dunk · Livewager",
-    short_name: "Dunk",
+    name: "Stacker · Livewager",
+    short_name: "Stacker",
     description:
-      "A 20-second tilt skill game with a non-custodial ICRC-1 points wallet.",
-    start_url: "/dunk",
+      "A 30-second arcade skill game with a non-custodial ICRC-1 points wallet.",
+    start_url: "/stacker",
     display: "standalone",
     background_color: "#020b18",
     theme_color: "#020b18",

@@ -5,8 +5,9 @@
  * Carries the logo, primary-route tabs, and the live wallet pill.
  *
  * Notes:
- *  - /dunk has its own in-page hero nav; this component is not mounted
- *    there. Check each route's page for whether it renders <AppHeader/>.
+ *  - /stacker has its own in-page hero nav; this component is not
+ *    mounted there. Check each route's page for whether it renders
+ *    <AppHeader/>.
  *  - Active tab = exact pathname match OR prefix match (so /deposit?via=x
  *    and /wallet/any-subroute still highlight).
  *  - Focus rings: every interactive element uses ring-cyan-300 on focus
@@ -133,7 +134,7 @@ export default function AppHeader() {
   // full tab strip so this label stays hidden at md+.
   const activeTab = TABS.find((t) => isActive(pathname, t.href));
   // Modifier-click on the logo routes to /play (the games hub) instead
-  // of /dunk. Alt/Option is the power-user shortcut — leaves ⌘/Ctrl
+  // of /stacker. Alt/Option is the power-user shortcut — leaves ⌘/Ctrl
   // (open-in-new-tab) and shift (new window) with their native
   // browser behavior intact.
   const onLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -192,14 +193,14 @@ export default function AppHeader() {
         <Link
           href={ROUTES.stacker}
           onClick={onLogoClick}
-          aria-label="Livewager · Dunk home (Alt-click for Games hub)"
+          aria-label="Livewager · Stacker home (Alt-click for Games hub)"
           aria-current={pathname === ROUTES.stacker ? "page" : undefined}
           title="Home · Alt-click for Games hub"
           className="inline-flex items-center shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
         >
           <Image
             src="/assets/logo43.png"
-            alt="Livewager · Dunk"
+            alt="Livewager · Stacker"
             width={200}
             height={64}
             priority

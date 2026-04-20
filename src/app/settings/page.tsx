@@ -153,7 +153,7 @@ export default function SettingsPage() {
       /* leave defaults */
     }
     const lines = [
-      `livewager-dunk · diagnostics`,
+      `livewager-stacker · diagnostics`,
       `ts: ${new Date().toISOString()}`,
       `build: ${sha}`,
       `url: ${typeof location !== "undefined" ? location.href : "n/a"}`,

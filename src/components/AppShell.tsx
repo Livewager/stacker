@@ -38,7 +38,7 @@ import { usePrefs } from "@/lib/prefs";
 
 /**
  * Global fallback Esc handler. Surface-specific Escape handlers
- * (BottomSheet, /dunk leader-palette, CommandPalette-in-BottomSheet)
+ * (BottomSheet, Stacker leader-palette, CommandPalette-in-BottomSheet)
  * all fire before this one and stopPropagation or match their own
  * element selector, so Esc always closes the top-most surface first.
  * When nothing is open and we're not on the root route, Esc walks

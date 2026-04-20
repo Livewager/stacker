@@ -15,32 +15,33 @@ import AppShell from "@/components/AppShell";
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.NODE_ENV === "production"
-    ? "https://dunk.local"
+    ? "https://stacker.local"
     : "http://localhost:3002");
 
-const OG_TITLE = "Dunk · Tilt. Pour. Don't spill.";
+const OG_TITLE = "Stacker · Stack to the top.";
 const OG_DESCRIPTION =
-  "A 20-second skill game played with your phone's gyroscope. Non-custodial wallet, ICRC-1 points on the Internet Computer.";
+  "A 30-second arcade skill game. Slide, tap, lock. Non-custodial LWP wallet, ICRC-1 points on the Internet Computer.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Dunk",
+    default: "Stacker",
     // Each page's metadata.title ('Wallet', 'Account', ...) slots into
-    // this template so the browser tab always reads "<page> · Dunk".
-    template: "%s · Dunk",
+    // this template so the browser tab always reads "<page> · Stacker".
+    template: "%s · Stacker",
   },
   description: OG_DESCRIPTION,
-  applicationName: "Dunk",
+  applicationName: "Stacker",
   keywords: [
     "livewager",
-    "dunk",
-    "steady pour",
+    "stacker",
+    "arcade",
+    "skill game",
     "icp",
     "icrc-1",
     "internet computer",
-    "skill game",
-    "tilt game",
+    "lwp",
+    "points",
   ],
   authors: [{ name: "Livewager" }],
   creator: "Livewager",
@@ -55,7 +56,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    siteName: "Dunk",
+    siteName: "Stacker",
     title: OG_TITLE,
     description: OG_DESCRIPTION,
     url: "/",
@@ -68,7 +69,7 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Dunk — tilt, pour, don't spill.",
+        alt: "Stacker — stack to the top.",
       },
     ],
   },

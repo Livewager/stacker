@@ -86,8 +86,8 @@ export default function OnboardingNudge() {
     <BottomSheet
       open={open}
       onClose={close}
-      title="Welcome to Dunk."
-      description="Two skill games, one non-custodial wallet. Thirty-second rounds. Real ledger, demo prizes."
+      title="Welcome to Stacker."
+      description="Arcade skill on a non-custodial wallet. Thirty-second rounds. Real ledger, demo prizes."
     >
       {/* Wrap content in an exit-animating container. When
           `dismissing` is true we apply lw-dismiss which fades +

@@ -7,11 +7,11 @@ import { useWalletState } from "@/components/shared/WalletContext";
 import { useCopyable } from "@/lib/clipboard";
 import { AmountField } from "@/components/ui/AmountField";
 
-// Keep in sync with src/app/api/dunk/ltc-deposit/route.ts.
+// Keep in sync with src/app/api/wallet/ltc-deposit/route.ts.
 const LWP_PER_LTC = 10_000_000;
 // Static watch address for the demo. Real flow derives this from the
 // oracle canister at init time.
-const DEMO_WATCH_ADDRESS = "ltc1qdemo0dunk0app0watch0address0xxxxxxxxxx0k9";
+const DEMO_WATCH_ADDRESS = "ltc1qdemostacker0watch0address0xxxxxxxxxx0xxk9";
 
 // LTC typically finalises at 6 confirmations. We fake-tick toward that
 // target during the confirm step so the UI shows real progression

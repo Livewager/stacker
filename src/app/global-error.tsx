@@ -21,7 +21,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.error("[dunk-app] global error:", error);
+    console.error("[stacker] global error:", error);
   }, [error]);
 
   return (
@@ -110,7 +110,7 @@ export default function GlobalError({
               Reload
             </button>
             <a
-              href="/dunk"
+              href="/stacker"
               style={{
                 color: "#e5e7eb",
                 border: "1px solid rgba(255,255,255,0.18)",

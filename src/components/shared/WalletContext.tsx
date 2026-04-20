@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Shared wallet state for the Dunk app.
+ * Shared wallet state for the Stacker app.
  *
  * Owns: Internet Identity session, principal string, LWP balance (bigint),
  * total-supply (bigint), and status flags. Exposes login / logout / buy /
@@ -87,7 +87,7 @@ export interface WithdrawInput {
 export interface WithdrawResult {
   /** Ledger tx id of the burn block. */
   burnTxId: bigint;
-  /** Stub payout reference returned by /api/dunk/ltc-withdraw. */
+  /** Stub payout reference returned by /api/wallet/ltc-withdraw. */
   payoutId: string;
   /** Estimated minutes until the real oracle would settle (fake). */
   etaMinutes: number;
@@ -96,7 +96,7 @@ export interface WithdrawResult {
 }
 
 /**
- * Shape a raw /api/dunk/ltc-deposit error string into user-facing
+ * Shape a raw /api/wallet/ltc-deposit error string into user-facing
  * title + description. The API returns a small catalogue of error
  * forms (validation, cap, canister reject, replica down); pattern-
  * match them so the toast reads like an instruction instead of a
@@ -155,7 +155,7 @@ function mapLtcDepositError(raw: string): { title: string; description: string }
  * pipeline. Withdraw has two failure layers deposit doesn't: the
  * canister burn (which can reject with an ICRC-1 variant like
  * BadFee or InsufficientFunds) and the off-chain "broadcast" step
- * hit via /api/dunk/ltc-withdraw. Each gets a distinct toast so the
+ * hit via /api/wallet/ltc-withdraw. Each gets a distinct toast so the
  * user knows what to retry (resubmit vs. top up vs. wait for the
  * oracle) instead of "Withdraw failed" across the board.
  *
@@ -359,7 +359,7 @@ function mapTransferError(raw: string): { title: string; description: string } {
 /**
  * POLISH-298 — fourth in the error-mapper set (deposit / withdraw /
  * send / buy). Buy mints LWP demo-credits directly to the signed-in
- * principal via /api/dunk/buy. Unlike deposit, there's no LTC rail
+ * principal via /api/wallet/buy. Unlike deposit, there's no LTC rail
  * involved — the reassurance framing is "no LTC was ever at risk"
  * rather than "your LTC hasn't moved." Unlike send, the failure
  * scope is the minter canister, not ICRC-1 transfer semantics.
@@ -492,7 +492,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     // is true, and Object.is(123n, 123n) === true for BigInts (per
     // ECMA-262 spec). So a refresh that fetches the same balance
     // (common after a rejected mutation retry) doesn't propagate a
-    // re-render through consumers — WalletNav, /dunk hero, /wallet
+    // re-render through consumers — WalletNav, /stacker hero, /wallet
     // balance card all stay still when the number is unchanged.
     // Don't add a manual `if (bal !== balance)` guard — reading
     // balance here would close over a stale value and cause the
@@ -597,7 +597,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setStatus("buying");
       try {
         const baseUnits = BigInt(Math.round(amountLwp * 1e8));
-        const res = await fetch("/api/dunk/buy", {
+        const res = await fetch("/api/wallet/buy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -641,7 +641,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setLastTx(null);
       setStatus("depositing");
       try {
-        const res = await fetch("/api/dunk/ltc-deposit", {
+        const res = await fetch("/api/wallet/ltc-deposit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -791,7 +791,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         const burnTxId = burnRes.Ok;
 
         // Stub payout queue — the real oracle would broadcast LTC.
-        const res = await fetch("/api/dunk/ltc-withdraw", {
+        const res = await fetch("/api/wallet/ltc-withdraw", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

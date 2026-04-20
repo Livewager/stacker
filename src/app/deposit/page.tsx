@@ -186,7 +186,7 @@ function ArrivingMethod({
     }
     setStatus("sending");
     try {
-      const res = await fetch("/api/dunk/waitlist", {
+      const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed }),
@@ -230,11 +230,11 @@ function ArrivingMethod({
             </li>
           ))}
         </ul>
-        {/* Notify-me micro-form. Posts to the existing /api/dunk/
-            waitlist endpoint so interest lands in whatever Slack/
-            Zapier webhook is wired via DUNK_WAITLIST_WEBHOOK. On
-            "done" the input + button lock so the user sees the
-            decision stuck, and the copy swaps to a confirmation. */}
+        {/* Notify-me micro-form. Posts to /api/waitlist so interest
+            lands in whatever Slack/Zapier webhook is wired via
+            STACKER_WAITLIST_WEBHOOK. On "done" the input + button
+            lock so the user sees the decision stuck, and the copy
+            swaps to a confirmation. */}
         {/* Stacked column on mobile, side-by-side from sm: up.
             POLISH-302 audit: inline row fits on 320px but feels
             squeezed when the button hits its longest state

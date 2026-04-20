@@ -20,7 +20,7 @@ import { WalletAdvanced } from "@/components/wallet/WalletAdvanced";
 const short = (s: string) => shortenPrincipal(s, { head: 8, tail: 8 });
 
 // Must stay in sync with MAX_AMOUNT_BASE_UNITS in
-// src/app/api/dunk/buy/route.ts (10_000_000_000n base units with 8
+// src/app/api/wallet/buy/route.ts (10_000_000_000n base units with 8
 // decimals = 100 LWP). Surfacing this client-side lets the input
 // reject obvious typos immediately rather than round-tripping the
 // API for a "cap exceeded" error.

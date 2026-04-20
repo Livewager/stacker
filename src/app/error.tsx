@@ -24,7 +24,7 @@ export default function RouteError({
   useEffect(() => {
     // Log to console in dev; production telemetry hook goes here.
     // eslint-disable-next-line no-console
-    console.error("[dunk-app] route error:", error);
+    console.error("[stacker] route error:", error);
   }, [error]);
 
   const detail =
@@ -38,7 +38,7 @@ export default function RouteError({
 
   // POLISH-304 — this is the catch-all error boundary, mounted at the
   // root segment. It catches /send, /withdraw, /deposit, /leaderboard,
-  // /play, /settings, /dunk — anything without a segment-scoped
+  // /play, /settings — anything without a segment-scoped
   // error.tsx above it. The previous copy ("glitched mid-pour", "Back
   // to the game") presumed a game context and was wrong for the
   // wallet-flow and utility routes that actually dominate this

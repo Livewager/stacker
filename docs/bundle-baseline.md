@@ -6,7 +6,7 @@ table against this doc before shipping anything that touches a
 dependency or a route-level import graph.
 
 All values below are **uncompressed**. With typical Brotli/gzip
-ratios (~3×), the largest First-Load-JS (`/dunk` at 295 kB uncompressed)
+ratios (~3×), the largest First-Load-JS (`/stacker` at 295 kB uncompressed)
 lands around **100 kB over the wire**. That's inside the ~200 kB
 gzipped budget POLISH-100 set, so no routes are carved up today.
 
@@ -19,7 +19,7 @@ Measured from `next build` output (Next.js 15.1.7, Node 20).
 | `/_not-found`  |     208 B  |      102 kB   |                 — |
 | `/account`     |    6.35 kB |      244 kB   |            +7 kB  |
 | `/deposit`     |    7.18 kB |      240 kB   |           +13 kB  |
-| `/dunk`        |    49.4 kB |      295 kB   |            +2 kB  |
+| `/stacker`        |    49.4 kB |      295 kB   |            +2 kB  |
 | `/leaderboard` |    10.2 kB |      232 kB   |            +5 kB  |
 | `/play`        |    8.35 kB |      271 kB   |            +5 kB  |
 | `/send`        |    10.4 kB |      232 kB   |            +4 kB  |
@@ -78,7 +78,7 @@ split-point in `src/lib/icp/*`.
   is a module-level const. Only `/stacker` imports Livestream, so
   webpack dedupes POOL into the /stacker route chunk and it never
   lands on other routes. If the Livestream ever ships on /play or
-  /dunk, lift POOL into `src/lib/livestream-pool.ts` so both
+  /stacker, lift POOL into `src/lib/livestream-pool.ts` so both
   routes hit the same chunk rather than duplicating bytes. Today:
   11.1 kB /stacker route (under the 13.2 kB POLISH-204 baseline),
   267 kB first-load unchanged — the chat-row entrance keyframe +

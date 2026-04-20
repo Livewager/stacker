@@ -12,7 +12,7 @@
  *   - "Non-custodial" disclosure + routes.
  *
  * Mobile collapses to one line with just network + short canister id.
- * Hidden on game routes (/dunk, /stacker) because the footer's 44px
+ * Hidden on game routes (/stacker) because the footer's 44px
  * vertical stripe distracts from the play surface, and the bottom-nav
  * spacer already occupies that real estate.
  */

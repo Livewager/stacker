@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
-import { usePrefs, useLocalPref, PREF_KEYS } from "@/lib/prefs";
+import { usePrefs } from "@/lib/prefs";
 import AppHeader from "@/components/AppHeader";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { useCopyable } from "@/lib/clipboard";
@@ -16,26 +16,12 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 
-// POLISH-322 — canister-timeout audit: premise-cut. /leaderboard is
-// a localStorage-backed demo board (see scoreboard.ts → readStore,
-// and readStackerBoard / readAllTimePourBest below — all three
-// data sources are window.localStorage reads, never canister
-// calls). There's no fetch to time out and no retry path to wire.
-// The existing try/catch around localStorage reads handles the
-// only real failure mode (disabled storage / private browsing) and
-// returns a sensible default.
-//
-// When the leaderboard is moved to the canister (post-MVP), the
-// error-handling shape to mirror is the POLISH-304 contract:
-//   - what happened?    ("couldn't reach the scoreboard canister")
-//   - what didn't?      ("your local best is still recorded, just
-//                        not ranked against others yet")
-//   - what next?        retry button + "last updated {relTime} ago"
-//                       indicator so stale data stays honest
-// The hourly tick loop below (setInterval 1s) already provides the
-// cadence a retry would hook into; a staleness indicator could
-// read its ref for the "last successful fetch at" anchor. Noting
-// here so the handoff is clean; not writing speculative code today.
+// Leaderboard is a localStorage-backed demo board (see scoreboard.ts).
+// No canister round-trip, no network failure to time out on. When the
+// leaderboard migrates to a real canister the error-handling shape to
+// mirror is the POLISH-304 contract (what happened / what didn't /
+// what next) — the hourly tick loop below (setInterval 1s) already
+// provides the retry cadence a real fetch would hook into.
 export default function LeaderboardPage() {
   const version = useScoreboardVersion();
   const [now, setNow] = useState<number>(() => Date.now());
@@ -43,12 +29,8 @@ export default function LeaderboardPage() {
 
   // Tick the clock once a second so both the hour countdown AND the
   // "Xs ago / Xm ago / Xh ago" timestamps on every row stay live
-  // without a full refetch. Two polish guards:
-  //   - Pause the interval when the tab is hidden (saves battery for
-  //     users who pin /leaderboard and switch away). On return, snap
-  //     `now` forward so timestamps don't stall at the hidden-ago.
-  //   - Single interval at page root — rows read `now` via closure,
-  //     not per-row setInterval.
+  // without a full refetch. Pause while the tab is hidden to save
+  // battery; snap `now` forward on return so timestamps don't stall.
   useEffect(() => {
     let id: number | null = null;
     const start = () => {
@@ -73,68 +55,32 @@ export default function LeaderboardPage() {
     };
   }, []);
 
-  // Full hour board from the shared util, then derive per-game slices
-  // and the signed-in player's rank. Recomputes on every scoreboard
-  // version bump (any round end + every second for the clock).
-  const {
-    dunkBoard,
-    pourBoard,
-    stackerLiveBoard,
-    stackerBoard,
-    myDunkRank,
-    msToReset,
-  } = useMemo(() => {
+  const { stackerBoard, stackerBest, myRank, msToReset } = useMemo(() => {
     const all = getHourBoard(now);
-    const dunk = all.filter((e) => e.game === "dunk");
-    const pour = all.filter((e) => e.game === "pour");
-    const stacker = all.filter((e) => e.game === "stacker");
-    const myIdx = myHandle ? dunk.findIndex((e) => e.handle === myHandle) : -1;
-    // Hour-reset: each full wall-clock hour.
+    const stacker = all.filter((e) => e.game === "stacker").slice(0, 20);
+    const myIdx = myHandle ? stacker.findIndex((e) => e.handle === myHandle) : -1;
     const hourStart = Math.floor(now / HOUR_MS) * HOUR_MS;
     return {
-      dunkBoard: dunk.slice(0, 20),
-      pourBoard: pour.slice(0, 20),
-      stackerLiveBoard: stacker.slice(0, 20),
-      stackerBoard: readStackerBoard(),
-      myDunkRank: myIdx >= 0 ? myIdx + 1 : null,
+      stackerBoard: stacker,
+      stackerBest: readStackerBoard().localBest,
+      myRank: myIdx >= 0 ? myIdx + 1 : null,
       msToReset: hourStart + HOUR_MS - now,
     };
-    // `version` is passed in so useMemo re-runs when rounds change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, now, myHandle]);
 
-  // Only mount the back-to-top chip when either board has enough rows
-  // to justify it — avoids a random floating button on a near-empty
-  // leaderboard.
-  const showBackToTop =
-    dunkBoard.length > 10 || pourBoard.length > 10;
+  const showBackToTop = stackerBoard.length > 10;
 
   return (
     <>
       <AppHeader />
-      {/* Safe-area-aware horizontal padding. Default px-4 / md:px-8 on
-          their own left the hero title + sparkline-heavy rows clipping
-          under the camera notch on iPhone 14+ landscape. The
-          lw-safe-x class picks the larger of the baseline padding
-          (1rem mobile, 2rem desktop via media query) or the device
-          inset — portrait + desktop stay identical, and landscape
-          shifts inward just enough to clear the rounded corner /
-          notch. Defined in src/css/style.css; arbitrary Tailwind
-          couldn't express the max(env(), responsive-baseline) pair
-          without inline styles losing the md: breakpoint. */}
       <div className="mx-auto max-w-6xl lw-safe-x py-8 md:py-12">
-        <HeroHeader msToReset={msToReset} myRank={myDunkRank} myHandle={myHandle} />
-
+        <HeroHeader msToReset={msToReset} myRank={myRank} myHandle={myHandle} />
         <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
-          <LiveHourPanel
-            dunkBoard={dunkBoard}
-            pourBoard={pourBoard}
-            stackerBoard={stackerLiveBoard}
-            myHandle={myHandle}
-          />
+          <LiveHourPanel board={stackerBoard} myHandle={myHandle} />
           <div className="space-y-6">
             <HallOfFame />
-            <BestsPanel stackerBest={stackerBoard.localBest} />
+            <BestsPanel stackerBest={stackerBest} />
           </div>
         </div>
       </div>
@@ -163,7 +109,7 @@ function HeroHeader({
           Leaderboard
         </div>
         <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-          The steadiest hands of the hour.
+          Top stacks of the hour.
         </h1>
         <p className="text-sm text-gray-400 mt-1 max-w-xl">
           Every top-of-the-hour a prize drops. Your best round in the last 60 minutes
@@ -175,7 +121,7 @@ function HeroHeader({
           <YouBadge handle={myHandle} rank={myRank} />
         ) : (
           <Link
-            href="/dunk"
+            href="/stacker"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-gray-300 hover:text-white hover:border-white/20 transition"
           >
             Play a round to claim a handle →
@@ -230,49 +176,16 @@ function HourClock({ msToReset }: { msToReset: number }) {
 }
 
 // ----------------------------------------------------------------
-// Live hour board
+// Live hour board (Stacker only)
 // ----------------------------------------------------------------
 
 function LiveHourPanel({
-  dunkBoard,
-  pourBoard,
-  stackerBoard,
+  board,
   myHandle,
 }: {
-  dunkBoard: ScoreEntry[];
-  pourBoard: ScoreEntry[];
-  stackerBoard: ScoreEntry[];
+  board: ScoreEntry[];
   myHandle: string;
 }) {
-  // Persist the active tab so a user who only cares about one game
-  // lands there on return. Narrow through a guard — a hand-edited
-  // pref shouldn't crash the page.
-  const [rawTab, setRawTab] = useLocalPref<"dunk" | "pour" | "stacker">(
-    PREF_KEYS.leaderboardTab,
-    "dunk",
-  );
-  const tab: "dunk" | "pour" | "stacker" =
-    rawTab === "dunk" || rawTab === "pour" || rawTab === "stacker"
-      ? rawTab
-      : "dunk";
-  const setTab = (next: "dunk" | "pour" | "stacker") => setRawTab(next);
-  const board =
-    tab === "dunk" ? dunkBoard : tab === "pour" ? pourBoard : stackerBoard;
-  // "All three games empty" signal. When true, every tab renders an
-  // EmptyBoard and clicking between them is low-information; a single
-  // line in the header prevents the user from thinking only their
-  // current tab is quiet. Not a full hero — the per-tab EmptyBoard
-  // already has the CTA, this just tells them it's the whole house.
-  const allBoardsEmpty =
-    dunkBoard.length === 0 &&
-    pourBoard.length === 0 &&
-    stackerBoard.length === 0;
-
-  // Surface a "you're at #N" callout above the list so the signed-in
-  // player doesn't have to scroll the board looking for the cyan row.
-  // `delta` is how many points the next-higher entry scored; if the
-  // user is #1 there's no delta to show. Recomputed per-tab so
-  // switching Dunk → Pour refreshes the stats.
   const myIdx = myHandle ? board.findIndex((e) => e.handle === myHandle) : -1;
   const myCallout =
     myIdx >= 0 && myHandle
@@ -283,25 +196,8 @@ function LiveHourPanel({
           nextHandle: myIdx > 0 ? board[myIdx - 1].handle : null,
         }
       : null;
-  // POLISH-364 — "I'm here but not on the board yet" empty state.
-  // Triggers only when: player has a handle (identity signal), the
-  // board has entries (others played this hour), and player isn't
-  // one of them. Skip when allBoardsEmpty: the header already says
-  // "play a round to open the hour," and the per-tab EmptyBoard
-  // below will carry the CTA. Skip when !myHandle: a fully anon
-  // user shouldn't see a "you haven't played" nudge; they haven't
-  // even picked a handle yet.
   const notOnBoardYet =
     myHandle !== "" && myCallout === null && board.length > 0;
-  // Per-tab CTA routing. The tab the user is looking at is the game
-  // they're curious about; sending them there is the right nudge
-  // (versus a generic "pick a game" fork). /dunk is the Tilt Pour
-  // game route; /stacker is Stacker; Pour-on-leaderboard is also
-  // the /dunk route (Pour lives inside /dunk).
-  const tabCta =
-    tab === "stacker"
-      ? { href: "/stacker", label: "Play Stacker", tone: "orange" as const }
-      : { href: "/dunk", label: "Play Tilt Pour", tone: "cyan" as const };
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
@@ -311,63 +207,13 @@ function LiveHourPanel({
             Live · this hour
           </div>
           <div className="text-sm text-gray-400 mt-0.5">
-            {allBoardsEmpty
-              ? "All three boards are quiet — play a round to open the hour."
-              : `Top ${board.length || "—"} scores, refreshed every round.`}
+            {board.length === 0
+              ? "Board is quiet — play a round to open the hour."
+              : `Top ${board.length} scores, refreshed every round.`}
           </div>
-        </div>
-        <div
-          role="tablist"
-          aria-label="Leaderboard game"
-          className="flex rounded-lg border border-white/10 bg-white/[0.03] p-0.5"
-        >
-          {(["dunk", "pour", "stacker"] as const).map((g) => {
-            const active = tab === g;
-            const label =
-              g === "dunk" ? "Dunk" : g === "pour" ? "Pour" : "Stacker";
-            // Active tone matches each game's hero accent so a peripheral
-            // glance at the tab strip conveys both "which game" and
-            // "which one's selected" without reading labels.
-            const activeTone =
-              g === "dunk"
-                ? "text-cyan-200"
-                : g === "pour"
-                  ? "text-violet-200"
-                  : "text-orange-200";
-            return (
-              <button
-                key={g}
-                role="tab"
-                aria-selected={active}
-                onClick={() => setTab(g)}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
-                  active ? `bg-white/10 ${activeTone}` : "text-gray-400 hover:text-white"
-                }`}
-              >
-                <GameTabIcon game={g} className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            );
-          })}
         </div>
       </header>
 
-      {/* POLISH-300 live-region audit. Previously the outer div only
-          mounted when `myCallout` was truthy, which meant the
-          aria-live="polite" region was born with content already in
-          it. Screen readers don't fire polite announcements for
-          initial mounts — they fire when content inside an already-
-          live region changes. So a user who landed mid-page with no
-          callout, then scored into rank, got zero SR feedback when
-          the chip appeared.
-          Fix: render the container unconditionally + keep the inner
-          content conditional. The live-region is always present;
-          when myCallout flips null → value, the SR announces the
-          freshly-inserted text. Added role="status" as a redundant
-          pair with aria-live="polite" — some older SR pipelines
-          honor role-implicit aria-live more reliably than the bare
-          attribute (polite mode is implicit in role=status, but
-          specifying both is defensive). */}
       <div
         role="status"
         aria-live="polite"
@@ -416,31 +262,20 @@ function LiveHourPanel({
               </span>
             </div>
             <Link
-              href={tabCta.href}
-              className={`shrink-0 inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
-                tabCta.tone === "orange"
-                  ? "border-orange-400/40 bg-orange-400/[0.08] text-orange-200 hover:bg-orange-400/[0.15]"
-                  : "border-cyan-300/40 bg-cyan-300/[0.08] text-cyan-200 hover:bg-cyan-300/[0.15]"
-              }`}
+              href="/stacker"
+              className="shrink-0 inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 border-orange-400/40 bg-orange-400/[0.08] text-orange-200 hover:bg-orange-400/[0.15]"
             >
-              {tabCta.label}
+              Play Stacker
               <span aria-hidden>→</span>
             </Link>
           </>
         )}
       </div>
       {board.length === 0 ? (
-        <EmptyBoard tab={tab} />
+        <EmptyBoard />
       ) : (
         <ol
           className="divide-y divide-white/5"
-          // Vim-style j/k row navigation. Handler walks the direct <li>
-          // children, finds the first interactive element inside each
-          // (handle button or tip link), and focuses relative to
-          // whatever the currently-focused row is. Enter on a row
-          // activates the most prominent action (tip link if present,
-          // else the handle-copy button). Inert inside inputs per the
-          // top-level listener conventions elsewhere.
           onKeyDown={(e) => {
             if (e.key !== "j" && e.key !== "k" && e.key !== "Enter") return;
             if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -452,8 +287,6 @@ function LiveHourPanel({
             const active = document.activeElement as HTMLElement | null;
             const currentIdx = rows.findIndex((row) => row.contains(active));
             if (e.key === "Enter") {
-              // Prefer the tip link (data-tip) when it exists; otherwise
-              // click whatever interactive is already focused.
               if (currentIdx < 0) return;
               const tip = rows[currentIdx].querySelector<HTMLElement>(
                 'a[data-row-action="tip"]',
@@ -478,7 +311,6 @@ function LiveHourPanel({
             target?.focus();
           }}
         >
-          {/* Podium treatment for the top 3 — different spacing + tint. */}
           {board.slice(0, 3).map((e, i) => (
             <PodiumRow key={e.id} entry={e} rank={i + 1} me={e.handle === myHandle} />
           ))}
@@ -498,7 +330,6 @@ function LiveHourPanel({
 }
 
 const PODIUM_TONES = [
-  // gold, silver, bronze — inline to keep tailwind JIT happy
   { bg: "rgba(250,204,21,0.08)", border: "rgba(250,204,21,0.35)", fg: "#fde68a" },
   { bg: "rgba(226,232,240,0.06)", border: "rgba(226,232,240,0.25)", fg: "#e5e7eb" },
   { bg: "rgba(251,146,60,0.07)", border: "rgba(251,146,60,0.3)", fg: "#fed7aa" },
@@ -547,28 +378,13 @@ function PodiumRow({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: b
           {entry.score}
         </div>
         <div className="text-[10px] uppercase tracking-widest text-gray-500">
-          {entry.game === "dunk"
-            ? "Dunk"
-            : entry.game === "pour"
-              ? "Pour"
-              : entry.game === "stacker"
-                ? "Stacker"
-                : "Tidal"}
+          Stacker
         </div>
       </div>
     </li>
   );
 }
 
-/**
- * Compact 8-point trend sparkline for a player row.
- *
- * Demo-only: we don't persist historical scores, so the trend is
- * derived deterministically from the entry id + current score. That
- * way the shape is stable across re-renders for the same player but
- * varies row-to-row, and the final value anchors at their current
- * score so the ending always matches the numeral.
- */
 function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
   // 32-bit string hash — enough spread for 8–10 rows per board.
   let h = 2166136261 >>> 0;
@@ -578,16 +394,14 @@ function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
   }
   const N = 8;
   const pts: number[] = [];
-  // seeded jitter that terminates at 1.0 (current score) with a
-  // gentle upward bias so most lines read as "climbed into this".
   for (let i = 0; i < N; i++) {
     h = Math.imul(h, 1664525) + 1013904223;
-    const r = ((h >>> 0) / 2 ** 32) - 0.5; // ±0.5
-    const phase = i / (N - 1); // 0..1
-    const baseline = 0.35 + phase * 0.5; // 0.35 → 0.85
+    const r = ((h >>> 0) / 2 ** 32) - 0.5;
+    const phase = i / (N - 1);
+    const baseline = 0.35 + phase * 0.5;
     pts.push(Math.max(0.05, Math.min(0.98, baseline + r * 0.25)));
   }
-  pts[N - 1] = 0.92; // anchor finale near top so the eye lands forward
+  pts[N - 1] = 0.92;
   const w = 56;
   const hgt = 18;
   const step = w / (N - 1);
@@ -596,12 +410,6 @@ function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
     .join(" ");
   const stroke = me ? "#22d3ee" : "rgba(255,255,255,0.45)";
 
-  // Draw-on entrance: stroke-dasharray = pathLength="1" + dashoffset
-  // animates 1 → 0. When reduced motion is on, jump straight to 0
-  // (no transition, no movement). Per-row stagger keyed off the
-  // hash so adjacent rows don't all draw at the same instant —
-  // gives the board a subtle cascade without a heavy library dep.
-  // systemReduced OR userReduced freezes to the final state.
   const systemReduced = useReducedMotion();
   const { reducedMotion: userReduced } = usePrefs();
   const reduced = systemReduced || userReduced;
@@ -654,20 +462,6 @@ function Row({
   signedIn: boolean;
 }) {
   const copy = useCopyable();
-  // Tip button appears on hover (desktop) or focus-within (keyboard)
-  // for any non-self row. Demo entries ("sim-…") include it too —
-  // the URL just carries the handle forward; /send can wire
-  // handle→principal resolution in a later pass without touching
-  // this component.
-  //
-  // POLISH-382 — also gate on `signedIn` (derived from myHandle
-  // truthiness upstream). A signed-out user clicking Tip would
-  // land on /send's SignInGate — a dead-end flow that looks like
-  // a bug. Hide the button outright instead. The handle is still
-  // copyable via the inline button L660, so a signed-out user
-  // can grab the handle and come back after signing in; we just
-  // don't surface the tip-authoring affordance they can't act on
-  // yet.
   const canTip = !me && signedIn;
   return (
     <li
@@ -703,11 +497,6 @@ function Row({
           href={`/send?handle=${encodeURIComponent(entry.handle)}`}
           data-row-action="tip"
           aria-label={`Tip @${entry.handle}`}
-          // Mobile (<md): always visible at 70% opacity since hover
-          // doesn't exist and keyboard focus-within is uncommon on
-          // touch devices. Desktop (md+): hover-reveal as before,
-          // with the same focus-visible + focus-within fallbacks so
-          // keyboard navigation still surfaces it. POLISH-229.
           className="opacity-70 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-300/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-violet-200 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 focus-visible:opacity-100"
           title={`Open /send with @${entry.handle} pre-filled`}
         >
@@ -721,16 +510,7 @@ function Row({
   );
 }
 
-function EmptyBoard({ tab }: { tab: "dunk" | "pour" | "stacker" }) {
-  // Per-tab CTA copy + route. Swapping in a separate route later is
-  // a one-line change — and the empty state's voice matches the tab
-  // the user is actually looking at.
-  const cta =
-    tab === "stacker"
-      ? { href: "/stacker", label: "Stacker", verb: "stack to the top", title: "Stacker" }
-      : tab === "dunk"
-        ? { href: "/dunk", label: "Dunk", verb: "throw a round", title: "Dunk" }
-        : { href: "/dunk", label: "Pour", verb: "pour a round", title: "Pour" };
+function EmptyBoard() {
   return (
     <div className="px-6 py-10 text-center">
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-cyan-300">
@@ -739,14 +519,14 @@ function EmptyBoard({ tab }: { tab: "dunk" | "pour" | "stacker" }) {
         </svg>
       </div>
       <div className="text-sm text-white font-semibold mb-1">
-        No {cta.title} scores this hour yet
+        No Stacker scores this hour yet
       </div>
       <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug">
         Be the first — tap{" "}
-        <Link href={cta.href} className="text-cyan-300 hover:underline">
-          {cta.label}
+        <Link href="/stacker" className="text-cyan-300 hover:underline">
+          Stacker
         </Link>{" "}
-        and {cta.verb}.
+        and stack to the top.
       </div>
     </div>
   );
@@ -763,18 +543,15 @@ interface Legend {
   note: string;
 }
 const LEGENDS: Legend[] = [
-  { handle: "steady_hands", score: 9_820, flag: "🇯🇵", note: "14/20 perfect holds" },
-  { handle: "basedhunter", score: 9_640, flag: "🇺🇸", note: "Late-night bullseye streak" },
-  { handle: "ricochet", score: 9_410, flag: "🇫🇷", note: "Won with a 1-px margin" },
+  { handle: "topfloor", score: 9_820, flag: "🇯🇵", note: "14/15 perfect locks" },
+  { handle: "basedhunter", score: 9_640, flag: "🇺🇸", note: "Late-night streak run" },
+  { handle: "ricochet", score: 9_410, flag: "🇫🇷", note: "Won with a 1-cell slider" },
   { handle: "cosmic", score: 9_205, flag: "🇨🇦", note: "Won on their 3rd round ever" },
   { handle: "elev8", score: 8_990, flag: "🇦🇺", note: "Broke their own 4-hr streak" },
 ];
 
 function HallOfFame() {
   const [idx, setIdx] = useState(0);
-  // Respect both the OS prefers-reduced-motion and the in-app "Reduce
-  // motion" pref. Either one freezes the auto-rotation — indicator
-  // dots stay clickable for manual cycling so the panel isn't inert.
   const systemReduced = useReducedMotion();
   const { reducedMotion: userReduced } = usePrefs();
   const reduced = systemReduced || userReduced;
@@ -811,11 +588,6 @@ function HallOfFame() {
           <div className="mt-1 text-[11px] text-gray-400 leading-snug">{cur.note}</div>
         </div>
       </div>
-      {/* POLISH-350 — visible dots stay slim (h-1.5) for the
-          progress-bar read, but the button expands to h-6 with
-          a transparent bg so the tap target clears the 44px-tall
-          minimum once the finger lands on the row. Inner span
-          carries the visible color; button wraps it centered. */}
       <div className="mt-4 flex gap-1.5">
         {LEGENDS.map((_, i) => (
           <button
@@ -833,7 +605,6 @@ function HallOfFame() {
           </button>
         ))}
       </div>
-      {/* Scoped keyframes. Scoped via data-attr so no global bleed. */}
       <style>{`
         @keyframes fadeSlide {
           from { opacity: 0; transform: translateY(4px); }
@@ -849,14 +620,13 @@ function HallOfFame() {
 // ----------------------------------------------------------------
 
 function BestsPanel({ stackerBest }: { stackerBest: number }) {
-  const pourBest = readAllTimePourBest();
-  const bothZero = pourBest === 0 && stackerBest === 0;
+  const has = stackerBest > 0;
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
       <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-3">
-        Your bests (this device)
+        Your best (this device)
       </div>
-      {bothZero ? (
+      {!has ? (
         <div className="py-6 text-center">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-cyan-300">
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
@@ -864,31 +634,22 @@ function BestsPanel({ stackerBest }: { stackerBest: number }) {
             </svg>
           </div>
           <div className="text-sm text-white font-semibold mb-1">
-            No personal bests yet
+            No personal best yet
           </div>
           <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug mb-4">
-            Play a round in either game and your score shows up here. Beats are
-            stored locally until accounts pair with the ledger.
+            Play a round and your score shows up here. Bests are stored locally
+            until accounts pair with the ledger.
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Link
-              href="/dunk"
-              className="rounded-md border border-cyan-300/40 bg-cyan-300/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-widest text-cyan-200 hover:bg-cyan-300/[0.15] transition"
-            >
-              Tilt Pour
-            </Link>
-            <Link
-              href="/stacker"
-              className="rounded-md border border-orange-400/40 bg-orange-400/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-widest text-orange-200 hover:bg-orange-400/[0.15] transition"
-            >
-              Stacker
-            </Link>
-          </div>
+          <Link
+            href="/stacker"
+            className="rounded-md border border-orange-400/40 bg-orange-400/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-widest text-orange-200 hover:bg-orange-400/[0.15] transition"
+          >
+            Play Stacker
+          </Link>
         </div>
       ) : (
         <>
           <ul className="divide-y divide-white/5">
-            <BestRow game="Tilt Pour" best={pourBest} cta={{ href: "/dunk", label: "Play" }} />
             <BestRow game="Stacker" best={stackerBest} cta={{ href: "/stacker", label: "Play" }} />
           </ul>
           <div className="mt-3 text-[11px] text-gray-500 leading-snug">
@@ -940,14 +701,6 @@ function BestRow({
 // Helpers
 // ----------------------------------------------------------------
 
-/**
- * "Xs ago / Xm ago / Xh ago" formatter. Takes an explicit `now`
- * anchor so all timestamps in one render share a single clock — no
- * visual drift between neighbouring rows — and so the caller can
- * drive re-renders via its state without relTime reaching for a
- * fresh Date.now() on every call. Defaults to Date.now() for
- * legacy call sites.
- */
 function relTime(ts: number, now: number = Date.now()): string {
   const diff = now - ts;
   const s = Math.max(0, Math.floor(diff / 1000));
@@ -967,75 +720,4 @@ function readStackerBoard(): { localBest: number } {
   } catch {
     return { localBest: 0 };
   }
-}
-
-function readAllTimePourBest(): number {
-  // The existing dunk codebase stores the pour high score at HS_KEY;
-  // read it directly so this page doesn't couple to internal exports.
-  try {
-    const v = window.localStorage.getItem("livewager-pour-high-score");
-    return v ? Number(v) : 0;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Monochrome game glyphs for the tab strip. currentColor so the tab's
- * active/inactive tone just propagates. Sized by the caller via
- * className.
- *   - dunk:    simple hoop-arc silhouette (rim + net)
- *   - pour:    droplet
- *   - stacker: three stacked bars, uneven widths (hints at chop-off)
- */
-function GameTabIcon({
-  game,
-  className,
-}: {
-  game: "dunk" | "pour" | "stacker";
-  className?: string;
-}) {
-  if (game === "dunk") {
-    return (
-      <svg
-        viewBox="0 0 16 16"
-        className={className}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M3 5h10" />
-        <path d="M4 5l1.2 6.5a1 1 0 0 0 1 .85h3.6a1 1 0 0 0 1-.85L12 5" />
-        <path d="M7 7.5v4.5M9 7.5v4.5M5.8 9.5h4.4" />
-      </svg>
-    );
-  }
-  if (game === "pour") {
-    return (
-      <svg
-        viewBox="0 0 16 16"
-        className={className}
-        fill="currentColor"
-        aria-hidden
-      >
-        <path d="M8 1.5c.35 0 .67.18.86.48 1.2 1.94 3.64 5.16 3.64 7.52a4.5 4.5 0 1 1-9 0c0-2.36 2.44-5.58 3.64-7.52A1 1 0 0 1 8 1.5Zm0 2.3c-1.03 1.72-2.5 4.23-2.5 5.7a2.5 2.5 0 1 0 5 0c0-1.47-1.47-3.98-2.5-5.7Z" />
-      </svg>
-    );
-  }
-  // stacker — three stacked bars, uneven widths (chop-off hint)
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className={className}
-      fill="currentColor"
-      aria-hidden
-    >
-      <rect x="3" y="11" width="10" height="2.2" rx="0.4" />
-      <rect x="4" y="7.5" width="8" height="2.2" rx="0.4" opacity="0.85" />
-      <rect x="5.5" y="4" width="5" height="2.2" rx="0.4" opacity="0.7" />
-    </svg>
-  );
 }
