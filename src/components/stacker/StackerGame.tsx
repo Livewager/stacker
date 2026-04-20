@@ -177,6 +177,13 @@ export default function StackerGame({
   const [flare, setFlare] = useState<null | "spawn" | "jitter">(null);
   const flareRow = useRef<number>(-1);
 
+  // Pause-on-tab-hidden. When document.hidden flips true during a
+  // live round, we freeze the simulate branch of the render loop
+  // and show an overlay. Any click / Space / Enter resumes after
+  // the tab is visible again.
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+
   // Anti-cheat groundwork: local tap-entropy buffer per round. No
   // network calls — finalize result is logged to console in dev only.
   const roundRef = useRef<Round | null>(null);
@@ -196,6 +203,21 @@ export default function StackerGame({
     } catch {
       /* ignore */
     }
+  }, []);
+
+  // Pause-on-hide wiring. Only meaningful mid-round; hidden from
+  // idle/won/over so switching tabs on a results screen doesn't
+  // pop a redundant paused overlay. Resumed explicitly by the
+  // user tapping or pressing Space/Enter (see handleTap).
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden && stateRef.current.phase === "playing") {
+        pausedRef.current = true;
+        setPaused(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
   // Hide the mobile BottomNav while a round is live. Fingers near
@@ -456,6 +478,15 @@ export default function StackerGame({
   const handleTap = useCallback(() => {
     unlockAudio();
     const s = stateRef.current;
+    // Paused branch: first tap resumes the round rather than firing
+    // a lock — protects the player from an accidental bad lock on
+    // the very first click after the tab regains focus.
+    if (pausedRef.current) {
+      pausedRef.current = false;
+      setPaused(false);
+      sfx.ping();
+      return;
+    }
     if (s.phase === "idle" || s.phase === "won" || s.phase === "over") {
       sfx.ping();
       haptics.tick();
@@ -523,7 +554,7 @@ export default function StackerGame({
       const s = stateRef.current;
 
       // ---- simulate ----
-      if (s.phase === "playing" && s.current) {
+      if (s.phase === "playing" && s.current && !pausedRef.current) {
         const baseSpeed = SPEED_BY_ROW(s.current.row);
         // Rhythm-breaking jitter kicks in on upper rows. Uses a sine of
         // wall-clock time at a deliberately-odd frequency so it doesn't
@@ -878,6 +909,25 @@ export default function StackerGame({
             ].join(" ")}
           >
             {flare === "spawn" ? "Random spawn engaged" : "Speed jitter engaged"}
+          </div>
+        </div>
+      )}
+
+      {/* Paused overlay — only mid-round. Any tap on the game
+          surface resumes (handleTap's paused branch). */}
+      {paused && hudState.phase === "playing" && (
+        <div className="absolute inset-0 grid place-items-center bg-black/55 backdrop-blur-[2px] p-6 text-center pointer-events-none">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-orange-300 mb-2">
+              Paused
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-white mb-2">
+              Tab switched away.
+            </h2>
+            <p className="text-sm text-gray-300 max-w-xs mx-auto mb-3 leading-snug">
+              Slider frozen — tap or press space to resume. Your stack is
+              right where you left it.
+            </p>
           </div>
         </div>
       )}
