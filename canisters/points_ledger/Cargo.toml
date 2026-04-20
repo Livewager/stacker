@@ -1,0 +1,26 @@
+[package]
+name = "points_ledger"
+version = "0.1.0"
+edition = "2021"
+description = "Non-custodial ICRC-1 + ICRC-2 points ledger for Livewager Dunk Drop"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ic-cdk = "0.17"
+ic-cdk-macros = "0.17"
+candid = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_bytes = "0.11"
+ic-stable-structures = "0.6"
+icrc-ledger-types = "0.1"
+num-traits = "0.2"
+sha2 = "0.10"
+
+[dev-dependencies]
+# Integration tests spin up a local replica via pocket-ic. The binary
+# lives in dfx's cache (~/.cache/dfinity/versions/<ver>/pocket-ic);
+# tests set POCKET_IC_BIN automatically via tests/helpers.rs.
+pocket-ic = "9"

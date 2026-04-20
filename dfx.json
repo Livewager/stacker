@@ -1,0 +1,16 @@
+{
+  "canisters": {
+    "points_ledger": {
+      "type": "rust",
+      "package": "points_ledger",
+      "candid": "canisters/points_ledger/points_ledger.did"
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": "",
+      "args": ""
+    }
+  },
+  "version": 1
+}
