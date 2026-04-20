@@ -332,7 +332,7 @@ function ReviewCard({
 }) {
   const totalLwp = amountLwp + feeLwp;
   return (
-    <div className="rounded-2xl border border-violet-300/30 bg-violet-300/[0.04] p-5 md:p-7 space-y-5">
+    <div className="lw-reveal rounded-2xl border border-violet-300/30 bg-violet-300/[0.04] p-5 md:p-7 space-y-5">
       <div>
         <div className="text-[10px] uppercase tracking-widest text-violet-300 mb-1">
           Review

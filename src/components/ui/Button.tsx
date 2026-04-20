@@ -15,7 +15,7 @@
  *   <Button variant="ghost" size="sm">Copy</Button>
  */
 
-import { forwardRef } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export type ButtonTone = "cyan" | "orange" | "violet" | "rose" | "emerald";
@@ -30,6 +30,8 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   fullWidth?: boolean;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /** Increment this key to flash the success pulse (ring out + fade). */
+  successPulse?: number;
 };
 
 const TONE_GRADIENTS: Record<ButtonTone, string> = {
@@ -55,6 +57,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
     fullWidth = false,
     leading,
     trailing,
+    successPulse = 0,
     className = "",
     disabled,
     children,
@@ -63,6 +66,15 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
   },
   ref,
 ) {
+  const [pulseVer, setPulseVer] = useState(0);
+  useEffect(() => {
+    if (successPulse > 0) {
+      setPulseVer((v) => v + 1);
+      const t = window.setTimeout(() => setPulseVer((v) => v + 1), 560);
+      return () => window.clearTimeout(t);
+    }
+  }, [successPulse]);
+  const pulsing = pulseVer > 0 && pulseVer % 2 === 1;
   const base =
     "inline-flex items-center justify-center gap-2 rounded-lg font-bold transition disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98]";
 
@@ -89,6 +101,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
         SIZE_CLS[size],
         variantCls,
         fullWidth ? "w-full" : "",
+        pulsing ? "lw-btn-success" : "",
         className,
       ]
         .filter(Boolean)

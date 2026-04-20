@@ -334,7 +334,7 @@ function ReviewCard({
   onConfirm: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-rose-300/30 bg-rose-300/[0.04] p-5 md:p-7 space-y-5">
+    <div className="lw-reveal rounded-2xl border border-rose-300/30 bg-rose-300/[0.04] p-5 md:p-7 space-y-5">
       <div>
         <div className="text-[10px] uppercase tracking-widest text-rose-300 mb-1">
           Review

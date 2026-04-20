@@ -24,12 +24,14 @@ export default function WalletPage() {
   const toast = useToast();
   const [tab, setTab] = useState<QuickTab>("buy");
   const [buyAmount, setBuyAmount] = useState("1");
+  const [buyPulse, setBuyPulse] = useState(0);
 
   const signedIn = !!identity;
 
   const onBuy = async () => {
     try {
       await buy(Number(buyAmount));
+      setBuyPulse((n) => n + 1);
     } catch {
       /* toast already fired from WalletContext */
     }
@@ -214,6 +216,7 @@ export default function WalletPage() {
                     <Button
                       onClick={onBuy}
                       loading={status === "buying"}
+                      successPulse={buyPulse}
                       tone="cyan"
                       size="lg"
                       fullWidth
