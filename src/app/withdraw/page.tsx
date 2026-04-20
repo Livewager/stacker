@@ -233,7 +233,7 @@ export default function WithdrawPage() {
                     }
                   }}
                   onBlur={() => setAddrTouched(true)}
-                  className={`flex-1 min-w-0 rounded-md bg-black/40 border px-3 py-2.5 text-sm font-mono text-white focus:outline-none ${
+                  className={`flex-1 min-w-0 rounded-md bg-black/40 border px-3 py-2.5 text-sm font-mono text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/50 ${
                     ltcAddress.length === 0
                       ? "border-white/10 focus:border-rose-300/60"
                       : addrCheck.ok
