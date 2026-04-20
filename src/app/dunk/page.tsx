@@ -1224,6 +1224,27 @@ export default function DunkPage() {
               <div className="flex items-center gap-2"><BTC /> Bitcoin</div>
               <div className="flex items-center gap-2"><DUNK /> $DUNK</div>
             </div>
+
+            {/* Stat-chip strip. Mirrors /stacker's hero signature so the
+                two game landings feel like siblings at a glance. */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-gray-500">
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="uppercase tracking-widest text-gray-500">Round</span>
+                <span className="font-mono text-white">~10s</span>
+              </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="uppercase tracking-widest text-gray-500">Input</span>
+                <span className="font-mono text-white">gyroscope · keys</span>
+              </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="uppercase tracking-widest text-gray-500">Leaderboard</span>
+                <span className="font-mono text-white">hourly</span>
+              </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="uppercase tracking-widest text-gray-500">Prize</span>
+                <span className="font-mono text-white">live drop</span>
+              </span>
+            </div>
           </motion.div>
 
           <motion.div
