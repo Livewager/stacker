@@ -255,49 +255,212 @@ function StatChip({ label, value }: { label: string; value: string }) {
 
 // ---- Animated tower preview ----
 
-type HeroCell = {
-  row: number;
-  startCol: number;
-  width: number;
+/**
+ * Hero tower: an actual demo round playing on loop.
+ *
+ * Each row is a two-phase step (slide → lock). The slider sweeps
+ * left↔right during the slide, a ripple marks the lock, and the
+ * block drops into place. One row in the middle is imperfect (a
+ * falling shard sells the chop-off rule). At the top, a prize ring
+ * fires and the whole stack fades so the next loop can begin fresh.
+ *
+ * Timing is driven by performance.now inside a single rAF tick so
+ * everything stays in sync. No framer-motion variants — we're
+ * computing frame values directly, which buys us smoother chain
+ * transitions than discrete keyframed fragments.
+ */
+
+const HERO_GRID_COLS = 7;
+const HERO_GRID_ROWS = 15;
+
+/** Demo-round script. Each entry is one row the slider will lock on. */
+type HeroRow = { width: number; lockCol: number; perfect: boolean };
+const HERO_SCRIPT: HeroRow[] = [
+  { width: 3, lockCol: 2, perfect: true },
+  { width: 3, lockCol: 2, perfect: true },
+  { width: 3, lockCol: 2, perfect: true },
+  { width: 3, lockCol: 2, perfect: true },
+  { width: 3, lockCol: 2, perfect: true },
+  { width: 3, lockCol: 2, perfect: true },
+  { width: 3, lockCol: 3, perfect: false }, // +1 chop at row 6
+  { width: 2, lockCol: 3, perfect: true },
+  { width: 2, lockCol: 3, perfect: true },
+  { width: 2, lockCol: 3, perfect: true },
+  { width: 2, lockCol: 3, perfect: true },
+  { width: 2, lockCol: 3, perfect: true },
+  { width: 2, lockCol: 3, perfect: true },
+  { width: 2, lockCol: 3, perfect: true },
+  { width: 2, lockCol: 3, perfect: true },
+];
+
+const SLIDE_MS = 380;
+const SETTLE_MS = 140;
+const END_HOLD_MS = 1600;
+const FADE_MS = 600;
+const STEP_MS = SLIDE_MS + SETTLE_MS;
+const LOOP_MS =
+  HERO_SCRIPT.length * STEP_MS + END_HOLD_MS + FADE_MS;
+
+const HERO_CYAN: [number, number, number] = [34, 211, 238];
+const HERO_GOLD: [number, number, number] = [250, 204, 21];
+function heroColor(row: number): string {
+  const t = row / (HERO_GRID_ROWS - 1);
+  const r = Math.round(HERO_CYAN[0] + (HERO_GOLD[0] - HERO_CYAN[0]) * t);
+  const g = Math.round(HERO_CYAN[1] + (HERO_GOLD[1] - HERO_CYAN[1]) * t);
+  const b = Math.round(HERO_CYAN[2] + (HERO_GOLD[2] - HERO_CYAN[2]) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+type HeroFrame = {
+  placed: Array<{ row: number; col: number; width: number }>;
+  /** 0..script.length — the currently sliding row. null when the round is complete. */
+  currentRow: number | null;
+  /** fractional left-edge column of the slider (integer during lock). */
+  sliderX: number;
+  /** width of the slider (cells). */
+  sliderW: number;
+  /** 0..1 progress through lock settle. Nonzero during the settle phase only. */
+  lockT: number;
+  /** Chop shard to draw falling, if any. */
+  shard: null | { row: number; col: number; width: number; vy: number; rot: number; alpha: number };
+  /** 0..1 — fade for the whole stack at end-of-loop. */
+  fade: number;
+  /** Prize ring opacity when the run completes. */
+  prizeRing: number;
 };
+
+function computeHeroFrame(tMs: number): HeroFrame {
+  const t = tMs % LOOP_MS;
+
+  // Running tallies
+  const placed: HeroFrame["placed"] = [];
+  let shard: HeroFrame["shard"] = null;
+
+  // Which step are we in?
+  const totalSteps = HERO_SCRIPT.length;
+  const completeMs = totalSteps * STEP_MS;
+  const stepIndex = Math.min(totalSteps, Math.floor(t / STEP_MS));
+  const tInStep = t - stepIndex * STEP_MS;
+
+  // All rows below the current step are already placed.
+  for (let i = 0; i < Math.min(stepIndex, totalSteps); i++) {
+    const r = HERO_SCRIPT[i];
+    placed.push({ row: i, col: r.lockCol, width: r.width });
+  }
+
+  let currentRow: number | null = null;
+  let sliderX = 0;
+  let sliderW = 0;
+  let lockT = 0;
+
+  if (stepIndex < totalSteps) {
+    const cur = HERO_SCRIPT[stepIndex];
+    currentRow = stepIndex;
+    sliderW = cur.width;
+    const maxX = HERO_GRID_COLS - sliderW;
+
+    if (tInStep < SLIDE_MS) {
+      // Easing slide — two sweeps so the direction change reads even
+      // at short durations. Sin is good enough for the eye.
+      const p = tInStep / SLIDE_MS; // 0..1
+      const phase = Math.sin(p * Math.PI); // 0 → 1 → 0
+      // Chase toward lockCol at the end so the settle feels earned.
+      sliderX = (1 - p) * (phase * maxX) + p * cur.lockCol;
+    } else {
+      // Settle phase: frozen at lockCol, lockT drives a small pop.
+      sliderX = cur.lockCol;
+      lockT = (tInStep - SLIDE_MS) / SETTLE_MS;
+      // On the settle of an imperfect row, spawn a falling shard.
+      if (!cur.perfect) {
+        const shardAge = lockT; // 0..1 within settle, continues via fade
+        shard = {
+          row: stepIndex,
+          // chopped-off right edge — the slider was wider, lockCol
+          // matches the overlap, so the shard lives to the right of
+          // lockCol + width.
+          col: cur.lockCol + cur.width,
+          width: 1,
+          vy: shardAge * 18,
+          rot: shardAge * 1.8,
+          alpha: 1 - shardAge,
+        };
+      }
+    }
+  }
+
+  // End-of-loop: hold the finished stack, show prize ring, then fade.
+  let prizeRing = 0;
+  let fade = 1;
+  const tAfterRun = t - completeMs;
+  if (stepIndex >= totalSteps) {
+    // Hold: show full stack + pulsing ring
+    if (tAfterRun < END_HOLD_MS) {
+      prizeRing = 1;
+      fade = 1;
+    } else {
+      const fadeT = (tAfterRun - END_HOLD_MS) / FADE_MS;
+      prizeRing = Math.max(0, 1 - fadeT);
+      fade = Math.max(0, 1 - fadeT);
+    }
+  }
+
+  // Shard continues falling into the fade window if it was born near
+  // the end of the run. Extend visibility past the settle phase.
+  if (shard === null && stepIndex > 6 && stepIndex <= totalSteps) {
+    // Check if the imperfect row (index 6) is still within shard life.
+    // Shard lifespan = settle + ~400ms fall.
+    const imperfectStart = 6 * STEP_MS + SLIDE_MS;
+    const ageMs = t - imperfectStart;
+    if (ageMs > 0 && ageMs < 900) {
+      const a = ageMs / 900;
+      shard = {
+        row: 6,
+        col: HERO_SCRIPT[6].lockCol + HERO_SCRIPT[6].width,
+        width: 1,
+        vy: a * 22,
+        rot: a * 2.4,
+        alpha: Math.max(0, 1 - a),
+      };
+    }
+  }
+
+  return { placed, currentRow, sliderX, sliderW, lockT, shard, fade, prizeRing };
+}
 
 function HeroTower() {
   const reduced = useReducedMotion();
-  // Hand-authored "demo run" — a stack that looks satisfying, not random
-  // per render. Deterministic so SSR and CSR line up.
-  const stack: HeroCell[] = useMemo(
-    () => [
-      { row: 0, startCol: 2, width: 3 },
-      { row: 1, startCol: 2, width: 3 },
-      { row: 2, startCol: 2, width: 3 },
-      { row: 3, startCol: 2, width: 3 },
-      { row: 4, startCol: 2, width: 3 },
-      { row: 5, startCol: 2, width: 3 },
-      { row: 6, startCol: 3, width: 2 },
-      { row: 7, startCol: 3, width: 2 },
-      { row: 8, startCol: 3, width: 2 },
-      { row: 9, startCol: 3, width: 2 },
-      { row: 10, startCol: 3, width: 2 },
-      { row: 11, startCol: 3, width: 2 },
-      { row: 12, startCol: 4, width: 1 },
-      { row: 13, startCol: 4, width: 1 },
-      { row: 14, startCol: 4, width: 1 },
-    ],
-    [],
+  const [t, setT] = useState(0);
+
+  useEffect(() => {
+    if (reduced) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = () => {
+      setT(performance.now() - start);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [reduced]);
+
+  // When reduced motion, freeze at a frame that shows the finished
+  // tower so the visual story still reads.
+  const frame = useMemo(
+    () =>
+      computeHeroFrame(
+        reduced
+          ? HERO_SCRIPT.length * STEP_MS + 400 // just past completion
+          : t,
+      ),
+    [t, reduced],
   );
 
-  const GRID_COLS = 7;
-  const GRID_ROWS = 15;
-
-  const CYAN: [number, number, number] = [34, 211, 238];
-  const GOLD: [number, number, number] = [250, 204, 21];
-  const colorFor = (row: number) => {
-    const t = row / (GRID_ROWS - 1);
-    const r = Math.round(CYAN[0] + (GOLD[0] - CYAN[0]) * t);
-    const g = Math.round(CYAN[1] + (GOLD[1] - CYAN[1]) * t);
-    const b = Math.round(CYAN[2] + (GOLD[2] - CYAN[2]) * t);
-    return `rgb(${r}, ${g}, ${b})`;
-  };
+  // Which row label to show top-left. While running, surfaces the live
+  // row count; while fading, holds 15/15.
+  const displayRow =
+    frame.currentRow === null
+      ? HERO_GRID_ROWS
+      : Math.min(HERO_GRID_ROWS, frame.currentRow + 1);
 
   return (
     <motion.div
@@ -313,83 +476,167 @@ function HeroTower() {
             "radial-gradient(600px 500px at 50% -10%, rgba(34,211,238,0.18), transparent 60%), linear-gradient(180deg,#071a2e,#020b18)",
         }}
       >
-        {/* Grid dots */}
         <svg
           aria-hidden
-          viewBox={`0 0 ${GRID_COLS * 20} ${GRID_ROWS * 20}`}
+          viewBox={`0 0 ${HERO_GRID_COLS * 20} ${HERO_GRID_ROWS * 20}`}
           preserveAspectRatio="xMidYMid meet"
           className="absolute inset-0 w-full h-full p-4"
         >
-          {/* dots */}
-          {Array.from({ length: GRID_ROWS }, (_, r) =>
-            Array.from({ length: GRID_COLS }, (_, c) => (
+          {/* Grid dots */}
+          {Array.from({ length: HERO_GRID_ROWS }, (_, r) =>
+            Array.from({ length: HERO_GRID_COLS }, (_, c) => (
               <circle
                 key={`${r}-${c}`}
                 cx={c * 20 + 10}
-                cy={(GRID_ROWS - 1 - r) * 20 + 10}
+                cy={(HERO_GRID_ROWS - 1 - r) * 20 + 10}
                 r={0.8}
                 fill="rgba(255,255,255,0.08)"
               />
             )),
           )}
 
-          {/* stacked blocks, animated in bottom-up */}
-          {stack.map((cell, i) => {
-            const color = colorFor(cell.row);
-            const x = cell.startCol * 20 + 1.5;
-            const y = (GRID_ROWS - 1 - cell.row) * 20 + 1.5;
-            const w = cell.width * 20 - 3;
-            const h = 20 - 3;
-            return (
-              <motion.rect
-                key={i}
-                x={x}
-                y={y}
-                width={w}
-                height={h}
-                rx={2.5}
-                fill={color}
-                fillOpacity={0.92}
-                stroke={color}
-                strokeOpacity={0.4}
-                strokeWidth={0.4}
-                initial={reduced ? {} : { opacity: 0, y: y - 6 }}
-                animate={{ opacity: 1, y }}
-                transition={
-                  reduced
-                    ? { duration: 0 }
-                    : {
-                        delay: 0.2 + i * 0.06,
-                        duration: 0.28,
-                        ease: [0.2, 0.8, 0.2, 1],
-                      }
-                }
-                style={{
-                  filter: cell.row >= 12 ? "drop-shadow(0 0 4px rgba(250,204,21,0.6))" : undefined,
-                }}
-              />
-            );
-          })}
+          {/* Placed stack — each block pops into existence in its row */}
+          <g style={{ opacity: frame.fade }}>
+            {frame.placed.map((cell) => {
+              const color = heroColor(cell.row);
+              const x = cell.col * 20 + 1.5;
+              const y = (HERO_GRID_ROWS - 1 - cell.row) * 20 + 1.5;
+              const w = cell.width * 20 - 3;
+              const h = 20 - 3;
+              return (
+                <rect
+                  key={`${cell.row}-${cell.col}`}
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={h}
+                  rx={2.5}
+                  fill={color}
+                  fillOpacity={0.92}
+                  stroke={color}
+                  strokeOpacity={0.4}
+                  strokeWidth={0.4}
+                  style={{
+                    filter:
+                      cell.row >= 12
+                        ? "drop-shadow(0 0 4px rgba(250,204,21,0.6))"
+                        : undefined,
+                  }}
+                />
+              );
+            })}
+          </g>
 
-          {/* Final "perfect" crown ring on the top block */}
-          {!reduced && (
-            <motion.circle
-              cx={stack[stack.length - 1].startCol * 20 + stack[stack.length - 1].width * 10}
-              cy={(GRID_ROWS - 1 - stack[stack.length - 1].row) * 20 + 10}
-              r={0}
-              fill="none"
-              stroke="rgba(250,204,21,0.7)"
-              strokeWidth={0.5}
-              initial={{ r: 0, opacity: 0.8 }}
-              animate={{ r: 18, opacity: 0 }}
-              transition={{ delay: 1.3, duration: 1, repeat: Infinity, repeatDelay: 2 }}
-            />
+          {/* Falling shard from the imperfect lock */}
+          {frame.shard && frame.shard.alpha > 0 && (
+            <g
+              transform={`translate(${
+                frame.shard.col * 20 + (frame.shard.width * 20) / 2
+              }, ${
+                (HERO_GRID_ROWS - 1 - frame.shard.row) * 20 +
+                10 +
+                frame.shard.vy
+              }) rotate(${frame.shard.rot * 57.3})`}
+              style={{ opacity: frame.shard.alpha }}
+            >
+              <rect
+                x={-(frame.shard.width * 20 - 3) / 2}
+                y={-(20 - 3) / 2}
+                width={frame.shard.width * 20 - 3}
+                height={20 - 3}
+                rx={2.5}
+                fill={heroColor(frame.shard.row)}
+                fillOpacity={0.85}
+              />
+            </g>
+          )}
+
+          {/* Active slider — renders only while a row is active.
+              Includes a tiny pop on lockT. */}
+          {frame.currentRow !== null && frame.fade > 0.6 && (
+            <g style={{ opacity: frame.fade }}>
+              {(() => {
+                const color = heroColor(frame.currentRow);
+                const x = frame.sliderX * 20 + 1.5;
+                const y = (HERO_GRID_ROWS - 1 - frame.currentRow) * 20 + 1.5;
+                const w = frame.sliderW * 20 - 3;
+                const h = 20 - 3;
+                // Pop: scale 1 → 1.08 → 1 over the settle phase
+                const pop = frame.lockT > 0
+                  ? 1 + Math.sin(frame.lockT * Math.PI) * 0.08
+                  : 1;
+                const cx = x + w / 2;
+                const cy = y + h / 2;
+                return (
+                  <g transform={`translate(${cx} ${cy}) scale(${pop}) translate(${-cx} ${-cy})`}>
+                    <rect
+                      x={x}
+                      y={y}
+                      width={w}
+                      height={h}
+                      rx={2.5}
+                      fill={color}
+                      fillOpacity={0.95}
+                      stroke={color}
+                      strokeOpacity={0.7}
+                      strokeWidth={0.6}
+                      style={{
+                        filter: `drop-shadow(0 0 ${2 + frame.lockT * 5}px ${color})`,
+                      }}
+                    />
+                    {/* Lock ripple */}
+                    {frame.lockT > 0 && (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={frame.lockT * 14}
+                        fill="none"
+                        stroke={color}
+                        strokeOpacity={1 - frame.lockT}
+                        strokeWidth={0.6}
+                      />
+                    )}
+                  </g>
+                );
+              })()}
+            </g>
+          )}
+
+          {/* End-of-loop prize ring around the top block */}
+          {frame.prizeRing > 0 && frame.placed.length > 0 && (
+            (() => {
+              const top = frame.placed[frame.placed.length - 1];
+              const cx = top.col * 20 + (top.width * 20) / 2;
+              const cy = (HERO_GRID_ROWS - 1 - top.row) * 20 + 10;
+              // Pulsing ring — radius drives from a sin of t
+              const pulse = 0.5 + 0.5 * Math.sin((t / 400) * Math.PI * 2);
+              return (
+                <g style={{ opacity: frame.prizeRing }}>
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={10 + pulse * 6}
+                    fill="none"
+                    stroke="rgba(250,204,21,0.85)"
+                    strokeWidth={0.8}
+                  />
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={18 + pulse * 10}
+                    fill="none"
+                    stroke="rgba(250,204,21,0.35)"
+                    strokeWidth={0.5}
+                  />
+                </g>
+              );
+            })()
           )}
         </svg>
 
         {/* Corner badges */}
         <div className="absolute left-3 top-3 text-[10px] uppercase tracking-widest text-cyan-300 font-mono">
-          Row <span className="text-white">15 / 15</span>
+          Row <span className="text-white">{displayRow} / 15</span>
         </div>
         <div className="absolute right-3 top-3 text-[10px] uppercase tracking-widest text-yellow-300 font-mono">
           × 3 prize
@@ -397,6 +644,18 @@ function HeroTower() {
         <div className="absolute left-3 bottom-3 text-[10px] uppercase tracking-widest text-gray-500 font-mono">
           demo preview
         </div>
+
+        {/* Flashing "PERFECT" text on each non-chop lock during settle. */}
+        {frame.currentRow !== null &&
+          frame.lockT > 0 &&
+          HERO_SCRIPT[frame.currentRow]?.perfect && (
+            <div
+              className="absolute right-3 bottom-3 text-[10px] uppercase tracking-widest text-yellow-300 font-mono font-bold"
+              style={{ opacity: Math.sin(frame.lockT * Math.PI) }}
+            >
+              Perfect
+            </div>
+          )}
       </div>
     </motion.div>
   );
