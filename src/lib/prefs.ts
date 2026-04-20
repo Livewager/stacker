@@ -161,6 +161,13 @@ export const PREF_KEYS = {
   // again on this device. Treated as acknowledgement, not consent —
   // the app needs storage to function (see Settings for details).
   storageAck: "storageAck",
+
+  // /wallet first-time welcome banner. Renders only when the signed-in
+  // user's balance is 0 AND they haven't dismissed the banner. Boolean;
+  // once dismissed stays dismissed. Also auto-clears (via dismissal) if
+  // the user ever acquires a non-zero balance — but the pref stays as
+  // a one-shot so it doesn't re-appear if they burn back to zero.
+  walletWelcomeDismissed: "walletWelcomeDismissed",
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];

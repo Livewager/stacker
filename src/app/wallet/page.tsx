@@ -169,6 +169,16 @@ export default function WalletPage() {
           <div className="grid gap-6 md:grid-cols-[1.2fr_1fr]">
             {/* Left column: hero balance + quick actions + tokens */}
             <div className="space-y-6">
+              {/* First-time welcome banner — only when the user is
+                  signed in, their balance has loaded as exactly 0,
+                  and they haven't dismissed before. Stacks above the
+                  balance hero so a new II account lands on one clear
+                  "get started" CTA instead of staring at a 0 balance
+                  + "No activity yet" empty state simultaneously.
+                  Dismisses permanently (survives page reloads) — we
+                  don't re-show it if they ever burn back to zero. */}
+              <WelcomeBanner balance={balance} />
+
               {/* Balance hero */}
               <section
                 className="relative overflow-hidden rounded-3xl border border-white/10 p-6 md:p-8"
@@ -434,6 +444,68 @@ export default function WalletPage() {
 // ----------------------------------------------------------------
 // Subcomponents
 // ----------------------------------------------------------------
+
+/**
+ * First-time welcome banner. Renders only when:
+ *   - balance is loaded (not null) AND exactly 0n
+ *   - the user hasn't dismissed before (persisted pref)
+ *
+ * Intentionally branches on balance alone rather than balance+history:
+ * zero balance is a stronger primary signal, ActivityFeed has its own
+ * empty state for history, and reading the block log from this
+ * component just to count events would duplicate work. The two /play
+ * + /deposit CTAs are the shortest path for a new account.
+ */
+function WelcomeBanner({ balance }: { balance: bigint | null }) {
+  const [dismissed, setDismissed] = useLocalPref<boolean>(
+    PREF_KEYS.walletWelcomeDismissed,
+    false,
+  );
+  if (dismissed) return null;
+  if (balance === null) return null;
+  if (balance !== 0n) return null;
+  return (
+    <section
+      role="region"
+      aria-label="Welcome to Livewager Wallet"
+      className="relative rounded-2xl border border-cyan-300/30 bg-gradient-to-br from-cyan-300/[0.07] to-violet-300/[0.04] p-5 md:p-6"
+    >
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss welcome banner"
+        className="absolute top-3 right-3 rounded-md p-1 text-gray-400 hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+        </svg>
+      </button>
+      <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
+        Fresh wallet · demo mode
+      </div>
+      <h2 className="text-lg md:text-xl font-bold text-white mb-1">
+        Get some LWP to start.
+      </h2>
+      <p className="text-xs md:text-sm text-gray-300 leading-snug max-w-md mb-4">
+        No real money moves — the ledger is a local ICRC-1 demo. Either
+        fund from LTC to see the deposit flow, or try a game first and
+        let it mint you a starter balance.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Link href="/deposit">
+          <Button tone="cyan" size="sm">
+            Deposit LTC (demo)
+          </Button>
+        </Link>
+        <Link href="/play">
+          <Button variant="outline" size="sm">
+            Play a game
+          </Button>
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 function SignedOutPrompt({ onLogin, loading }: { onLogin: () => void; loading: boolean }) {
   return (
