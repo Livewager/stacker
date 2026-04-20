@@ -175,12 +175,14 @@ export default function AccountPage() {
                         {copied ? "Copied" : "Copy"}
                       </button>
                       <PrincipalQR principal={principal} />
-                      <button
+                      <Button
                         onClick={logout}
-                        className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-300 hover:border-red-300/60 hover:text-red-200 transition"
+                        variant="danger"
+                        size="sm"
+                        className="text-[11px] uppercase tracking-widest"
                       >
                         Sign out
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

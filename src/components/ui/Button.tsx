@@ -19,6 +19,14 @@ import { forwardRef, useEffect, useState } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export type ButtonTone = "cyan" | "orange" | "violet" | "rose" | "emerald";
+// variant=danger is the destructive CTA treatment: translucent red
+// fill + red border + red-tinted label, no gradient. Reserve it for
+// actions that end a session or lose user state. Today's call sites:
+//   - /settings Sign-out row + its confirm modal
+//   - /account Sign-out pill
+// `rose` is a visual tone (gradient fill for a positive destructive
+// CTA like /withdraw "Send") and is intentionally distinct — don't
+// merge tone=rose and variant=danger, they read differently.
 export type ButtonVariant = "primary" | "outline" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
