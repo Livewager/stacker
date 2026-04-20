@@ -60,7 +60,15 @@ export default function FairPlayPage() {
             title="Signed input events"
             flavor="II signature per tap"
           >
-            <div className="font-mono text-[11px] text-gray-400 leading-relaxed space-y-0.5">
+            {/* POLISH-336 — decorative mock transcript. The prose
+                below fully describes what signed input events are;
+                this block is visual sample output only. aria-hidden
+                so AT doesn't read "tap number 1 row 0 t 312 ms…"
+                as narration before the actual explanation. */}
+            <div
+              aria-hidden
+              className="font-mono text-[11px] text-gray-400 leading-relaxed space-y-0.5"
+            >
               <div>tap #01 row 0 t=312ms</div>
               <div>tap #02 row 1 t=801ms</div>
               <div>tap #03 row 2 t=1147ms</div>
@@ -275,8 +283,26 @@ function Card({
 }
 
 function DiagramRow({ children }: { children: React.ReactNode }) {
+  // POLISH-336 — aria-hidden on the whole row. The prose paragraph
+  // below each DiagramRow fully explains what the visual schematic
+  // is saying (e.g. "The points_ledger canister holds the seed…"
+  // after the CLIENT → CANISTER row). Without aria-hidden, screen
+  // readers announce "CLIENT signed transcript arrow replay arrow
+  // match CANISTER" before the prose, which reads as a stuttering
+  // decorative prelude. Same pattern /dunk's stat-chip strip
+  // (POLISH-223) and Stacker HUD use: visual-only schematics
+  // hidden from AT, prose is the single accessible source of
+  // truth.
+  //
+  // NOTE: LadderRow (used in the Trust-ladder card) is
+  // deliberately NOT hidden — it's an itemized list, not a
+  // schematic. Tiers + their detail text (NEW · free only, LOW ·
+  // small stakes, etc.) are information the AT user needs.
   return (
-    <div className="flex items-center gap-2 flex-wrap rounded-lg border border-white/5 bg-black/30 px-3 py-2">
+    <div
+      aria-hidden
+      className="flex items-center gap-2 flex-wrap rounded-lg border border-white/5 bg-black/30 px-3 py-2"
+    >
       {children}
     </div>
   );
