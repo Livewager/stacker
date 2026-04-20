@@ -142,7 +142,15 @@ export function ErrorScaffold({
     }
   };
   return (
-    <main
+    // Plain <div>, not <main>. This component is rendered inside
+    // AppShell's outer <main id="content"> via Next's per-segment
+    // error.tsx, so nesting a second <main> would both invalidate
+    // the HTML (spec: one non-hidden <main> per document) and
+    // shadow the SkipLink target. POLISH-276 audit found this
+    // here and in SkeletonPage; both migrated to div.
+    // NOTE: global-error.tsx replaces the whole document and
+    // doesn't use this scaffold, so this change is safe.
+    <div
       className="min-h-screen bg-background text-white flex items-center justify-center px-5 py-16"
       onMouseMove={cancelAutoRetry}
       onFocusCapture={cancelAutoRetry}
@@ -273,6 +281,6 @@ export function ErrorScaffold({
           </details>
         )}
       </div>
-    </main>
+    </div>
   );
 }

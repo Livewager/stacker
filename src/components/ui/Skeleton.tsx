@@ -123,14 +123,22 @@ export function SkeletonPage({
   return (
     <>
       <SkeletonHeader />
-      <main className="mx-auto max-w-6xl px-4 md:px-8 py-8 md:py-12">
+      {/* Plain <div>, not <main>. AppShell already emits the single
+          document-level <main id="content"> (the SkipLink target);
+          skeletons render inside that via Suspense/loading.tsx, so
+          a nested <main> would both invalidate the HTML (spec: one
+          non-hidden <main> per document) and — worse — shadow the
+          outer <main>'s id resolution in some accessibility tree
+          implementations. POLISH-276 audit found this across two
+          sites (Skeleton + ErrorScaffold); both switched to div. */}
+      <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-8">
           <SkeletonBlock className={cn("h-3", eyebrowWidth)} />
           <SkeletonBlock className={cn("h-9 mt-3", titleWidth)} />
           <SkeletonLine className="w-1/2 mt-3" />
         </div>
         {children}
-      </main>
+      </div>
     </>
   );
 }
