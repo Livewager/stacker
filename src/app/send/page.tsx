@@ -41,6 +41,10 @@ import {
 // Must mirror canisters/points_ledger/src/lib.rs TRANSFER_FEE.
 const TRANSFER_FEE_BASE = 10_000n; // 0.0001 LWP at 8 decimals
 const MAX_MEMO_BYTES = 32;
+// Demo peg only — same literal used on /wallet and /withdraw. Third
+// copy-paste here; next addition should consolidate into
+// src/lib/demoRates.ts (rule of three).
+const DEMO_USD_PER_LWP = 1;
 
 type Stage = "compose" | "review" | "sent";
 
@@ -573,6 +577,17 @@ function ReviewCard({
           label="Total debited"
           value={`${totalLwp.toFixed(4)} LWP`}
           emphasis
+        />
+        {/* USD cross-check — mirrors /withdraw's review row (POLISH-114).
+            Surfaces the value the user just authorized in a second unit
+            so fat-finger amounts (an extra zero in LWP) stand out before
+            Confirm. Strictly informational; peg is a demo literal. */}
+        <ReviewRow
+          label="Value (demo USD)"
+          value={`≈ $${(totalLwp * DEMO_USD_PER_LWP).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
         />
         {memo && <ReviewRow label="Memo" value={memo} />}
       </dl>
