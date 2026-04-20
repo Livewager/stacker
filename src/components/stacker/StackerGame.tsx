@@ -156,12 +156,21 @@ type StackerGameProps = {
   /** Notify parent about phase transitions — lets the wager panel
    *  re-open for the next round. */
   onPhaseChange?: (phase: Phase) => void;
+  /**
+   * One-shot seed override for the first round. When set, the first
+   * startRound() uses this instead of randomSeed() — pairs with the
+   * /stacker?seed=0x... URL param so a shared share-line reproduces
+   * the exact same RNG sequence. Consumed on first use; subsequent
+   * rounds in the same mount use fresh random seeds.
+   */
+  initialSeed?: number | null;
 };
 
 export default function StackerGame({
   stake = 0,
   winMultiplier = 3,
   onPhaseChange,
+  initialSeed = null,
 }: StackerGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState>(initialState());
@@ -197,6 +206,12 @@ export default function StackerGame({
   // by a 2s timeout so the HUD stays calm the rest of the time.
   const [flare, setFlare] = useState<null | "spawn" | "jitter">(null);
   const flareRow = useRef<number>(-1);
+  // One-shot holder for an injected seed. initialSeed is read once on
+  // the first startRound; subsequent rounds revert to randomSeed().
+  // Kept as a ref so the value survives the multiple renders that
+  // happen between prop-receive and user-start without re-inflating
+  // each time.
+  const pendingSeed = useRef<number | null>(initialSeed);
 
   // Pause-on-tab-hidden. When document.hidden flips true during a
   // live round, we freeze the simulate branch of the render loop
@@ -288,7 +303,11 @@ export default function StackerGame({
     flareRow.current = -1;
     setFlare(null);
     roundRef.current = createRound();
-    const seed = randomSeed();
+    // Consume the one-shot injected seed if the parent provided one
+    // (e.g. /stacker?seed=0x...). After first use, pendingSeed is
+    // null'd so the next round falls back to the normal random path.
+    const seed = pendingSeed.current !== null ? pendingSeed.current : randomSeed();
+    pendingSeed.current = null;
     rngRef.current = createRng(seed);
     setLastSeed(seed);
     setLastTranscript(null);

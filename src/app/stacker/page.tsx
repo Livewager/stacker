@@ -3,12 +3,39 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { StackerWager, PAYOUT_MULTIPLIER } from "@/components/stacker/StackerWager";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { ROUTES } from "@/lib/routes";
+
+/**
+ * Parse a seed query param in the forms: "0xABCD", "ABCD" (hex),
+ * or a decimal int. Any malformed value falls through to null so
+ * the game uses its own randomSeed(). Clamps to 32 bits to match
+ * SeededRng's mulberry32 input.
+ */
+function parseSeedParam(raw: string | null): number | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // 0x-prefixed or bare hex — 1..8 hex digits.
+  const hex = trimmed.startsWith("0x") || trimmed.startsWith("0X")
+    ? trimmed.slice(2)
+    : /^[0-9a-fA-F]{1,8}$/.test(trimmed)
+      ? trimmed
+      : null;
+  if (hex !== null && /^[0-9a-fA-F]{1,8}$/.test(hex)) {
+    const n = Number.parseInt(hex, 16);
+    return Number.isFinite(n) ? n >>> 0 : null;
+  }
+  // Plain decimal — accept positive 32-bit values.
+  const dec = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(dec) || dec < 0) return null;
+  return dec >>> 0;
+}
 
 const StackerGame = dynamic(() => import("@/components/stacker/StackerGame"), {
   ssr: false,
@@ -20,6 +47,25 @@ const StackerGame = dynamic(() => import("@/components/stacker/StackerGame"), {
 type Phase = "idle" | "playing" | "won" | "over";
 
 export default function StackerPage() {
+  // useSearchParams needs a Suspense boundary in Next 15 App Router.
+  return (
+    <Suspense fallback={null}>
+      <StackerPageInner />
+    </Suspense>
+  );
+}
+
+function StackerPageInner() {
+  const searchParams = useSearchParams();
+  // Consume the ?seed= param once at mount. Subsequent client nav
+  // that changes this param won't retroactively rewrite the current
+  // round — that'd be surprising. If the user wants a fresh replay
+  // they can change the URL and refresh.
+  const initialSeed = useMemo(
+    () => parseSeedParam(searchParams.get("seed")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   const [stake, setStake] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [roundKey, setRoundKey] = useState(0);
@@ -104,6 +150,11 @@ export default function StackerPage() {
             key={roundKey}
             stake={stake}
             winMultiplier={PAYOUT_MULTIPLIER.win}
+            // Seed replay: ?seed=0x... on the very first mounted
+            // round only. Subsequent rounds (roundKey > 0) fall back
+            // to a fresh random seed so the user doesn't get locked
+            // into the same level forever.
+            initialSeed={roundKey === 0 ? initialSeed : null}
             onPhaseChange={(p) => setPhase(p)}
           />
 
