@@ -102,6 +102,10 @@ export default function StackerPage() {
             <StackerWager
               disabled={wagerDisabled}
               onStart={(s) => {
+                // Future slice: thread `mode` into StackerGame so it
+                // can disable the entropy buffer on unranked rounds.
+                // For now the stake-forced-to-0 on unranked is enough
+                // to keep the prize copy honest.
                 setStake(s);
                 setRoundKey((k) => k + 1);
                 setPhase("idle");

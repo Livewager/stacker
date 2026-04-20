@@ -109,6 +109,7 @@ export const PREF_KEYS = {
   // Flow / UI state
   walletQuickTab: "walletQuickTab", // "buy" | "deposit" | "send" | "withdraw"
   stackerWager: "stackerWager", // 0 | 5 | 25 | 100 (LWP)
+  stackerMode: "stackerMode", // "ranked" | "unranked"
   hasSeenOnboarding: "hasSeenOnboarding", // boolean
 } as const;
 
