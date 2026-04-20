@@ -116,20 +116,7 @@ function HeroHeader({
       </div>
       <div className="flex items-center gap-3">
         {myHandle ? (
-          <div
-            className="rounded-xl border border-cyan-300/40 bg-cyan-300/[0.06] px-4 py-3"
-            aria-live="polite"
-          >
-            <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-1">
-              You
-            </div>
-            <div className="text-sm font-mono text-white">
-              @{myHandle}{" "}
-              <span className="text-gray-400">
-                {myRank ? `· rank #${myRank}` : "· unranked this hour"}
-              </span>
-            </div>
-          </div>
+          <YouBadge handle={myHandle} rank={myRank} />
         ) : (
           <Link
             href="/dunk"
@@ -141,6 +128,32 @@ function HeroHeader({
         <HourClock msToReset={msToReset} />
       </div>
     </div>
+  );
+}
+
+function YouBadge({ handle, rank }: { handle: string; rank: number | null }) {
+  const copy = useCopyable();
+  const text = rank
+    ? `@${handle} · rank ${rank} · this hour · livewager.io/leaderboard`
+    : `@${handle} · playing this hour · livewager.io/leaderboard`;
+  return (
+    <button
+      type="button"
+      onClick={() => copy(text, { label: "Share card" })}
+      aria-live="polite"
+      title="Copy share card"
+      className="rounded-xl border border-cyan-300/40 bg-cyan-300/[0.06] px-4 py-3 text-left hover:bg-cyan-300/[0.10] hover:border-cyan-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-1">
+        You · tap to copy
+      </div>
+      <div className="text-sm font-mono text-white">
+        @{handle}{" "}
+        <span className="text-gray-400">
+          {rank ? `· rank #${rank}` : "· unranked this hour"}
+        </span>
+      </div>
+    </button>
   );
 }
 
