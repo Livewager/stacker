@@ -173,6 +173,11 @@ export default function CommandPalette() {
       { id: "withdraw", label: "Withdraw", hint: ROUTES.withdraw, run: () => go(ROUTES.withdraw) },
       { id: "leaderboard", label: "Leaderboard", hint: ROUTES.leaderboard, run: () => go(ROUTES.leaderboard) },
       { id: "settings", label: "Settings", hint: ROUTES.settings, run: () => go(ROUTES.settings) },
+      { id: "settings-display", label: "Settings · Display & motion", hint: `${ROUTES.settings}#display`, run: () => go(`${ROUTES.settings}#display`) },
+      { id: "settings-audio", label: "Settings · Audio & feedback", hint: `${ROUTES.settings}#audio`, run: () => go(`${ROUTES.settings}#audio`) },
+      { id: "settings-cap", label: "Settings · Session cap", hint: `${ROUTES.settings}#cap`, run: () => go(`${ROUTES.settings}#cap`) },
+      { id: "settings-account", label: "Settings · Account", hint: `${ROUTES.settings}#account`, run: () => go(`${ROUTES.settings}#account`) },
+      { id: "settings-data", label: "Settings · Device data", hint: `${ROUTES.settings}#data`, run: () => go(`${ROUTES.settings}#data`) },
     ],
     [go],
   );

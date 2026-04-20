@@ -122,6 +122,7 @@ export default function SettingsPage() {
         <div className="space-y-6">
           {/* ---- Display ---- */}
           <Section
+            id="display"
             title="Display & motion"
             subtitle="How the app moves — or doesn't."
           >
@@ -139,6 +140,7 @@ export default function SettingsPage() {
 
           {/* ---- Audio + haptics ---- */}
           <Section
+            id="audio"
             title="Audio & feedback"
             subtitle="Sound and vibration for events in-game and in-wallet."
           >
@@ -190,6 +192,7 @@ export default function SettingsPage() {
 
           {/* ---- Session cap ---- */}
           <Section
+            id="cap"
             title="Session spending cap"
             subtitle="Hard stop per session so a hot streak can't run you over. Advisory for demo mode."
           >
@@ -265,6 +268,7 @@ export default function SettingsPage() {
 
           {/* ---- Account ---- */}
           <Section
+            id="account"
             title="Account"
             eyebrow="Session"
             subtitle="Your Internet Identity session. The principal itself is unaffected by anything on this page."
@@ -318,6 +322,7 @@ export default function SettingsPage() {
 
           {/* ---- Data reset (danger zone) ---- */}
           <Section
+            id="data"
             title="Device data"
             subtitle="Clears local prefs, high scores, cached session cap, Internet Identity session hints. Does not touch the ledger."
             tone="danger"
@@ -377,6 +382,7 @@ function Section({
   subtitle,
   tone = "default",
   eyebrow,
+  id,
   children,
 }: {
   title: string;
@@ -385,6 +391,9 @@ function Section({
   /** Override the kicker label above the title. Defaults to
    *  "Preference" for neutral tone and "Danger zone" for danger. */
   eyebrow?: string;
+  /** Deep-link anchor (e.g. "audio"). When present, adds scroll-
+   *  margin-top so #anchor navigation lands under the sticky header. */
+  id?: string;
   children: React.ReactNode;
 }) {
   const tonedHeader =
@@ -392,7 +401,8 @@ function Section({
   const label = eyebrow ?? (tone === "danger" ? "Danger zone" : "Preference");
   return (
     <section
-      className={`rounded-2xl border bg-white/[0.02] p-5 md:p-6 ${
+      id={id}
+      className={`lw-section rounded-2xl border bg-white/[0.02] p-5 md:p-6 ${
         tone === "danger" ? "border-red-500/20" : "border-white/10"
       }`}
     >
