@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import AppHeader from "@/components/AppHeader";
 import { LtcDepositPanel } from "@/components/deposit/LtcDepositPanel";
 import { useToast } from "@/components/dunk/Toast";
+import { Button } from "@/components/ui/Button";
+import { Pill } from "@/components/ui/Pill";
 
 type Tab = "ltc" | "card" | "bank";
 
@@ -68,11 +70,7 @@ function DepositInner() {
                   aria-hidden
                 />
                 {t.label}
-                {soon && (
-                  <span className="ml-1 text-[9px] uppercase tracking-widest text-gray-500 border border-white/15 rounded-full px-1.5 py-[1px]">
-                    soon
-                  </span>
-                )}
+                {soon && <Pill status="soon" className="ml-1">soon</Pill>}
               </button>
             );
           })}
@@ -90,6 +88,7 @@ function DepositInner() {
             <ArrivingMethod
               label="Credit card"
               tone="#a78bfa"
+              btnTone="violet"
               lead="Accept Visa / Mastercard / Apple Pay to mint LWP instantly."
               bullets={[
                 "KYC-lite via Stripe's hosted flow",
@@ -102,6 +101,7 @@ function DepositInner() {
             <ArrivingMethod
               label="ACH / SEPA"
               tone="#60a5fa"
+              btnTone="cyan"
               lead="Same-day ACH in the US, SEPA instant in the EU."
               bullets={[
                 "Zero fee on deposits ≥ $50",
@@ -139,11 +139,13 @@ function ArrivingMethod({
   tone,
   lead,
   bullets,
+  btnTone,
 }: {
   label: string;
   tone: string;
   lead: string;
   bullets: string[];
+  btnTone: "violet" | "cyan" | "orange" | "rose";
 }) {
   const toast = useToast();
   const join = () =>
@@ -156,12 +158,8 @@ function ArrivingMethod({
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_1.2fr] items-center">
       <div>
-        <div
-          className="inline-flex items-center gap-2 text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border mb-3"
-          style={{ color: tone, borderColor: `${tone}55` }}
-        >
-          <span className="inline-block h-2 w-2 rounded-full" style={{ background: tone }} />
-          Arriving soon
+        <div className="mb-3">
+          <Pill status="soon">Arriving soon</Pill>
         </div>
         <h3 className="text-2xl md:text-3xl font-black text-white mb-2">{label}</h3>
         <p className="text-sm text-gray-300 leading-snug mb-4">{lead}</p>
@@ -176,13 +174,9 @@ function ArrivingMethod({
             </li>
           ))}
         </ul>
-        <button
-          onClick={join}
-          className="mt-5 px-5 py-2.5 rounded-xl font-bold text-black transition hover:brightness-110"
-          style={{ background: `linear-gradient(90deg, ${tone}, ${darken(tone)})` }}
-        >
+        <Button onClick={join} tone={btnTone} className="mt-5">
           Notify me
-        </button>
+        </Button>
       </div>
       <div
         className="relative aspect-square rounded-2xl border border-white/10 overflow-hidden"
@@ -249,13 +243,3 @@ function DepositSkeleton() {
   );
 }
 
-// Keep a tiny in-file color tweaker so the CTAs can use an accent
-// gradient without pulling in a color library.
-function darken(hex: string): string {
-  if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, ((n >> 16) & 0xff) - 40);
-  const g = Math.max(0, ((n >> 8) & 0xff) - 40);
-  const b = Math.max(0, (n & 0xff) - 40);
-  return `rgb(${r},${g},${b})`;
-}
