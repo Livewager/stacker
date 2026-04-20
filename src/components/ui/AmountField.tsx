@@ -15,7 +15,7 @@
  *  - Insufficient-balance hint when the entered value exceeds balance.
  */
 
-import { useMemo, type Ref } from "react";
+import { useId, useMemo, type Ref } from "react";
 
 type Props = {
   /** Raw numeric string the caller owns. "" when empty. */
@@ -133,18 +133,38 @@ export function AmountField({
         ? `Balance ${balanceLwp.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${symbol}`
         : undefined));
 
+  // Stable ids so aria-describedby survives re-render. useId gives us
+  // an SSR-safe prefix; the caller's `id` (when supplied) takes
+  // precedence so lables/htmlFor still line up. `-hint` / `-error`
+  // suffixes match the rendered <div>s below; aria-describedby only
+  // lists the node that's actually on screen (hint OR error, never
+  // both) so SR announcements are single-shot.
+  const autoId = useId();
+  const fieldId = id ?? `amt-${autoId}`;
+  const describedBy = effectiveError
+    ? `${fieldId}-error`
+    : effectiveHint
+      ? `${fieldId}-hint`
+      : undefined;
+
   return (
     <div className={className}>
       {label && (
         <div className="flex items-baseline justify-between mb-1.5">
           <label
-            htmlFor={id}
+            htmlFor={fieldId}
             className="text-[10px] uppercase tracking-widest text-gray-400"
           >
             {label}
           </label>
           {effectiveError && (
-            <span className="text-[10px] text-red-300">{effectiveError}</span>
+            <span
+              id={`${fieldId}-error`}
+              className="text-[10px] text-red-300"
+              role="alert"
+            >
+              {effectiveError}
+            </span>
           )}
         </div>
       )}
@@ -156,13 +176,15 @@ export function AmountField({
         } ${disabled ? "opacity-60" : ""}`}
       >
         <input
-          id={id}
+          id={fieldId}
           ref={inputRef}
           type="text"
           inputMode="decimal"
           autoComplete="off"
           spellCheck={false}
           placeholder="0.00"
+          aria-invalid={effectiveError ? true : undefined}
+          aria-describedby={describedBy}
           value={displayValue}
           disabled={disabled}
           onChange={(e) => onChange(sanitize(e.target.value))}
@@ -211,7 +233,10 @@ export function AmountField({
       )}
 
       {effectiveHint && !effectiveError && (
-        <div className="mt-1 text-[11px] text-gray-500 leading-snug">
+        <div
+          id={`${fieldId}-hint`}
+          className="mt-1 text-[11px] text-gray-500 leading-snug"
+        >
           {effectiveHint}
         </div>
       )}
