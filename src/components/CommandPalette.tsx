@@ -351,24 +351,32 @@ export default function CommandPalette() {
     [recent, pathname, knownPaths],
   );
 
-  const filtered = useMemo(() => {
+  // Two branches, split into separate memos so a keystroke in the
+  // search box (which only mutates `q`) doesn't invalidate the
+  // recent-first list's computation, and a change in `liveRecent`
+  // (e.g. another tab navigating, via the recent-routes sync) doesn't
+  // re-run the fuzzy scorer mid-search.
+  //
+  // Empty-query view: recent routes at the top, rest in declaration
+  // order, current pathname filtered out. Reruns only when commands /
+  // liveRecent / pathname change.
+  const emptyQueryList = useMemo(() => {
+    const recentCommands = liveRecent
+      .map((p) => commands.find((c) => c.hint === p))
+      .filter((c): c is Command => Boolean(c));
+    const recentIds = new Set(recentCommands.map((c) => c.id));
+    return [
+      ...recentCommands,
+      ...commands.filter((c) => !recentIds.has(c.id) && c.hint !== pathname),
+    ];
+  }, [commands, liveRecent, pathname]);
+
+  // Search view: fuzzy-scored list. Reruns when the query (or the
+  // authoritative commands list) changes; `liveRecent` and `pathname`
+  // are intentionally NOT in deps — they aren't read on this path.
+  const searchList = useMemo(() => {
     const needle = q.trim();
-    if (!needle) {
-      // Empty query: surface the most-recently-visited routes at the
-      // top, then the rest in declaration order. Current pathname
-      // filtered out — no "jump to where I already am". liveRecent
-      // also filters out stale paths (dead routes, typoed pushState).
-      const recentCommands = liveRecent
-        .map((p) => commands.find((c) => c.hint === p))
-        .filter((c): c is Command => Boolean(c));
-      const recentIds = new Set(recentCommands.map((c) => c.id));
-      return [
-        ...recentCommands,
-        ...commands.filter((c) => !recentIds.has(c.id) && c.hint !== pathname),
-      ];
-    }
-    // Fuzzy score both label and hint, take the minimum (best) score.
-    // Drop anything that failed to match either.
+    if (!needle) return null;
     const scored = commands
       .map((c) => {
         const labelScore = fuzzyScore(c.label, needle);
@@ -383,7 +391,9 @@ export default function CommandPalette() {
       .filter((x) => x.score !== null)
       .sort((a, b) => (a.score as number) - (b.score as number));
     return scored.map((x) => x.c);
-  }, [q, commands, liveRecent, pathname]);
+  }, [q, commands]);
+
+  const filtered = searchList ?? emptyQueryList;
 
   // Close resets the search.
   useEffect(() => {
