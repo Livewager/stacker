@@ -1130,7 +1130,16 @@ export default function StackerGame({
                 transcript block so it lands in the celebratory beat
                 of the end-of-round read. Pulses via the shared
                 lw-reveal keyframe so it doesn't fight the card's
-                own entrance animation. */}
+                own entrance animation.
+
+                Reduced-motion: lw-reveal keyframes end at
+                opacity:1/transform:0, so the global
+                prefers-reduced-motion clamp (style.css) lands this
+                flourish on its terminal frame without stripping the
+                visual. No local guard needed. Audited 2026-04-20 —
+                no animate-pulse or animate-ping in the HUD; the
+                only pulse on the Stacker surface is the loading
+                skeleton, covered by the same global rule. */}
             {hudState.newBestStreak !== null &&
               (hudState.phase === "won" || hudState.phase === "over") && (
                 <div
