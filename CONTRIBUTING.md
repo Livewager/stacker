@@ -174,6 +174,34 @@ re-read localStorage per call, so flipping a shared pref mid-round
 still lands on the next SFX invocation. Zero new storage keys, zero
 migration surface, same UX.
 
+### Design tokens already in use (don't re-audit)
+
+A few Tailwind-class patterns look duplicative at first glance but
+encode real tiers. Before "consolidating" one of these, check here:
+
+- **`border-white/10` vs `border-white/15`** — both default borders,
+  but different surface tiers. `/10` (~140 hits) is the passive
+  panel tier: cards, dividers, inactive containers. `/15` (~50 hits)
+  is the interactive-default tier: buttons, inputs, chips — surfaces
+  where a slightly more present default helps discoverability.
+  Hover/focus states escalate to `/20`, `/25`, or `/30` (audited
+  POLISH-271). Don't consolidate to one value — you'd either mute
+  every button or over-present every panel.
+- **Card `density`** — `sm` = `p-3`, `md` = `p-5 md:p-6`, `lg` =
+  `p-6 md:p-10`. Aligned to the audited distribution of ad-hoc card
+  divs (POLISH-265). When porting an inline card, pick the nearest
+  rung; don't invent a fourth.
+- **Pill `status="live"`** — `emerald-400/.08 + emerald-300 +
+  emerald-400/.40` is the shared live/operational palette across
+  six surfaces (Pill, Footer network dot, Toast success, Card
+  emerald accent, /account session dot, /wallet token badge).
+  Reach for `<Pill status="live">` before rolling a new green
+  (POLISH-259).
+- **Button `variant="danger"`** — the red/translucent-red destructive
+  treatment, distinct from `tone="rose"` (gradient-fill rose CTA
+  like /withdraw "Send"). Don't merge them; they read as different
+  affordances (POLISH-253).
+
 ### The anti-patterns to watch for
 
 - Writing a `<Foo2>` because `<Foo>` doesn't quite fit. Either
