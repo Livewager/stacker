@@ -14,6 +14,14 @@ import { AmountField } from "@/components/ui/AmountField";
 // the BarcodeDetector-using code runs inside its effect only on
 // `open`. Splitting it out drops /send's initial JS for the common
 // case where a user pastes or types the principal.
+//
+// `ssr: false` is valid here because this file is a Client Component
+// (`"use client"` at the top). Next 15's warning only fires when a
+// Server Component calls next/dynamic with `ssr: false` — see
+// https://nextjs.org/docs/messages/next-dynamic-no-ssr — and
+// `next build` confirms no warning for this call site. The audit
+// lives here so a future refactor that pulls this block into a
+// server boundary can catch the regression at the diff.
 const PrincipalScanner = dynamic(
   () =>
     import("@/components/send/PrincipalScanner").then((m) => ({
