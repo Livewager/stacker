@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useReducedMotion } from "framer-motion";
+import { usePrefs } from "@/lib/prefs";
 import AppHeader from "@/components/AppHeader";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { useCopyable } from "@/lib/clipboard";
@@ -351,13 +353,21 @@ const LEGENDS: Legend[] = [
 
 function HallOfFame() {
   const [idx, setIdx] = useState(0);
+  // Respect both the OS prefers-reduced-motion and the in-app "Reduce
+  // motion" pref. Either one freezes the auto-rotation — indicator
+  // dots stay clickable for manual cycling so the panel isn't inert.
+  const systemReduced = useReducedMotion();
+  const { reducedMotion: userReduced } = usePrefs();
+  const reduced = systemReduced || userReduced;
+
   useEffect(() => {
+    if (reduced) return;
     const id = window.setInterval(
       () => setIdx((i) => (i + 1) % LEGENDS.length),
       5000,
     );
     return () => window.clearInterval(id);
-  }, []);
+  }, [reduced]);
   const cur = LEGENDS[idx];
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
@@ -372,10 +382,7 @@ function HallOfFame() {
       <div className="relative min-h-[92px]">
         <div
           key={idx}
-          className="animate-[fadeSlide_0.5s_ease]"
-          style={{
-            /* inline keyframes via CSS: safer than adding to global css */
-          }}
+          className={reduced ? "" : "animate-[fadeSlide_0.5s_ease]"}
         >
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-sm font-semibold text-white">@{cur.handle}</span>
