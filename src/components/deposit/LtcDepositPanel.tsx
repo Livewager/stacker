@@ -108,13 +108,22 @@ export function LtcDepositPanel() {
           <label className="text-[10px] uppercase tracking-widest text-gray-400 mb-1 block">
             Watch address
           </label>
+          {/* POLISH-362 — explicit h-11 on both the code field and
+              the Copy button so the tap target clears the 44px
+              mobile minimum. items-stretch would match heights
+              automatically, but the `py-2` code field came out
+              ~36px, below the target. h-11 pins both at 44px and
+              matches the input/button height contract from
+              POLISH-283. Truncate stays — the QR panel next to the
+              address carries visual verification, and Copy is the
+              primary way the address moves, not visual inspection. */}
           <div className="flex items-stretch gap-2">
-            <code className="flex-1 min-w-0 truncate rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs font-mono text-gray-200">
+            <code className="flex-1 min-w-0 truncate h-11 flex items-center rounded-md border border-white/10 bg-black/40 px-3 text-xs font-mono text-gray-200">
               {DEMO_WATCH_ADDRESS}
             </code>
             <button
               onClick={() => copy("addr", DEMO_WATCH_ADDRESS)}
-              className="rounded-md border border-white/15 px-3 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition"
+              className="h-11 rounded-md border border-white/15 px-3 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
             >
               {copied === "addr" ? "Copied" : "Copy"}
             </button>
@@ -126,13 +135,13 @@ export function LtcDepositPanel() {
             OP_RETURN memo · your principal
           </label>
           <div className="flex items-stretch gap-2">
-            <code className="flex-1 min-w-0 truncate rounded-md border border-white/10 bg-black/40 px-3 py-2 text-xs font-mono text-gray-200">
+            <code className="flex-1 min-w-0 truncate h-11 flex items-center rounded-md border border-white/10 bg-black/40 px-3 text-xs font-mono text-gray-200">
               {signedIn ? principal : "Sign in to reveal"}
             </code>
             <button
               onClick={() => signedIn && copy("mem", principal)}
               disabled={!signedIn}
-              className="rounded-md border border-white/15 px-3 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-11 rounded-md border border-white/15 px-3 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {copied === "mem" ? "Copied" : "Copy"}
             </button>
