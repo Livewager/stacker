@@ -200,6 +200,11 @@ export default function StackerGame({
      *  won/over to render a "new best streak" flourish. Cleared on
      *  the next start. */
     newBestStreak: number | null;
+    /** Set to the delta (new best − previous best) when the just-finished
+     *  round beat the score record. Same pattern as newBestStreak —
+     *  lives only for the duration of the end-of-round card, cleared
+     *  on next start. Null when the round didn't set a new best. */
+    newBestDelta: number | null;
   }>({
     phase: "idle",
     score: 0,
@@ -208,6 +213,7 @@ export default function StackerGame({
     best: 0,
     bestStreak: 0,
     newBestStreak: null,
+    newBestDelta: null,
   });
 
   // Transient difficulty-ramp flare: renders "Random spawn" when
@@ -363,6 +369,7 @@ export default function StackerGame({
       // previous end-of-round card. bestStreak itself stays as-is so
       // the player can see what they're chasing.
       newBestStreak: null,
+      newBestDelta: null,
     }));
     onPhaseChange?.("playing");
   }, [onPhaseChange]);
@@ -439,6 +446,11 @@ export default function StackerGame({
         } catch {
           /* ignore */
         }
+        // Delta lives only when score beats the prior best by ≥1.
+        // Prior best of 0 (first ever round) → render the whole new
+        // best as a delta; feels like a proper "opening best" beat.
+        const scoreBeaten = newBest > hudState.best;
+        const newBestDelta = scoreBeaten ? newBest - hudState.best : null;
         setHudState({
           phase: "over",
           score: s.score,
@@ -447,6 +459,7 @@ export default function StackerGame({
           best: newBest,
           bestStreak: newBestStreak,
           newBestStreak: streakBeaten ? newBestStreak : null,
+          newBestDelta,
         });
         const t = roundRef.current?.finalize() ?? null;
         if (t) setLastTranscript(t);
@@ -552,6 +565,8 @@ export default function StackerGame({
       } catch {
         /* leaderboard post should never block the win screen */
       }
+      const scoreBeaten = newBest > hudState.best;
+      const newBestDelta = scoreBeaten ? newBest - hudState.best : null;
       setHudState({
         phase: "won",
         score: s.score,
@@ -560,6 +575,7 @@ export default function StackerGame({
         best: newBest,
         bestStreak: newBestStreak,
         newBestStreak: streakBeaten ? newBestStreak : null,
+        newBestDelta,
       });
       const t = roundRef.current?.finalize() ?? null;
       if (t) setLastTranscript(t);
@@ -1188,6 +1204,28 @@ export default function StackerGame({
                 >
                   <span aria-hidden>★</span>
                   New best streak · ×{hudState.newBestStreak}
+                </div>
+              )}
+
+            {/* "New best score!" flourish — sibling to the streak
+                flash above. Cyan tone matches the rest of the scoring
+                UI (HudPill "Best" pill, score text) so the eye reads
+                this as a score beat, not a streak beat.
+
+                Reduced-motion: same reasoning as the streak flourish
+                — lw-reveal keyframes terminate at opacity 1 / transform
+                0, and the global prefers-reduced-motion clamp in
+                style.css flattens the transition, so this lands
+                statically without a local guard. */}
+            {hudState.newBestDelta !== null &&
+              (hudState.phase === "won" || hudState.phase === "over") && (
+                <div
+                  className="lw-reveal mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-300/60 bg-cyan-300/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-cyan-200"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span aria-hidden>▲</span>
+                  New best · +{hudState.newBestDelta}
                 </div>
               )}
 
