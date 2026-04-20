@@ -27,7 +27,21 @@ type Game = {
   lastPlayedKey: string | null;
   status: "live" | "beta";
   preview: "pour" | "stacker";
+  /**
+   * Ship date of the game on /play. When within NEW_BADGE_WINDOW_MS
+   * of the current time, the card renders a small cyan "new" pill
+   * next to the status. Hidden after the window expires with no
+   * runtime cost — just a date comparison at render time.
+   *
+   * Set once and left alone. If a game is reworked heavily later,
+   * bumping this reuses the same discovery cue instead of adding
+   * a separate "updated" system.
+   */
+  shippedAt: number; // epoch ms
 };
+
+/** Window during which the "new" badge appears on a game card. */
+const NEW_BADGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 const GAMES: Game[] = [
   {
@@ -46,6 +60,7 @@ const GAMES: Game[] = [
     lastPlayedKey: "livewager-pref:pourLastPlayed",
     status: "live",
     preview: "pour",
+    shippedAt: Date.UTC(2026, 0, 15), // 2026-01-15
   },
   {
     href: "/stacker",
@@ -63,6 +78,7 @@ const GAMES: Game[] = [
     lastPlayedKey: "livewager-pref:stackerLastPlayed",
     status: "live",
     preview: "stacker",
+    shippedAt: Date.UTC(2026, 3, 5), // 2026-04-05 — inside the 30d window as of 2026-04-20
   },
 ];
 
@@ -173,6 +189,19 @@ export default function PlayHubPage() {
                       >
                         {g.status}
                       </span>
+                      {/* "New" pill — auto-expires NEW_BADGE_WINDOW_MS
+                          after the ship date so nobody has to remember
+                          to delete it. Slight dot flourish so it stands
+                          out without fighting the status pill's tone. */}
+                      {Date.now() - g.shippedAt < NEW_BADGE_WINDOW_MS && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] px-2 py-0.5 font-semibold text-cyan-200"
+                          title={`Shipped ${new Date(g.shippedAt).toLocaleDateString()}`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                          new
+                        </span>
+                      )}
                     </div>
                     {best !== null && best !== undefined && (
                       <div className="rounded-md bg-black/50 px-2 py-1 text-[10px] font-mono uppercase tracking-widest">
