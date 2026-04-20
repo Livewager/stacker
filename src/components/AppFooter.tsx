@@ -180,8 +180,16 @@ export default function AppFooter() {
             </span>
           )}
 
-          {/* Routes */}
-          <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
+          {/* Routes. ml-auto pushes this block to the right on desktop
+              where everything fits in one row. On narrow viewports
+              (iPhone SE class) the parent's flex-wrap breaks this
+              block onto its own row, and a right-justified row-2 under
+              a left-justified row-1 looks off. Guard the ml-auto with
+              md: so mobile just left-aligns with everything else.
+              POLISH-266 audit finding — wrapping behavior itself was
+              already correct from POLISH-13, only the alignment read
+              wrong on the break. */}
+          <div className="md:ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link
               href={ROUTES.settings}
               className="hover:text-white transition"
