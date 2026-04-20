@@ -1230,21 +1230,26 @@ export default function DunkPage() {
             </div>
 
             {/* Stat-chip strip. Mirrors /stacker's hero signature so the
-                two game landings feel like siblings at a glance. */}
-            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-gray-500">
-              <span className="inline-flex items-baseline gap-1.5">
+                two game landings feel like siblings at a glance.
+                Mobile: horizontal scroll with snap + chrome-free
+                scrollbar + left-edge gradient mask hint. Desktop
+                (sm+): falls back to the original flex-wrap so the
+                chips re-flow naturally. Each chip gets shrink-0 so
+                the flex layout doesn't squeeze them on mobile. */}
+            <div className="mt-5 flex items-center gap-x-6 gap-y-2 text-[11px] text-gray-500 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:snap-none">
+              <span className="inline-flex items-baseline gap-1.5 shrink-0 snap-start">
                 <span className="uppercase tracking-widest text-gray-500">Round</span>
                 <span className="font-mono text-white">~10s</span>
               </span>
-              <span className="inline-flex items-baseline gap-1.5">
+              <span className="inline-flex items-baseline gap-1.5 shrink-0 snap-start">
                 <span className="uppercase tracking-widest text-gray-500">Input</span>
                 <span className="font-mono text-white">gyroscope · keys</span>
               </span>
-              <span className="inline-flex items-baseline gap-1.5">
+              <span className="inline-flex items-baseline gap-1.5 shrink-0 snap-start">
                 <span className="uppercase tracking-widest text-gray-500">Leaderboard</span>
                 <span className="font-mono text-white">hourly</span>
               </span>
-              <span className="inline-flex items-baseline gap-1.5">
+              <span className="inline-flex items-baseline gap-1.5 shrink-0 snap-start">
                 <span className="uppercase tracking-widest text-gray-500">Prize</span>
                 <span className="font-mono text-white">live drop</span>
               </span>

@@ -280,7 +280,11 @@ function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.35 }}
-            className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-gray-500"
+            // Mobile: horizontal scroll with snap + chrome-free scrollbar.
+            // Desktop (sm+): falls back to the original flex-wrap. Mirrors
+            // the /dunk landing treatment so the two game hero strips stay
+            // siblings (POLISH-223).
+            className="mt-8 flex items-center gap-x-6 gap-y-2 text-[11px] text-gray-500 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-5 px-5 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:snap-none"
           >
             <StatChip label="Grid" value="7 × 15" />
             <StatChip label="Round" value="~30s" />
@@ -297,7 +301,7 @@ function Hero() {
 
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-baseline gap-1.5">
+    <span className="inline-flex items-baseline gap-1.5 shrink-0 snap-start">
       <span className="uppercase tracking-widest text-gray-500">{label}</span>
       <span className="font-mono text-white">{value}</span>
     </span>
