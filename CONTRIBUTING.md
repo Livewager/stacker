@@ -292,6 +292,22 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Toast button accessible names** (audited POLISH-324). In a
+  stack of N live toasts, VoiceOver rotor / quick-nav lists every
+  button in the "Notifications" region. Bare labels ("Undo",
+  "Dismiss notification") make them indistinguishable — user
+  can't tell which toast they're about to act on. The rule: every
+  per-toast button (action slot + dismiss ×) gets an aria-label
+  that includes the toast's title as a scope suffix:
+    action:  `${t.action.label} — ${t.title}`
+              → "Undo — Recipient forgotten"
+    dismiss: `Dismiss — ${t.title}`
+              → "Dismiss — Withdraw queued"
+  Visible text stays short for sighted users; only the AT
+  announcement changes. If Toast ever gains more per-card
+  buttons (copy tx id, report issue), follow the same suffix
+  pattern. Don't rely on positional context — rotor is
+  non-spatial.
 - **Entrance motion by surface type** (audited POLISH-321). Use
   `lw-reveal` on surfaces where arrival is **expected and
   voluntary** — the user navigated to a route, opened a drawer,

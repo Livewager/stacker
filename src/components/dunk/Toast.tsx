@@ -632,6 +632,16 @@ function ToastCard({
                 // pre-existing callers that don't set the flag.
                 if (t.action?.dismissOnClick ?? true) onDismiss();
               }}
+              // POLISH-324 — scope the accessible name with the
+              // toast title so VoiceOver rotor / quick-nav (which
+              // lists all buttons in a region) doesn't show three
+              // identically-labeled "Undo" buttons when multiple
+              // toasts are stacked. With the title appended, the
+              // rotor reads "Undo — Recipient forgotten" which
+              // disambiguates per toast. Visible text stays the
+              // short action label so sighted users see the
+              // compact affordance.
+              aria-label={`${t.action.label} — ${t.title}`}
               className="mt-2 text-[11px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 rounded px-1 -mx-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1a2e]"
             >
               {t.action.label}
@@ -659,7 +669,12 @@ function ToastCard({
             }
           }}
           className="flex-shrink-0 -mt-1 -mr-1 rounded p-1 text-gray-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1a2e]"
-          aria-label="Dismiss notification"
+          // POLISH-324 — include the toast title so a stack of N
+          // dismiss buttons reads distinctly in VoiceOver rotor
+          // ("Dismiss — Recipient forgotten" vs three generic
+          // "Dismiss notification" entries). title attr stays short
+          // for mouse-hover tooltip.
+          aria-label={`Dismiss — ${t.title}`}
           title="Dismiss (Esc)"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
