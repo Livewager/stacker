@@ -565,6 +565,16 @@ function Field({
   );
 }
 
+/**
+ * Signed-out gate shown in place of the compose form. Mirror of
+ * /wallet SignedOutPrompt and /withdraw SignInGate — same card
+ * shape, same cyan-toned "Connect Internet Identity" button, only
+ * the eyebrow tint + headline copy swap per page accent (violet
+ * here, cyan on /wallet, rose on /withdraw). POLISH-247 audited
+ * the three surfaces together — if one grows extra copy or a
+ * different CTA button tone, the others should track so the
+ * signed-out experience reads consistently across the wallet flows.
+ */
 function SignInGate({ onLogin, loading }: { onLogin: () => void; loading: boolean }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
