@@ -81,7 +81,11 @@ export default function AppFooter() {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[11px] text-gray-400">
           {/* Network */}
           {info && (
-            <div className="flex items-center gap-2" aria-live="polite">
+            <div
+              role="status"
+              aria-label="Network"
+              className="flex items-center gap-2"
+            >
               <span
                 aria-hidden
                 className={`inline-block h-2 w-2 rounded-full ${
@@ -90,8 +94,20 @@ export default function AppFooter() {
                     : "bg-emerald-400"
                 }`}
               />
-              <span className="uppercase tracking-widest">
+              <span className="uppercase tracking-widest" aria-hidden>
                 {info.network === "local" ? "Local replica" : "Internet Computer"}
+              </span>
+              {/* Phrased announcement so SR reads "Network: connected
+                  to local replica" instead of the bare label which
+                  sounds like a section heading. The visual span is
+                  aria-hidden to avoid a double-read. aria-live stays
+                  OFF by omission — network stays stable across a
+                  session, no need to interrupt the user. */}
+              <span className="sr-only">
+                Connected to{" "}
+                {info.network === "local"
+                  ? "a local Internet Computer replica (development mode)"
+                  : "the Internet Computer mainnet"}
               </span>
             </div>
           )}
