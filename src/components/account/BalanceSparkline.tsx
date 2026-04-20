@@ -121,6 +121,24 @@ function SparklineSvg({ points }: { points: Point[] | null }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const tooltipId = useId();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Tracks whether the current tip is pinned by a touch gesture.
+  // When true, a tap outside the svg (document-level listener below)
+  // dismisses it. Mouse pointers never set this — their dismissal
+  // path is pointerleave on the svg itself.
+  const [touchPinned, setTouchPinned] = useState(false);
+
+  useEffect(() => {
+    if (!touchPinned) return;
+    const onDocDown = (e: PointerEvent) => {
+      const el = svgRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setHoverIdx(null);
+      setTouchPinned(false);
+    };
+    document.addEventListener("pointerdown", onDocDown);
+    return () => document.removeEventListener("pointerdown", onDocDown);
+  }, [touchPinned]);
 
   const ys = useMemo(() => (points ?? []).map((p) => p.balance), [points]);
   const minY = ys.length ? Math.min(...ys) : 0;
@@ -192,8 +210,38 @@ function SparklineSvg({ points }: { points: Point[] | null }) {
       aria-describedby={hovered ? tooltipId : undefined}
       role="img"
       tabIndex={0}
+      // touch-action: none lets a finger drag along the svg produce
+      // pointermove events (otherwise the browser claims the gesture
+      // for page scroll on first y-axis drift and no further moves
+      // fire). The svg is 36px tall and sits in a card, so
+      // sacrificing vertical scroll *while the finger is on the svg*
+      // is fine — the user can still scroll the page by starting
+      // the gesture outside it.
+      style={{ touchAction: "none" }}
+      onPointerDown={(e) => {
+        // Touch UX: tap-to-pin. On release (pointerup) we keep the
+        // pin; pointerleave is ignored for touch so releasing doesn't
+        // immediately dismiss. Mouse UX is unchanged — hover-follow.
+        // Capture the pointer so the svg keeps receiving moves even
+        // if the finger drags slightly outside the 160×36 box.
+        if (e.pointerType === "touch") {
+          try {
+            (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
+          } catch {
+            /* older Safari may throw; the capture is best-effort */
+          }
+          setHoverIdx(indexFromClientX(e.clientX));
+          setTouchPinned(true);
+        }
+      }}
       onPointerMove={(e) => setHoverIdx(indexFromClientX(e.clientX))}
-      onPointerLeave={() => setHoverIdx(null)}
+      onPointerLeave={(e) => {
+        // Mouse-leave dismisses; touch-release does not (the pin
+        // survives until the user taps outside or presses Escape
+        // via the keyboard fallback). Matches the common mobile-
+        // chart pattern used by Robinhood / Google Finance.
+        if (e.pointerType !== "touch") setHoverIdx(null);
+      }}
       onFocus={() => setHoverIdx(plotted.length - 1)}
       onBlur={() => setHoverIdx(null)}
       onKeyDown={(e) => {
@@ -212,6 +260,7 @@ function SparklineSvg({ points }: { points: Point[] | null }) {
           setHoverIdx(plotted.length - 1);
         } else if (e.key === "Escape") {
           setHoverIdx(null);
+          setTouchPinned(false);
           (e.currentTarget as SVGSVGElement).blur();
         }
       }}
