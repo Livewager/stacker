@@ -1,4 +1,5 @@
 import { ErrorScaffold } from "@/components/ErrorScaffold";
+import { ROUTES } from "@/lib/routes";
 
 export default function NotFound() {
   return (
@@ -8,12 +9,12 @@ export default function NotFound() {
       title="Nothing poured at this address."
       body={
         <>
-          The page you were after doesn&apos;t exist or moved. Head back to the
-          game — the round is still fresh.
+          The page you were after doesn&apos;t exist or moved. Head to the games
+          hub — Tilt Pour and Stacker are both one tap away.
         </>
       }
-      primary={{ href: "/dunk", label: "Back to the game" }}
-      secondary={{ href: "/wallet", label: "Open wallet" }}
+      primary={{ href: ROUTES.play, label: "Games hub" }}
+      secondary={{ href: ROUTES.wallet, label: "Open wallet" }}
     />
   );
 }
