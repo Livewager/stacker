@@ -96,10 +96,13 @@ export function WalletNav() {
   return (
     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
       {/* Balance pill. On small screens we drop the "LWP" label and
-          show fewer decimals so the header never overflows. */}
+          show fewer decimals so the header never overflows.
+          Visuals are aria-hidden; an sr-only sibling carries the
+          phrased announcement so a screen reader never gets a stray
+          "◎" or responsive-swap double-read. */}
       <div
         className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] text-xs md:text-sm font-mono tabular-nums min-w-0"
-        aria-live="polite"
+        aria-hidden
       >
         <span className="text-cyan-300">◎</span>
         <span className="text-white truncate max-w-[96px] md:max-w-none">
@@ -114,6 +117,11 @@ export function WalletNav() {
           LWP
         </span>
       </div>
+      <span className="sr-only" aria-live="polite">
+        {balance !== null
+          ? `Balance ${formatLWP(balance, 4)} LWP`
+          : "Balance unavailable"}
+      </span>
       {/* Deposit CTA — scrolls to the wallet card. */}
       <a
         href={ANCHORS.dropWallet}

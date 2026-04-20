@@ -132,10 +132,24 @@ export default function WalletPage() {
                     <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
                       Available
                     </div>
-                    <div className="text-5xl md:text-6xl font-black tabular-nums leading-none">
+                    <div
+                      className="text-5xl md:text-6xl font-black tabular-nums leading-none"
+                      aria-hidden
+                    >
                       {balance !== null ? formatLWP(balance, 4) : "—"}
                     </div>
-                    <div className="mt-2 text-sm font-mono text-gray-400">LWP</div>
+                    <div className="mt-2 text-sm font-mono text-gray-400" aria-hidden>
+                      LWP
+                    </div>
+                    {/* Screen-reader-friendly announcement. aria-live
+                        fires when balance changes (buy, deposit).
+                        Visual block is aria-hidden so SR only reads
+                        the phrased sentence, not "— LWP" twice. */}
+                    <span className="sr-only" aria-live="polite">
+                      {balance !== null
+                        ? `Balance ${formatLWP(balance, 4)} LWP`
+                        : "Balance unavailable"}
+                    </span>
                   </div>
                   <div className="hidden md:block text-right">
                     <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">
