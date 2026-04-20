@@ -419,6 +419,30 @@ export default function CommandPalette() {
         <ShortcutGroup title="Global" rows={GLOBAL_SHORTCUTS} />
         <ShortcutGroup title="Games" rows={GAME_SHORTCUTS} />
       </div>
+
+      {/* Persistent help strip. Lives at the bottom of every palette
+          open so first-time users discover the arrow-key + Enter +
+          Esc loop without needing to read docs. Compact by design —
+          not a substitute for the full shortcut grid above, just a
+          contextual refresher for the in-palette keystrokes. */}
+      <div
+        className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] uppercase tracking-widest text-gray-500"
+        role="note"
+        aria-label="Palette keystrokes"
+      >
+        <HelpKey keys={["↑", "↓"]} label="navigate" />
+        <HelpKey keys={["↵"]} label="run" />
+        <HelpKey keys={["esc"]} label="close" />
+        <span className="flex items-center gap-1.5">
+          <kbd className="inline-flex items-center justify-center min-w-[1.25rem] h-4 rounded border border-white/15 bg-black/40 px-1 text-[10px] font-mono text-gray-200 normal-case">
+            <PlatformModKey />
+          </kbd>
+          <kbd className="inline-flex items-center justify-center min-w-[1.25rem] h-4 rounded border border-white/15 bg-black/40 px-1 text-[10px] font-mono text-gray-200 normal-case">
+            K
+          </kbd>
+          <span className="text-gray-500">reopen</span>
+        </span>
+      </div>
     </BottomSheet>
   );
 }
@@ -448,4 +472,41 @@ function ShortcutGroup({ title, rows }: { title: string; rows: Shortcut[] }) {
       </ul>
     </div>
   );
+}
+
+/**
+ * Single-row help chip for the palette's persistent keystroke strip.
+ * Renders a <kbd> glyph per key plus a lowercase label. Intentionally
+ * separate from ShortcutGroup above — that one is a scannable table,
+ * this is a compact at-a-glance reminder.
+ */
+function HelpKey({ keys, label }: { keys: string[]; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {keys.map((k, i) => (
+        <kbd
+          key={i}
+          className="inline-flex items-center justify-center min-w-[1.25rem] h-4 rounded border border-white/15 bg-black/40 px-1 text-[10px] font-mono text-gray-200 normal-case"
+        >
+          {k}
+        </kbd>
+      ))}
+      <span className="text-gray-500">{label}</span>
+    </span>
+  );
+}
+
+/**
+ * Inline copy of the header's PlatformModKey. Mac + iOS/iPadOS show ⌘,
+ * everything else falls back to ^ (Ctrl). Self-contained here so the
+ * palette doesn't pull from AppHeader — AppHeader is client-hydrated
+ * later and could briefly show the wrong glyph during SSR.
+ */
+function PlatformModKey() {
+  const [glyph, setGlyph] = useState<"⌘" | "^">("⌘");
+  useEffect(() => {
+    const platform = navigator.platform || navigator.userAgent || "";
+    if (!/mac|iphone|ipad|ipod/i.test(platform)) setGlyph("^");
+  }, []);
+  return <>{glyph}</>;
 }
