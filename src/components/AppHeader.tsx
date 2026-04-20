@@ -15,7 +15,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { WalletNav } from "@/components/dunk/WalletNav";
 import { ROUTES } from "@/lib/routes";
 
@@ -39,15 +39,28 @@ function isActive(pathname: string, href: string): boolean {
 
 export default function AppHeader() {
   const pathname = usePathname() || "";
+  const router = useRouter();
   // Mobile breadcrumb: first matching tab wins. Desktop shows the
   // full tab strip so this label stays hidden at md+.
   const activeTab = TABS.find((t) => isActive(pathname, t.href));
+  // Modifier-click on the logo routes to /play (the games hub) instead
+  // of /dunk. Alt/Option is the power-user shortcut — leaves ⌘/Ctrl
+  // (open-in-new-tab) and shift (new window) with their native
+  // browser behavior intact.
+  const onLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.altKey) {
+      e.preventDefault();
+      router.push(ROUTES.play);
+    }
+  };
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 md:px-8">
         <Link
           href={ROUTES.dunk}
-          aria-label="Livewager · Dunk home"
+          onClick={onLogoClick}
+          aria-label="Livewager · Dunk home (Alt-click for Games hub)"
+          title="Home · Alt-click for Games hub"
           className="inline-flex items-center shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
         >
           <Image
