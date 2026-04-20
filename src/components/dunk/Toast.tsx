@@ -104,13 +104,44 @@ export function ToastHost({ children }: { children: ReactNode }) {
   // the last 10s doesn't spawn another entry — covers the case where
   // the entry has dismissed but the underlying error is still firing.
   const recentErrors = useRef(new Map<string, number>());
+  // Focus-return snapshot. For each toast we remember which element
+  // was focused when it was pushed; on dismiss we restore focus IF
+  // the user was interacting with the toast (activeElement is inside
+  // the host container). Otherwise we leave focus where it is — a
+  // user who tabbed elsewhere during the toast lifetime shouldn't
+  // get yanked back mid-task.
+  const returnFocus = useRef(new Map<string, HTMLElement>());
+  const hostRef = useRef<HTMLDivElement | null>(null);
 
   const dismiss = useCallback((id: string) => {
+    // Decide BEFORE we tear down whether to restore focus: only if
+    // the current activeElement is inside our toast region.
+    const focusTarget = returnFocus.current.get(id);
+    returnFocus.current.delete(id);
+    const shouldRestore =
+      !!focusTarget &&
+      typeof document !== "undefined" &&
+      !!hostRef.current &&
+      document.activeElement !== null &&
+      hostRef.current.contains(document.activeElement) &&
+      focusTarget.isConnected;
     setToasts((xs) => xs.filter((t) => t.id !== id));
     const st = timers.current.get(id);
     if (st) {
       clearTimeout(st.handle);
       timers.current.delete(id);
+    }
+    if (shouldRestore) {
+      // Defer one frame so React can unmount the toast first;
+      // otherwise focus() on a dying node can race with browser
+      // focus moving to body.
+      requestAnimationFrame(() => {
+        try {
+          focusTarget!.focus({ preventScroll: true });
+        } catch {
+          /* element may have been removed between frames */
+        }
+      });
     }
   }, []);
 
@@ -118,6 +149,9 @@ export function ToastHost({ children }: { children: ReactNode }) {
     setToasts([]);
     timers.current.forEach((st) => clearTimeout(st.handle));
     timers.current.clear();
+    // Wipe the focus-return snapshots too — once the region is
+    // cleared by a bulk action, any per-toast stash is moot.
+    returnFocus.current.clear();
   }, []);
 
   const push = useCallback(
@@ -125,6 +159,16 @@ export function ToastHost({ children }: { children: ReactNode }) {
       const kind = input.kind ?? "info";
       const ttlMs = input.ttlMs ?? 4500;
       const now = Date.now();
+      // Snapshot the currently-focused element so we can restore
+      // focus when the toast dismisses (if the user ended up
+      // interacting with the toast itself). Skip when focus is on
+      // <body> — that's "nothing in particular", no point stashing.
+      const focusSnapshot =
+        typeof document !== "undefined" &&
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement !== document.body
+          ? document.activeElement
+          : null;
 
       // Error-only 10s throttle by title. The collapse path below
       // handles the "within 2s and still visible" case; this one
@@ -189,6 +233,15 @@ export function ToastHost({ children }: { children: ReactNode }) {
             remainingMs: ttlMs,
           });
         }
+        // Collapse doesn't spawn a new entry, so we only refresh
+        // the return-focus snapshot if the existing one is stale
+        // (the target element was removed). Otherwise the original
+        // caller's focus target remains authoritative — a burst of
+        // repeats shouldn't shift "where was focus before this started".
+        const existing = returnFocus.current.get(targetId);
+        if ((!existing || !existing.isConnected) && focusSnapshot) {
+          returnFocus.current.set(targetId, focusSnapshot);
+        }
         return targetId;
       }
 
@@ -207,6 +260,9 @@ export function ToastHost({ children }: { children: ReactNode }) {
         repeatCount: 1,
       };
       setToasts((xs) => [...xs, entry]);
+      if (focusSnapshot) {
+        returnFocus.current.set(id, focusSnapshot);
+      }
       if (entry.ttlMs > 0) {
         const handle = setTimeout(() => dismiss(id), entry.ttlMs);
         timers.current.set(id, {
@@ -297,6 +353,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
           card with the right urgency. Leaving an aria-live here
           would double-up on every error. */}
       <div
+        ref={hostRef}
         role="region"
         aria-label="Notifications"
         className="pointer-events-none fixed top-4 right-4 z-[1000] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2 max-h-[calc(100vh-2rem)] overflow-y-auto"
