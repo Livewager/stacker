@@ -107,7 +107,16 @@ export function ConfirmationRail({ step, confirmations }: ConfirmationRailProps)
       <div className="mt-3 text-sm text-white font-semibold">{LABELS[step].title}</div>
       <div className="text-xs text-gray-400 leading-snug">{LABELS[step].detail}</div>
       {/* Phrased live update — aria-atomic so the SR reads the full
-          sentence on each transition instead of diffing labels. */}
+          sentence on each transition instead of diffing labels.
+          POLISH-228 audit 2026-04-20: the phrased string embeds both
+          the stage (via title/detail lookup on `step`) and, during
+          the confirm stage, the live N/M counter — so an increment
+          from 1/2 → 2/2 updates the span text and the polite-live
+          region fires, no separate aria-live needed per N tick. The
+          progressbar's aria-valuetext carries the same phrasing as
+          a fallback for SRs that ignore sr-only live regions. No
+          throttling concern at realistic cadence (stage every
+          ~1–2s, confirm ticks every ~500ms). */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {phrased}
       </span>
