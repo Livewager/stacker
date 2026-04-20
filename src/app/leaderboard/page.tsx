@@ -33,6 +33,7 @@ export default function LeaderboardPage() {
   const {
     dunkBoard,
     pourBoard,
+    stackerLiveBoard,
     stackerBoard,
     myDunkRank,
     msToReset,
@@ -40,14 +41,14 @@ export default function LeaderboardPage() {
     const all = getHourBoard(now);
     const dunk = all.filter((e) => e.game === "dunk");
     const pour = all.filter((e) => e.game === "pour");
-    // Stacker isn't wired to the shared scoreboard yet; we synthesize
-    // from localStorage below.
+    const stacker = all.filter((e) => e.game === "stacker");
     const myIdx = myHandle ? dunk.findIndex((e) => e.handle === myHandle) : -1;
     // Hour-reset: each full wall-clock hour.
     const hourStart = Math.floor(now / HOUR_MS) * HOUR_MS;
     return {
       dunkBoard: dunk.slice(0, 20),
       pourBoard: pour.slice(0, 20),
+      stackerLiveBoard: stacker.slice(0, 20),
       stackerBoard: readStackerBoard(),
       myDunkRank: myIdx >= 0 ? myIdx + 1 : null,
       msToReset: hourStart + HOUR_MS - now,
@@ -69,7 +70,12 @@ export default function LeaderboardPage() {
         <HeroHeader msToReset={msToReset} myRank={myDunkRank} myHandle={myHandle} />
 
         <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
-          <LiveHourPanel dunkBoard={dunkBoard} pourBoard={pourBoard} myHandle={myHandle} />
+          <LiveHourPanel
+            dunkBoard={dunkBoard}
+            pourBoard={pourBoard}
+            stackerBoard={stackerLiveBoard}
+            myHandle={myHandle}
+          />
           <div className="space-y-6">
             <HallOfFame />
             <BestsPanel stackerBest={stackerBoard.localBest} />
@@ -161,14 +167,17 @@ function HourClock({ msToReset }: { msToReset: number }) {
 function LiveHourPanel({
   dunkBoard,
   pourBoard,
+  stackerBoard,
   myHandle,
 }: {
   dunkBoard: ScoreEntry[];
   pourBoard: ScoreEntry[];
+  stackerBoard: ScoreEntry[];
   myHandle: string;
 }) {
-  const [tab, setTab] = useState<"dunk" | "pour">("dunk");
-  const board = tab === "dunk" ? dunkBoard : pourBoard;
+  const [tab, setTab] = useState<"dunk" | "pour" | "stacker">("dunk");
+  const board =
+    tab === "dunk" ? dunkBoard : tab === "pour" ? pourBoard : stackerBoard;
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
@@ -186,8 +195,10 @@ function LiveHourPanel({
           aria-label="Leaderboard game"
           className="flex rounded-lg border border-white/10 bg-white/[0.03] p-0.5"
         >
-          {(["dunk", "pour"] as const).map((g) => {
+          {(["dunk", "pour", "stacker"] as const).map((g) => {
             const active = tab === g;
+            const label =
+              g === "dunk" ? "Dunk" : g === "pour" ? "Pour" : "Stacker";
             return (
               <button
                 key={g}
@@ -198,7 +209,7 @@ function LiveHourPanel({
                   active ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
                 }`}
               >
-                {g === "dunk" ? "Dunk" : "Pour"}
+                {label}
               </button>
             );
           })}
@@ -272,7 +283,13 @@ function PodiumRow({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: b
           {entry.score}
         </div>
         <div className="text-[10px] uppercase tracking-widest text-gray-500">
-          {entry.game === "dunk" ? "Dunk" : entry.game === "pour" ? "Pour" : "Tidal"}
+          {entry.game === "dunk"
+            ? "Dunk"
+            : entry.game === "pour"
+              ? "Pour"
+              : entry.game === "stacker"
+                ? "Stacker"
+                : "Tidal"}
         </div>
       </div>
     </li>
@@ -313,16 +330,16 @@ function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean
   );
 }
 
-function EmptyBoard({ tab }: { tab: "dunk" | "pour" }) {
-  // Per-tab CTA copy + route. Both currently point at /dunk since
-  // that's where both game modes live in this build, but the copy
-  // is tab-scoped so swapping in a separate route later is a
-  // one-line change — and the empty state's voice matches the tab
+function EmptyBoard({ tab }: { tab: "dunk" | "pour" | "stacker" }) {
+  // Per-tab CTA copy + route. Swapping in a separate route later is
+  // a one-line change — and the empty state's voice matches the tab
   // the user is actually looking at.
   const cta =
-    tab === "dunk"
-      ? { href: "/dunk", label: "Dunk", verb: "throw a round" }
-      : { href: "/dunk", label: "Pour", verb: "pour a round" };
+    tab === "stacker"
+      ? { href: "/stacker", label: "Stacker", verb: "stack to the top", title: "Stacker" }
+      : tab === "dunk"
+        ? { href: "/dunk", label: "Dunk", verb: "throw a round", title: "Dunk" }
+        : { href: "/dunk", label: "Pour", verb: "pour a round", title: "Pour" };
   return (
     <div className="px-6 py-10 text-center">
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-cyan-300">
@@ -331,7 +348,7 @@ function EmptyBoard({ tab }: { tab: "dunk" | "pour" }) {
         </svg>
       </div>
       <div className="text-sm text-white font-semibold mb-1">
-        No {tab === "dunk" ? "Dunk" : "Pour"} scores this hour yet
+        No {cta.title} scores this hour yet
       </div>
       <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug">
         Be the first — tap{" "}

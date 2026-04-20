@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type GameId = "dunk" | "pour" | "tidal";
+export type GameId = "dunk" | "pour" | "tidal" | "stacker";
 
 export type ScoreEntry = {
   id: string;

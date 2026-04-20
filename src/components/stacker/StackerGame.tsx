@@ -25,6 +25,7 @@ import { haptics } from "@/lib/haptics";
 import { createRound, type Round, type RoundTranscript } from "@/lib/anticheat/tapEntropy";
 import { createRng, randomSeed, type SeededRng } from "@/lib/anticheat/rng";
 import { useCopyable } from "@/lib/clipboard";
+import { postScore } from "@/components/dunk/scoreboard";
 
 // ------------------------------------------------------------------
 // Configuration
@@ -385,6 +386,14 @@ export default function StackerGame({
         window.localStorage.setItem(LS_BEST, String(newBest));
       } catch {
         /* ignore */
+      }
+      // Cross-game leaderboard post. Seed is included so a future
+      // replay/validator (ANTICHEAT-T1) can deterministically reject
+      // claims that don't match. postScore is idempotent by entry id.
+      try {
+        postScore("stacker", s.score, rngRef.current?.seed);
+      } catch {
+        /* leaderboard post should never block the win screen */
       }
       setHudState({
         phase: "won",
