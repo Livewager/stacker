@@ -221,6 +221,23 @@ export function WalletNav() {
         ) : (
           <span className="text-cyan-300">◎</span>
         )}
+        {/* POLISH-329 — perf audit: 3 formatLWP calls per render
+            here (mobile pill, desktop pill, sr-only span below) +
+            2 conditional calls inside the POLISH-318 delta effect.
+            At the POLISH-226 measured cost of ~0.014ms per call,
+            that's ~0.042ms per render. WalletNav re-renders on
+            balance change + pending flips — ~10×/hour peak in
+            realistic use. Total cost ~0.5ms/hour, unmeasurable.
+            Considered (a) useMemo per format, (b) picking one
+            decimals variant via responsive JS instead of dual
+            DOM nodes, (c) caching by (balance, decimals). All
+            cost more overhead than they save, and (b) would
+            force WalletNav to read window.innerWidth in a hook
+            — layout coupling that every previous perf audit
+            (POLISH-242/269/287/299) has rightly refused. Audit-
+            close. If this ever shows on a flame graph in real
+            use, the cache path is already sketched in the
+            formatLWP JSDoc; until then, pure function wins. */}
         <span className="text-white truncate max-w-[96px] md:max-w-none">
           <span className="md:hidden">
             {balance !== null ? formatLWP(balance, 2) : "—"}
