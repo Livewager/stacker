@@ -197,9 +197,13 @@ export default function WithdrawPage() {
           // back to the empty state.
           <EmptyBalance principal={principal} />
         ) : stage === "compose" ? (
+          // POLISH-375 — mirror of /send compose. Gives the
+          // review → compose back-nav the same 220ms lw-reveal
+          // the forward transitions already use. Motion-safe via
+          // the global prefers-reduced-motion clamp.
           <form
             onSubmit={onReview}
-            className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-7 space-y-5"
+            className="lw-reveal rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-7 space-y-5"
           >
             {/* From / balance strip */}
             <div className="flex items-center justify-between pb-3 border-b border-white/5">

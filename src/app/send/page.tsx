@@ -340,9 +340,20 @@ export default function SendPage() {
           // to the empty state.
           <EmptyBalance principal={principal} />
         ) : stage === "compose" ? (
+          // POLISH-375 — compose was the only stage without lw-reveal,
+          // which read as an asymmetric motion pattern on the
+          // review → compose back-nav: every other stage change
+          // (compose→review, review→sent) plays the 220ms fade,
+          // but "← Edit" slammed the form back in. Adding lw-reveal
+          // here gives all three transitions the same micro-reveal.
+          // On first page load it also reads as a soft entrance,
+          // matching SignInGate / EmptyBalance / Review / Sent which
+          // all already fade in on mount. prefers-reduced-motion
+          // clamps the duration globally (see src/css/style.css
+          // POLISH-225/POLISH-234).
           <form
             onSubmit={onReview}
-            className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-7 space-y-5"
+            className="lw-reveal rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-7 space-y-5"
           >
             {/* Balance chip */}
             <div className="flex items-center justify-between pb-3 border-b border-white/5">
