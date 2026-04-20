@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sfx, unlockAudio } from "@/lib/audio";
 import { haptics } from "@/lib/haptics";
+import { createRound, type Round, type RoundTranscript } from "@/lib/anticheat/tapEntropy";
 
 // ------------------------------------------------------------------
 // Configuration
@@ -172,6 +173,11 @@ export default function StackerGame({
   const [flare, setFlare] = useState<null | "spawn" | "jitter">(null);
   const flareRow = useRef<number>(-1);
 
+  // Anti-cheat groundwork: local tap-entropy buffer per round. No
+  // network calls — finalize result is logged to console in dev only.
+  const roundRef = useRef<Round | null>(null);
+  const [lastTranscript, setLastTranscript] = useState<RoundTranscript | null>(null);
+
   // Restore best score once on mount.
   useEffect(() => {
     try {
@@ -209,6 +215,8 @@ export default function StackerGame({
     flashRef.current = 0;
     flareRow.current = -1;
     setFlare(null);
+    roundRef.current = createRound();
+    setLastTranscript(null);
     setHudState((h) => ({
       ...h,
       phase: "playing",
@@ -224,6 +232,15 @@ export default function StackerGame({
     if (s.phase !== "playing" || !s.current) return;
 
     const cur = s.current;
+    // Record tap event into the anti-cheat buffer BEFORE we decide
+    // game-over — even failed locks teach the detector what a real
+    // last-tap looks like.
+    roundRef.current?.record({
+      row: cur.row,
+      sliderCol: cur.x,
+      sliderDir: cur.dir,
+      sliderWidth: cur.width,
+    });
     // Top of the stack defines the window we're aligning against. If the
     // stack is empty (row 0), the first lock just snaps the current width.
     const below = s.stack.length > 0 ? s.stack[s.stack.length - 1] : null;
@@ -257,6 +274,8 @@ export default function StackerGame({
           perfectStreak: s.perfectStreak,
           best: newBest,
         });
+        const t = roundRef.current?.finalize() ?? null;
+        if (t) setLastTranscript(t);
         onPhaseChange?.("over");
         return;
       }
@@ -342,6 +361,8 @@ export default function StackerGame({
         perfectStreak: s.perfectStreak,
         best: newBest,
       });
+      const t = roundRef.current?.finalize() ?? null;
+      if (t) setLastTranscript(t);
       onPhaseChange?.("won");
       s.current = null;
       return;
@@ -781,6 +802,20 @@ export default function StackerGame({
             <div className="text-[11px] font-mono text-gray-400 uppercase tracking-widest">
               Press space or tap to {statusCopy.cta.toLowerCase()}
             </div>
+
+            {/* Fair-play transparency: show the transcript stats on
+                won/over so players can see what was captured. No upload,
+                local only until ANTICHEAT-T1 ships. */}
+            {lastTranscript &&
+              (hudState.phase === "won" || hudState.phase === "over") && (
+                <div className="mt-4 text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                  Captured {lastTranscript.stats.count} taps ·
+                  {" "}
+                  {lastTranscript.stats.meanDt > 0
+                    ? `μ Δt ${Math.round(lastTranscript.stats.meanDt)}ms`
+                    : "—"}
+                </div>
+              )}
           </div>
         </div>
       )}
