@@ -5,6 +5,7 @@ import { WatchAddressQR } from "./WatchAddressQR";
 import { ConfirmationRail, type ConfirmationStep } from "./ConfirmationRail";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { useCopyable } from "@/lib/clipboard";
+import { AmountField } from "@/components/ui/AmountField";
 
 // Keep in sync with src/app/api/dunk/ltc-deposit/route.ts.
 const LWP_PER_LTC = 10_000_000;
@@ -143,24 +144,24 @@ export function LtcDepositPanel() {
         </div>
 
         <div className="grid grid-cols-[1fr_auto] items-end gap-3 rounded-xl border border-orange-300/30 bg-orange-300/[0.05] p-3">
-          <div>
-            <label className="text-[10px] uppercase tracking-widest text-orange-300 mb-1 block">
-              Amount
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0.00000001"
-                step="0.001"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                disabled={busy}
-                className="w-32 rounded-md border border-white/10 bg-black/50 px-3 py-2 text-sm font-mono text-right text-white focus:border-orange-300/60 focus:outline-none"
-              />
-              <span className="text-[11px] font-mono text-gray-400">LTC</span>
-            </div>
-          </div>
-          <div className="text-right">
+          {/* AmountField handles group-thousands display, blur-
+              normalize, aria-describedby, and the shared focus-ring
+              tone — same primitive /send and /withdraw use. Chips
+              are hidden because there's no wallet-side LTC balance
+              to anchor them to (the user is about to send from an
+              external wallet). */}
+          <AmountField
+            id="ltc-deposit-amount"
+            label="Amount"
+            value={amount}
+            onChange={setAmount}
+            symbol="LTC"
+            tone="orange"
+            hideChips
+            disabled={busy}
+            hint=" "
+          />
+          <div className="text-right pb-1">
             <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
               You receive
             </div>
