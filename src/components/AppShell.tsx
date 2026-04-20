@@ -19,7 +19,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <ToastHost>
       <WalletProvider>
-        {children}
+        <a href="#content" className="skip-link">
+          Skip to main content
+        </a>
+        <main id="content" tabIndex={-1} className="outline-none">
+          {children}
+        </main>
         <BottomNav />
       </WalletProvider>
     </ToastHost>

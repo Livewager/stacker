@@ -36,6 +36,48 @@
     font-size: 16px;
   }
 
+  /* A11y: visible, on-theme focus ring for keyboard users only.
+     Covers every interactive element uniformly so no page needs its
+     own focus styles. Mouse clicks still get no ring (focus-visible). */
+  :where(a, button, input, textarea, select, summary, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Skip link — hidden until focused, then pops into the top-left. */
+  .skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 100;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #0b1a2e;
+    color: #22d3ee;
+    border: 1px solid rgba(34, 211, 238, 0.5);
+    font-weight: 600;
+    transform: translateY(-120%);
+    transition: transform 120ms ease;
+  }
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid #22d3ee;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
