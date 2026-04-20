@@ -479,6 +479,27 @@ function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
     .map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)} ${((1 - v) * hgt).toFixed(1)}`)
     .join(" ");
   const stroke = me ? "#22d3ee" : "rgba(255,255,255,0.45)";
+
+  // Draw-on entrance: stroke-dasharray = pathLength="1" + dashoffset
+  // animates 1 → 0. When reduced motion is on, jump straight to 0
+  // (no transition, no movement). Per-row stagger keyed off the
+  // hash so adjacent rows don't all draw at the same instant —
+  // gives the board a subtle cascade without a heavy library dep.
+  // systemReduced OR userReduced freezes to the final state.
+  const systemReduced = useReducedMotion();
+  const { reducedMotion: userReduced } = usePrefs();
+  const reduced = systemReduced || userReduced;
+  const [drawn, setDrawn] = useState(reduced);
+  const delayMs = reduced ? 0 : (h % 280);
+  useEffect(() => {
+    if (reduced) {
+      setDrawn(true);
+      return;
+    }
+    const id = window.setTimeout(() => setDrawn(true), delayMs);
+    return () => window.clearTimeout(id);
+  }, [reduced, delayMs]);
+
   return (
     <svg
       width={w}
@@ -494,6 +515,12 @@ function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
         strokeWidth={1.2}
         strokeLinecap="round"
         strokeLinejoin="round"
+        pathLength={1}
+        strokeDasharray={1}
+        strokeDashoffset={drawn ? 0 : 1}
+        style={{
+          transition: reduced ? "none" : "stroke-dashoffset 520ms ease-out",
+        }}
       />
     </svg>
   );
