@@ -117,10 +117,6 @@ export function BottomNav() {
       vv.removeEventListener("scroll", onResize);
     };
   }, []);
-  if (NO_BOTTOM_NAV_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    return null;
-  }
-
   // POLISH-354 — tap-feedback pair. Haptic and SR announcement both
   // fire from the same onClick synchronously so a VoiceOver user who
   // taps a tab gets the same "tap received → going to X" beat as a
@@ -134,7 +130,16 @@ export function BottomNav() {
   // haptic ping, no "Navigating to Wallet" announcement when you're
   // already on /wallet. That matches sighted behavior (no visible
   // transition) and avoids VO chatter on accidental re-taps.
+  //
+  // Declared ABOVE the opt-out early-return below so the hook order
+  // stays constant across renders. NO_BOTTOM_NAV_PATHS is empty today
+  // but flipping a route onto the list at runtime (via a future
+  // feature flag etc.) would otherwise trip React's
+  // "Rendered fewer hooks" invariant the first time it flips.
   const [announce, setAnnounce] = useState("");
+  if (NO_BOTTOM_NAV_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return null;
+  }
   const tapFeedback = (active: boolean, label: string) => {
     if (active) return;
     if (haptics) {
