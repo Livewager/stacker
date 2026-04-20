@@ -44,6 +44,10 @@ export default function WithdrawPage() {
         return;
       }
       setLtcAddress(text);
+      // Paste is a deliberate interaction — mark touched so any
+      // wrong-network ("That's a Bitcoin address") warning lands
+      // immediately instead of waiting for an unrelated blur.
+      setAddrTouched(true);
       toast.push({ kind: "success", title: "Pasted from clipboard" });
     } catch {
       toast.push({
@@ -70,11 +74,22 @@ export default function WithdrawPage() {
   // broadcast, which we can't do without adding base58 + bech32 libs
   // to the client bundle.
   const addrCheck = useMemo(() => validateLtcAddress(ltcAddress), [ltcAddress]);
+  // Track whether the user has interacted with the address field so
+  // a pristine empty input doesn't immediately surface "Required".
+  // Flips true on first character OR first blur — whichever comes
+  // first. Resets when the form resets.
+  const [addrTouched, setAddrTouched] = useState(false);
 
   // --- validation ---
   const validation = useMemo(() => {
     const errors: Record<string, string> = {};
-    if (!addrCheck.ok) errors.ltcAddress = addrCheck.reason || "Invalid";
+    // Only surface address errors after the field has been touched.
+    // Bech32 / L-prefix / bc1 warnings still land on keystroke as
+    // soon as the first character is typed — just not on the empty
+    // pristine field.
+    if (!addrCheck.ok && addrTouched) {
+      errors.ltcAddress = addrCheck.reason || "Invalid";
+    }
 
     const n = Number(amount);
     if (!amount) {
@@ -139,6 +154,7 @@ export default function WithdrawPage() {
     setResult(null);
     setSubmitError(null);
     setStage("compose");
+    setAddrTouched(false);
   };
 
   useEffect(() => {
@@ -209,7 +225,18 @@ export default function WithdrawPage() {
                   spellCheck={false}
                   placeholder="ltc1q…"
                   value={ltcAddress}
-                  onChange={(e) => setLtcAddress(e.target.value)}
+                  onChange={(e) => {
+                    setLtcAddress(e.target.value);
+                    // First keystroke marks the field as touched so
+                    // the live error hint lights up. Paste also
+                    // triggers this (pasteLtcAddress uses
+                    // setLtcAddress too — covered below via the
+                    // non-empty branch).
+                    if (!addrTouched && e.target.value.length > 0) {
+                      setAddrTouched(true);
+                    }
+                  }}
+                  onBlur={() => setAddrTouched(true)}
                   className={`flex-1 min-w-0 rounded-md bg-black/40 border px-3 py-2.5 text-sm font-mono text-white focus:outline-none ${
                     ltcAddress.length === 0
                       ? "border-white/10 focus:border-rose-300/60"
