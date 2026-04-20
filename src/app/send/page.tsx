@@ -676,7 +676,7 @@ function Field({
  */
 function SignInGate({ onLogin, loading }: { onLogin: () => void; loading: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
+    <div className="lw-reveal rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
       <div className="text-[11px] uppercase tracking-widest text-violet-300 mb-3">
         Sign in required
       </div>
@@ -714,7 +714,7 @@ function EmptyBalance({ principal }: { principal: string }) {
       ? `${principal.slice(0, 10)}…${principal.slice(-6)}`
       : principal;
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
+    <div className="lw-reveal rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
       <div className="text-[11px] uppercase tracking-widest text-violet-300 mb-3">
         Nothing to send yet
       </div>

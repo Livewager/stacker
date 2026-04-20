@@ -520,7 +520,7 @@ function WelcomeBanner({ balance }: { balance: bigint | null }) {
 
 function SignedOutPrompt({ onLogin, loading }: { onLogin: () => void; loading: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
+    <div className="lw-reveal rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
       <div className="text-[11px] uppercase tracking-widest text-cyan-300 mb-3">
         Wallet locked
       </div>
