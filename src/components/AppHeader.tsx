@@ -57,10 +57,26 @@ export default function AppHeader() {
   // nav resizes like viewport changes or font-loading shifts.
   const navRef = useRef<HTMLElement | null>(null);
   const tabRefs = useRef(new Map<string, HTMLAnchorElement>());
-  const [ink, setInk] = useState<{ x: number; w: number; show: boolean }>({
+  // POLISH-351 — cold-mount suppression: the inline comment below the
+  // underline span promised "spawns without a transition so it doesn't
+  // zoom in from 0,0," but the original implementation declared
+  // transform+width transitions unconditionally, so the first paint
+  // animated the underline from x=0/w=0 to the measured position
+  // (visible left-edge zoom). Track whether we've measured once; on
+  // that first pass render with transition:none so the underline
+  // appears in-place (only opacity fades, 120ms). Subsequent route
+  // changes flip the flag and get the slide+grow animation.
+  const hasMeasuredRef = useRef(false);
+  const [ink, setInk] = useState<{
+    x: number;
+    w: number;
+    show: boolean;
+    primed: boolean;
+  }>({
     x: 0,
     w: 0,
     show: false,
+    primed: false,
   });
   useLayoutEffect(() => {
     const nav = navRef.current;
@@ -72,11 +88,26 @@ export default function AppHeader() {
     }
     const navRect = nav.getBoundingClientRect();
     const tabRect = el.getBoundingClientRect();
+    const wasFirst = !hasMeasuredRef.current;
+    hasMeasuredRef.current = true;
     setInk({
       x: tabRect.left - navRect.left + 12, // matches the px-3 tab padding
       w: tabRect.width - 24,
       show: true,
+      // primed=false on the first measure → suppress transition this
+      // paint; flip on the next tick so subsequent updates animate.
+      primed: !wasFirst,
     });
+    if (wasFirst) {
+      // Arm the slide animation for route changes AFTER the first
+      // in-place paint has settled. rAF is enough — the next render
+      // will re-run this effect only if pathname changes; this
+      // just flips the `primed` flag so an unrelated re-render
+      // (resize, focus) doesn't keep the no-transition state.
+      requestAnimationFrame(() => {
+        setInk((v) => ({ ...v, primed: true }));
+      });
+    }
   }, [pathname]);
   // Reposition on viewport changes (responsive paddings, font load)
   // so the underline doesn't drift from its tab.
@@ -88,11 +119,12 @@ export default function AppHeader() {
       if (!nav || !el) return;
       const navRect = nav.getBoundingClientRect();
       const tabRect = el.getBoundingClientRect();
-      setInk({
+      setInk((v) => ({
+        ...v,
         x: tabRect.left - navRect.left + 12,
         w: tabRect.width - 24,
         show: true,
-      });
+      }));
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -221,10 +253,12 @@ export default function AppHeader() {
           })}
           {/* Magic-ink underline — one shared composited layer that
               slides between tabs via transform + width. Hidden on
-              first paint until the layout effect measures; spawns
-              without a transition so it doesn't zoom in from 0,0.
-              Respects reduced motion via the global rule in
-              style.css (transition-duration: 0.001ms). */}
+              first paint until the layout effect measures; appears
+              in-place via opacity fade (primed=false suppresses the
+              transform/width transition so it doesn't zoom in from
+              x=0/w=0). Subsequent route changes flip primed=true and
+              get the 260ms slide. Respects reduced motion via the
+              global rule in style.css (transition-duration: 0.001ms). */}
           <span
             aria-hidden
             className="absolute bottom-[-7px] h-[2px] rounded-full pointer-events-none"
@@ -233,8 +267,9 @@ export default function AppHeader() {
               transform: `translateX(${ink.x}px)`,
               width: ink.w,
               opacity: ink.show ? 1 : 0,
-              transition:
-                "transform 260ms cubic-bezier(0.2,0.8,0.2,1), width 260ms cubic-bezier(0.2,0.8,0.2,1), opacity 120ms linear",
+              transition: ink.primed
+                ? "transform 260ms cubic-bezier(0.2,0.8,0.2,1), width 260ms cubic-bezier(0.2,0.8,0.2,1), opacity 120ms linear"
+                : "opacity 120ms linear",
               willChange: "transform, width",
             }}
           />
