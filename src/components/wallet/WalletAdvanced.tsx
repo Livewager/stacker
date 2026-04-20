@@ -81,7 +81,14 @@ export function WalletAdvanced() {
               so a power user can paste "balance + canister + host"
               into a support thread in one action, instead of a
               five-tap tour through the individual copy buttons. Mirrors
-              the "Copy diagnostics" button pattern from /settings. */}
+              the "Copy diagnostics" button pattern from /settings.
+              POLISH-230 audit 2026-04-20: the `lines` array below is
+              a literal with hardcoded order — so successive support
+              pastes diff cleanly. If a future refactor switches to
+              Object.entries()/.map(), preserve the key order
+              explicitly (declare an ORDER tuple and index into it)
+              so JS engine insertion-order quirks can't drift the
+              output between calls. */}
           <div className="flex items-center justify-between -mt-1 mb-1">
             <span className="text-[10px] uppercase tracking-widest text-gray-500">
               Raw values
