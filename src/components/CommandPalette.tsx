@@ -15,7 +15,7 @@
  * and mobile-friendly positioning all come for free.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ROUTES } from "@/lib/routes";
@@ -128,6 +128,17 @@ export default function CommandPalette() {
   const reducedMotion = useReducedMotion();
   const [hintIndex, setHintIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
+  // POLISH-357 — keyboard navigation across the result list.
+  // activeIdx is the currently-highlighted row; it tracks the user's
+  // ArrowDown/Up / j/k steps without moving DOM focus off the input
+  // (so typing keeps working). The active row scrolls into view via
+  // the rowRefs map on every idx change. Reset to 0 whenever the
+  // filtered list shape changes so a stale idx never points past the
+  // end of a now-smaller list. Enter fires the *active* row, not
+  // filtered[0] — previously Enter ran the top result regardless of
+  // whether the user had paged down to a lower match.
+  const [activeIdx, setActiveIdx] = useState(0);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
 
   // Track in-session route history: every pathname change bumps the
   // current route to the head of the recent list, deduped, capped at 3.
@@ -395,6 +406,32 @@ export default function CommandPalette() {
 
   const filtered = searchList ?? emptyQueryList;
 
+  // POLISH-357 — clamp activeIdx whenever the filtered list shrinks
+  // or changes shape. Without this, typing to narrow results could
+  // leave activeIdx pointing past the end (Enter would no-op and
+  // the highlight would disappear). Reset to 0 on every filter
+  // change: the new top match is almost always what the user wants
+  // after a keystroke, and returning to the top feels right.
+  useEffect(() => {
+    setActiveIdx(0);
+  }, [filtered.length, q]);
+
+  // Scroll the active row into view whenever activeIdx changes.
+  // block: "nearest" means we only scroll when the row is actually
+  // off-screen — won't jitter when the user is navigating within
+  // the already-visible window. Respects reduced motion: the
+  // global `html.lw-reduce-motion` clamp zeroes scroll-behavior
+  // anyway, but we also pass behavior: "auto" (default) rather
+  // than "smooth" so even non-reduced-motion callers get a snap
+  // — a result-list scroll is navigation, not decoration.
+  useEffect(() => {
+    if (!open) return;
+    const id = filtered[activeIdx]?.id;
+    if (!id) return;
+    const el = rowRefs.current.get(id);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [activeIdx, filtered, open]);
+
   // Close resets the search.
   useEffect(() => {
     if (!open) setQ("");
@@ -453,9 +490,52 @@ export default function CommandPalette() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && filtered.length > 0) {
-            e.preventDefault();
-            filtered[0].run();
+          // POLISH-357 — arrow/vim/Enter navigation against the
+          // result list. Focus stays on the input the whole time
+          // (typing continues to work); activeIdx is the cursor.
+          // j/k mirror ArrowDown/ArrowUp to match the /leaderboard
+          // keyboard contract (POLISH-130). Wrap at both ends so
+          // a long list can cycle without reset. Home/End for
+          // quick jumps. Enter fires the active row, not
+          // filtered[0] — the old behavior ignored where the user
+          // had paged to.
+          if (filtered.length === 0) return;
+          switch (e.key) {
+            case "ArrowDown":
+            case "j": {
+              // j is an identifier char; guard against triggering
+              // while the user is actually typing the letter "j"
+              // in a fuzzy query. Only intercept when the input is
+              // empty — every other keystroke gets through to the
+              // onChange filter.
+              if (e.key === "j" && q.length > 0) return;
+              e.preventDefault();
+              setActiveIdx((i) => (i + 1) % filtered.length);
+              break;
+            }
+            case "ArrowUp":
+            case "k": {
+              if (e.key === "k" && q.length > 0) return;
+              e.preventDefault();
+              setActiveIdx((i) => (i - 1 + filtered.length) % filtered.length);
+              break;
+            }
+            case "Home": {
+              e.preventDefault();
+              setActiveIdx(0);
+              break;
+            }
+            case "End": {
+              e.preventDefault();
+              setActiveIdx(filtered.length - 1);
+              break;
+            }
+            case "Enter": {
+              e.preventDefault();
+              const target = filtered[activeIdx] ?? filtered[0];
+              target?.run();
+              break;
+            }
           }
         }}
         onFocus={() => setInputFocused(true)}
@@ -477,12 +557,20 @@ export default function CommandPalette() {
         {filtered.length === 0 ? (
           <li className="px-3 py-3 text-xs text-gray-500">No matches.</li>
         ) : (
-          filtered.map((c) => {
+          filtered.map((c, i) => {
             const isCurrent = c.hint === pathname;
+            const isActive = i === activeIdx;
             return (
-              <li key={c.id}>
+              <li
+                key={c.id}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(c.id, el);
+                  else rowRefs.current.delete(c.id);
+                }}
+              >
                 <button
                   onClick={c.run}
+                  onMouseEnter={() => setActiveIdx(i)}
                   aria-current={isCurrent ? "page" : undefined}
                   // POLISH-309 — hover + focus-visible bg tints were
                   // diverged (3% vs 5%) so a user moving between mouse
@@ -495,10 +583,19 @@ export default function CommandPalette() {
                   // second signal beyond bg. Using the same bg opacity
                   // plus an additive ring for keyboard is the standard
                   // "command-k" menu pattern (Linear, Raycast, GitHub).
+                  //
+                  // POLISH-357 — isActive adds the same bg-white/[0.05]
+                  // treatment for arrow/j/k navigation so the active
+                  // row always reads without requiring hover or focus
+                  // movement. Mouse-enter also syncs activeIdx so
+                  // alternating mouse+keyboard doesn't desync the
+                  // highlight.
                   className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300/50 ${
                     isCurrent
                       ? "bg-cyan-300/[0.04] cursor-default"
-                      : "hover:bg-white/[0.05] focus-visible:bg-white/[0.05]"
+                      : isActive
+                        ? "bg-white/[0.05]"
+                        : "hover:bg-white/[0.05] focus-visible:bg-white/[0.05]"
                   }`}
                 >
                   <span
