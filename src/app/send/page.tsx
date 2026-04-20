@@ -581,6 +581,88 @@ function ResultCard({
     }
     await copy(shareLine, { label: "Send receipt" });
   };
+
+  /**
+   * Composite a small 600×320 receipt into an offscreen canvas and
+   * trigger a download. Purely client-side; no server round-trip.
+   * Demo-labeled (the toast, the header, the footer) so a screenshot
+   * doesn't accidentally imply a fiat-moved receipt.
+   */
+  const onDownloadPng = () => {
+    if (typeof document === "undefined") return;
+    const W = 600;
+    const H = 320;
+    const dpr = window.devicePixelRatio || 1;
+    const canvas = document.createElement("canvas");
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    // Background: same dark tone as /send's success card so the
+    // screenshot matches the on-screen vibe.
+    ctx.fillStyle = "#0b1a2e";
+    ctx.fillRect(0, 0, W, H);
+    // Emerald accent top strip so the receipt reads as "Sent".
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, "#34d399");
+    grad.addColorStop(1, "#059669");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, 4);
+    // Card outline
+    ctx.strokeStyle = "rgba(52,211,153,0.3)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 4.5, W - 1, H - 5);
+    // Header
+    ctx.fillStyle = "#6ee7b7";
+    ctx.font = "600 11px ui-sans-serif, system-ui";
+    ctx.textBaseline = "top";
+    ctx.fillText("SENT · DEMO RECEIPT", 28, 30);
+    // Amount
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 42px ui-sans-serif, system-ui";
+    ctx.fillText(`${amountLwp} LWP`, 28, 52);
+    // Dividers + rows
+    const startY = 128;
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.beginPath();
+    ctx.moveTo(28, startY - 12);
+    ctx.lineTo(W - 28, startY - 12);
+    ctx.stroke();
+    const rows: Array<[string, string]> = [
+      ["Tx id", `#${txId}`],
+      ["To", short(to, 10, 10)],
+      ["When", new Date().toISOString().replace("T", " ").slice(0, 19) + "Z"],
+    ];
+    rows.forEach(([label, value], i) => {
+      const y = startY + i * 36;
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "600 10px ui-sans-serif, system-ui";
+      ctx.fillText(label.toUpperCase(), 28, y);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "500 15px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.fillText(value, 28, y + 14);
+    });
+    // Footer — demo label, explicit
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "500 11px ui-sans-serif, system-ui";
+    ctx.fillText(
+      "livewager.io/send · demo — no fiat moved",
+      28,
+      H - 30,
+    );
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `receipt-${txId}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, "image/png");
+  };
   return (
     <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.05] p-5 md:p-7 text-center">
       <div
@@ -609,6 +691,14 @@ function ResultCard({
           aria-label="Share or copy send receipt"
         >
           Share
+        </Button>
+        <Button
+          onClick={onDownloadPng}
+          variant="outline"
+          size="sm"
+          aria-label="Download send receipt as PNG"
+        >
+          Save receipt
         </Button>
         <Link
           href="/account"
