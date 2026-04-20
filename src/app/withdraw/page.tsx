@@ -7,6 +7,7 @@ import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
+import { useToast } from "@/components/dunk/Toast";
 
 // Mirror the deposit side's fixed rate: 10M LWP per 1 LTC.
 const LWP_PER_LTC = 10_000_000;
@@ -20,6 +21,32 @@ function short(s: string, h = 8, t = 8) {
 
 export default function WithdrawPage() {
   const { identity, principal, balance, status, login, withdrawLTC } = useWalletState();
+  const toast = useToast();
+
+  // Paste-from-clipboard handler for the destination LTC field. Some
+  // browsers (Firefox, older Safari) require user-gesture + secure
+  // context for clipboard.readText; failure falls through to a
+  // contextual toast.
+  const pasteLtcAddress = async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        throw new Error("clipboard read unavailable");
+      }
+      const text = (await navigator.clipboard.readText()).trim();
+      if (!text) {
+        toast.push({ kind: "warning", title: "Clipboard is empty" });
+        return;
+      }
+      setLtcAddress(text);
+      toast.push({ kind: "success", title: "Pasted from clipboard" });
+    } catch {
+      toast.push({
+        kind: "error",
+        title: "Paste blocked",
+        description: "Long-press the field and paste manually.",
+      });
+    }
+  };
   const [ltcAddress, setLtcAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [stage, setStage] = useState<Stage>("compose");
@@ -159,15 +186,28 @@ export default function WithdrawPage() {
               error={validation.ltcAddress}
               hint="Bech32 ('ltc1…') or legacy. The real oracle validates strictly; demo is generous."
             >
-              <input
-                type="text"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="ltc1q…"
-                value={ltcAddress}
-                onChange={(e) => setLtcAddress(e.target.value)}
-                className="w-full rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-white focus:border-rose-300/60 focus:outline-none"
-              />
+              <div className="flex items-stretch gap-2">
+                <input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="ltc1q…"
+                  value={ltcAddress}
+                  onChange={(e) => setLtcAddress(e.target.value)}
+                  className="flex-1 min-w-0 rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-white focus:border-rose-300/60 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={pasteLtcAddress}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.03] px-3 py-2.5 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/60"
+                  aria-label="Paste LTC address from clipboard"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden>
+                    <path d="M7 2a2 2 0 0 0-2 2v1H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V4a2 2 0 0 0-2-2H7Zm0 2h6v2H7V4Zm-3 4h12v8H4V8Z" />
+                  </svg>
+                  Paste
+                </button>
+              </div>
             </Field>
 
             {/* Amount. Demo burn has no ledger fee, so balanceLwp is
