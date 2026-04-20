@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import { BackToTop } from "@/components/ui/BackToTop";
+import { useCopyable } from "@/lib/clipboard";
 import {
   getHourBoard,
   getPlayerHandle,
@@ -228,6 +229,7 @@ const PODIUM_TONES = [
 
 function PodiumRow({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean }) {
   const tone = PODIUM_TONES[rank - 1];
+  const copy = useCopyable();
   return (
     <li
       className="flex items-center gap-3 px-4 py-4 transition"
@@ -241,9 +243,14 @@ function PodiumRow({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: b
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white truncate">
+          <button
+            type="button"
+            onClick={() => copy(`@${entry.handle}`, { label: "Handle" })}
+            className="text-sm font-semibold text-white truncate hover:text-cyan-200 transition text-left focus:outline-none focus-visible:text-cyan-200"
+            title="Copy handle"
+          >
             @{entry.handle}
-          </span>
+          </button>
           {entry.flag && <span aria-hidden>{entry.flag}</span>}
           {me && (
             <span className="text-[9px] uppercase tracking-widest text-cyan-300 border border-cyan-300/40 rounded-full px-1.5 py-[1px]">
@@ -271,6 +278,7 @@ function PodiumRow({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: b
 }
 
 function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean }) {
+  const copy = useCopyable();
   return (
     <li
       className={`flex items-center gap-3 px-4 py-2.5 transition ${
@@ -282,7 +290,14 @@ function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-white truncate">@{entry.handle}</span>
+          <button
+            type="button"
+            onClick={() => copy(`@${entry.handle}`, { label: "Handle" })}
+            className="text-sm text-white truncate hover:text-cyan-200 transition text-left focus:outline-none focus-visible:text-cyan-200"
+            title="Copy handle"
+          >
+            @{entry.handle}
+          </button>
           {entry.flag && <span aria-hidden className="text-sm">{entry.flag}</span>}
           {me && (
             <span className="text-[9px] uppercase tracking-widest text-cyan-300 border border-cyan-300/40 rounded-full px-1.5 py-[1px]">
