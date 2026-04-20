@@ -16,6 +16,26 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 
+// POLISH-322 — canister-timeout audit: premise-cut. /leaderboard is
+// a localStorage-backed demo board (see scoreboard.ts → readStore,
+// and readStackerBoard / readAllTimePourBest below — all three
+// data sources are window.localStorage reads, never canister
+// calls). There's no fetch to time out and no retry path to wire.
+// The existing try/catch around localStorage reads handles the
+// only real failure mode (disabled storage / private browsing) and
+// returns a sensible default.
+//
+// When the leaderboard is moved to the canister (post-MVP), the
+// error-handling shape to mirror is the POLISH-304 contract:
+//   - what happened?    ("couldn't reach the scoreboard canister")
+//   - what didn't?      ("your local best is still recorded, just
+//                        not ranked against others yet")
+//   - what next?        retry button + "last updated {relTime} ago"
+//                       indicator so stale data stays honest
+// The hourly tick loop below (setInterval 1s) already provides the
+// cadence a retry would hook into; a staleness indicator could
+// read its ref for the "last successful fetch at" anchor. Noting
+// here so the handoff is clean; not writing speculative code today.
 export default function LeaderboardPage() {
   const version = useScoreboardVersion();
   const [now, setNow] = useState<number>(() => Date.now());
