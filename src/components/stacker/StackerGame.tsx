@@ -20,6 +20,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { sfx, unlockAudio } from "@/lib/audio";
+import { haptics } from "@/lib/haptics";
 
 // ------------------------------------------------------------------
 // Configuration
@@ -191,6 +193,8 @@ export default function StackerGame() {
       lockedRight = Math.min(curRight, belowRight);
       if (lockedRight < lockedLeft) {
         // No overlap — game over.
+        sfx.over();
+        haptics.over();
         s.phase = "over";
         const newBest = Math.max(hudState.best, s.score);
         try {
@@ -261,14 +265,20 @@ export default function StackerGame() {
         width: newWidth,
         at: performance.now(),
       };
+      sfx.perfect();
+      haptics.perfect();
     } else {
       s.perfectStreak = 0;
       s.score += 10;
+      sfx.lock();
+      haptics.tick();
     }
     s.level = cur.row + 2; // next row shown to the player
 
     // Win condition.
     if (cur.row >= TOP_ROW) {
+      sfx.win();
+      haptics.win();
       s.phase = "won";
       const newBest = Math.max(hudState.best, s.score);
       try {
@@ -308,8 +318,11 @@ export default function StackerGame() {
   }, [hudState.best]);
 
   const handleTap = useCallback(() => {
+    unlockAudio();
     const s = stateRef.current;
     if (s.phase === "idle" || s.phase === "won" || s.phase === "over") {
+      sfx.ping();
+      haptics.tick();
       startRound();
       return;
     }
