@@ -424,6 +424,28 @@ function ParallaxCard({
           2,
         )}deg) rotateY(${tilt.ry.toFixed(2)}deg)`,
         transformStyle: "preserve-3d" as const,
+        // POLISH-369 audit: the two-mode transition (260ms glide on
+        // reset, none during active tracking) is the right shape.
+        // - `none` during tracking because the tilt is a pure
+        //   geometric map of cursor position (not velocity-
+        //   integrated), so any transition delay shows up as the
+        //   card *lagging* the cursor. 60Hz pointermove events land
+        //   every ~16ms; even an 80ms transition would mean the
+        //   card only reaches ~20% of each new target before the
+        //   next move rewrites it — mushy, not smooth.
+        // - 260ms glide on reset because leave is a one-shot event
+        //   and the user wants to see the card settle gracefully.
+        // The "overshoot at high velocity" concern the ticket
+        // raised doesn't apply: this is pure position→angle, not
+        // a spring. Max angle is ±6° at card edges by construction.
+        // The "laggy at low velocity" concern also doesn't apply:
+        // there's no damping term to lag against.
+        // One theoretical cost: pointer-enter at a non-center
+        // position produces a 1-frame snap from 0° to wherever
+        // the cursor is. Imperceptible at 6° max angle over 16ms,
+        // and the common case is cursor-trail continuity from
+        // just outside the card (so the enter position is near 0
+        // anyway). Not worth adding justEntered state to smooth.
         transition:
           tilt.rx === 0 && tilt.ry === 0
             ? "transform 260ms cubic-bezier(0.2,0.8,0.2,1)"
