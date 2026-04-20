@@ -311,7 +311,7 @@ export default function SettingsPage() {
           >
             <Toggle
               label="Sound effects"
-              description="Pour splash, lock thunk, zone ding, tx success chimes."
+              description="Slider lock thunk, perfect-stack chime, tx success tones."
               checked={sound}
               onChange={(next) => {
                 setSound(next);
@@ -472,7 +472,7 @@ export default function SettingsPage() {
             </div>
             <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-[11px] text-gray-400 leading-snug">
               {sessionCapUsd === null ? (
-                <>No cap set. The pour game will let you play as many rounds as your balance allows.</>
+                <>No cap set. Stacker will let you play as many rounds as your balance allows.</>
               ) : (
                 <>
                   Current cap:{" "}
@@ -584,8 +584,8 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-white/5">
               <div className="text-sm text-gray-300 max-w-md">
                 Wipe session state only — session cap, recent
-                recipients, last-played, last auth stamp, tilt
-                calibration. Your preferences stay.
+                recipients, last-played, last auth stamp. Your
+                preferences stay.
               </div>
               <button
                 onClick={onClearSession}
