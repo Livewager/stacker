@@ -121,18 +121,40 @@ export function BottomNav() {
     return null;
   }
 
-  // Short 6ms vibrate on any tab tap. Gated by the haptics pref so
-  // users who disabled vibration in Settings stay quiet. Also skipped
-  // when the tap lands on the already-active tab — no "ping" for a
-  // no-op navigation. Tolerates missing Vibration API silently.
-  const tapFeedback = (active: boolean) => {
+  // POLISH-354 — tap-feedback pair. Haptic and SR announcement both
+  // fire from the same onClick synchronously so a VoiceOver user who
+  // taps a tab gets the same "tap received → going to X" beat as a
+  // sighted user with haptics on. Without the announcement, the
+  // haptic pulse fires but nothing in the AT surface confirms *where*
+  // we're going until the new page hydrates and focus coincidentally
+  // lands on something labeled. The sr-only span below is wired to
+  // this state via aria-live="polite".
+  //
+  // No-op case: tapping the already-active tab fires neither — no
+  // haptic ping, no "Navigating to Wallet" announcement when you're
+  // already on /wallet. That matches sighted behavior (no visible
+  // transition) and avoids VO chatter on accidental re-taps.
+  const [announce, setAnnounce] = useState("");
+  const tapFeedback = (active: boolean, label: string) => {
     if (active) return;
-    if (!haptics) return;
-    try {
-      navigator.vibrate?.(6);
-    } catch {
-      /* Safari + iOS don't expose the Vibration API; that's fine. */
+    if (haptics) {
+      try {
+        navigator.vibrate?.(6);
+      } catch {
+        /* Safari + iOS don't expose the Vibration API; that's fine. */
+      }
     }
+    // Always announce, even if haptics are off — the announcement is
+    // a separate accessibility affordance and not gated by the haptic
+    // pref. Bump with a "." suffix if the same label fires twice
+    // (same-destination re-taps from a different screen) so the
+    // aria-live region re-announces; otherwise setting the same
+    // string is a no-op and SR stays silent.
+    setAnnounce((prev) =>
+      prev === `Navigating to ${label}`
+        ? `Navigating to ${label}.`
+        : `Navigating to ${label}`,
+    );
   };
 
   return (
@@ -171,7 +193,7 @@ export function BottomNav() {
                 <Link
                   href={it.href}
                   aria-current={active ? "page" : undefined}
-                  onClick={() => tapFeedback(active)}
+                  onClick={() => tapFeedback(active, it.label)}
                   className={[
                     "flex flex-col items-center justify-center gap-0.5 h-14 text-[10px] uppercase tracking-widest transition",
                     active ? "text-cyan-300" : "text-gray-400 hover:text-white",
@@ -206,6 +228,17 @@ export function BottomNav() {
             );
           })}
         </ul>
+        {/* POLISH-354 live-region. Sits inside the nav landmark so the
+            announcement is scoped to mobile-nav transitions (a desktop
+            SR user won't be confused by it — the nav is md:hidden
+            anyway). aria-live="polite" queues after any in-progress
+            speech; role="status" reinforces the polite semantics for
+            VoiceOver rotor. Announcement text is set synchronously in
+            the tap handler so the pulse + announcement fire as one
+            beat, not two. */}
+        <span role="status" aria-live="polite" className="sr-only">
+          {announce}
+        </span>
       </nav>
     </>
   );
