@@ -39,6 +39,9 @@ function isActive(pathname: string, href: string): boolean {
 
 export default function AppHeader() {
   const pathname = usePathname() || "";
+  // Mobile breadcrumb: first matching tab wins. Desktop shows the
+  // full tab strip so this label stays hidden at md+.
+  const activeTab = TABS.find((t) => isActive(pathname, t.href));
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 md:px-8">
@@ -57,6 +60,22 @@ export default function AppHeader() {
             style={{ height: 40, width: "auto", objectFit: "contain" }}
           />
         </Link>
+
+        {/* Mobile-only active-tab breadcrumb. Slash glyph + cyan label
+            so the user always knows where they are without a visible
+            tab strip. Desktop hides it (md:hidden) since the full
+            tab row carries the same information. */}
+        {activeTab && (
+          <div
+            className="md:hidden flex items-baseline gap-1.5 text-[11px] uppercase tracking-widest min-w-0 truncate"
+            aria-hidden
+          >
+            <span className="text-gray-600">/</span>
+            <span className="text-cyan-300 font-semibold truncate">
+              {activeTab.label}
+            </span>
+          </div>
+        )}
 
         <nav
           aria-label="Primary"
