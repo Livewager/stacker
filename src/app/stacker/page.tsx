@@ -485,13 +485,35 @@ function HeroTower() {
   useEffect(() => {
     if (reduced) return;
     let raf = 0;
-    const start = performance.now();
+    let start = performance.now();
+    // Virtual clock: accumulates elapsed time that the animation
+    // should see. Decouples t from wall-clock so we can pause
+    // cleanly when the tab hides and resume without a jump.
+    let accumulated = 0;
+    let hiddenAt = 0;
     const tick = () => {
-      setT(performance.now() - start);
+      setT(accumulated + (performance.now() - start));
       raf = requestAnimationFrame(tick);
     };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        hiddenAt = performance.now();
+        // Lock in the elapsed time so resuming continues from here.
+        accumulated += hiddenAt - start;
+      } else if (raf === 0) {
+        // Resume: reset the window clock; accumulated holds history.
+        start = performance.now();
+        raf = requestAnimationFrame(tick);
+      }
+    };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [reduced]);
 
   // When reduced motion, freeze at a frame that shows the finished
