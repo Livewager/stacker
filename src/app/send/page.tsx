@@ -620,19 +620,37 @@ function ResultCard({
   onAgain: () => void;
 }) {
   const copy = useCopyable();
-  // "Sent N LWP · tx #X · livewager.io" — fixed order so screenshots
-  // stay legible. Native share sheet when available (mobile + some
-  // desktop browsers); clipboard fallback everywhere else. Never
-  // references the recipient — that's their business, not the
-  // screenshotter's.
-  const shareLine = `Sent ${amountLwp} LWP · tx #${txId} · livewager.io`;
+  // "Sent N LWP · tx #X" — fixed order so screenshots stay
+  // legible. Never references the recipient — that's their
+  // business, not the screenshotter's.
+  //
+  // Share payload carries a `url` (origin + /account) alongside
+  // the text so platforms that support it (iOS / Android share
+  // sheets, most SMS apps) render a live tappable link instead
+  // of a dead "livewager.io" token in plain text. The recipient
+  // can click through to the activity feed and see the tx land.
+  // Fallback clipboard path copies the same two lines so the
+  // shape is consistent across hosts.
+  const shareText = `Sent ${amountLwp} LWP · tx #${txId}`;
+  const shareUrl = (() => {
+    if (typeof window === "undefined") return "https://livewager.io/account";
+    try {
+      return new URL("/account", window.location.origin).toString();
+    } catch {
+      return "https://livewager.io/account";
+    }
+  })();
   const onShare = async () => {
     const nav = typeof navigator !== "undefined" ? navigator : null;
     // Web Share API requires a user gesture and a secure context;
     // safe to feature-test at call time.
     if (nav && typeof nav.share === "function") {
       try {
-        await nav.share({ title: "Livewager", text: shareLine });
+        await nav.share({
+          title: "Livewager",
+          text: shareText,
+          url: shareUrl,
+        });
         return;
       } catch {
         // User cancelled or share rejected — silently fall through to
@@ -640,7 +658,7 @@ function ResultCard({
         // useful.
       }
     }
-    await copy(shareLine, { label: "Send receipt" });
+    await copy(`${shareText}\n${shareUrl}`, { label: "Send receipt" });
   };
 
   /**
