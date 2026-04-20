@@ -24,6 +24,34 @@ function cn(...parts: Array<string | false | undefined>): string {
   return parts.filter(Boolean).join(" ");
 }
 
+// Pulse speed audit (POLISH-279). Tailwind default is 2s cubic-
+// bezier(0.4, 0, 0.6, 1) opacity 1 → 0.5 → 1. Considered three
+// changes:
+//
+//   (A) slow to 2500–3000ms to reduce the "blink" read on fast
+//       route swaps. Downside: feels sluggish during long waits,
+//       which is when the skeleton actually needs to signal
+//       "working" — a slow pulse reads as "stalled, nothing's
+//       happening."
+//   (B) minimum-display time (e.g. 400ms) so fast mounts don't
+//       flicker. Downside: adds a setState timer to every
+//       skeleton call site + delays the paint-to-content handoff
+//       on otherwise-instant renders. Observable latency cost
+//       > observable jank win.
+//   (C) cross-fade out on unmount. Downside: needs React exit-
+//       animation state that pulls framer-motion in, or a
+//       mutation-observer hack. Wrong shape of dependency
+//       for a loading shimmer.
+//
+// Cut all three. The 2s default is industry-standard for a
+// reason — it reads correctly during waits of 500ms–5s+ (the
+// realistic range). The sub-500ms "blink" is a real sensation
+// but the fixes trade off against the common case. Revisit if
+// a user actually complains, not speculatively. Reduced-motion
+// + the html.lw-reduce-motion mirror already freeze the pulse
+// for users who opt out — the static dim variant is documented
+// in style.css alongside the @media (prefers-reduced-motion)
+// rule.
 export function SkeletonBlock({
   className,
   ...rest
