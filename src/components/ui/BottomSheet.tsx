@@ -101,6 +101,15 @@ export function BottomSheet({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
       window.clearTimeout(t);
+      // Focus-return contract (POLISH-264 audit). This cleanup runs
+      // on every close path — Escape handler, scrim click, drag-
+      // dismiss, programmatic `open=false` — because all four end
+      // up flipping `open` and invalidating the effect. So every
+      // path converges here and restores focus on the trigger the
+      // user launched the sheet from. Don't add a close-path-
+      // specific restoration; the shared cleanup is the correct
+      // single owner.
+      //
       // Only restore focus if the original trigger is still in the
       // DOM. Otherwise silently drop — focusing a detached element
       // logs a React warning in dev and does nothing in prod. Skip
@@ -152,6 +161,28 @@ export function BottomSheet({
     }
 
     if (dy > DRAG_DISMISS_PX || velocity > DRAG_VELOCITY_THRESHOLD) {
+      // POLISH-264 finding. The close-path audit (Escape, scrim,
+      // drag) confirmed all three route through onClose() → parent
+      // flips `open` → the effect cleanup restores focus on the
+      // previously-focused element. Drag-dismiss is NOT a distinct
+      // path; focus-return works identically.
+      //
+      // The real drag-only gap the audit found: when onClose() fires
+      // from inside endDrag, React unmounts on the next render (we
+      // early-return null on !open at line 120) while the user's
+      // finger is still mid-gesture. The 160ms snap-close transition
+      // can't run on a removed element, so the last visible frame is
+      // whatever dragY was at release — the sheet appears to stop
+      // mid-drag and blink out, not slide away. To keep the exit
+      // continuous, push dragY to just past the viewport bottom so
+      // the final paint before unmount shows the sheet off-screen.
+      // transitionMs will still be 0 (dragStart.current is cleared
+      // above), so this is an instant jump on the rendered frame —
+      // but visually that frame already reads as "the sheet is
+      // gone" which is what we want the user to see.
+      if (typeof window !== "undefined") {
+        setDragY(window.innerHeight);
+      }
       onClose();
     } else {
       setDragY(0);
