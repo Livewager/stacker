@@ -35,8 +35,18 @@ export interface ToastInput {
   description?: string;
   /** Milliseconds before auto-dismiss. 0 = sticky. Default 4500. */
   ttlMs?: number;
-  /** Optional action button. */
-  action?: { label: string; onClick: () => void };
+  /**
+   * Optional action button. Common pattern: undo a reversible action.
+   * `dismissOnClick` defaults to true — after the user taps, the
+   * toast goes away, matching the "I took the undo, done" mental
+   * model. Pass false for actions that should keep the toast open
+   * (multi-step flows).
+   */
+  action?: {
+    label: string;
+    onClick: () => void;
+    dismissOnClick?: boolean;
+  };
 }
 
 interface ToastEntry extends Required<Pick<ToastInput, "title">> {
@@ -431,7 +441,15 @@ function ToastCard({
           )}
           {t.action && (
             <button
-              onClick={t.action.onClick}
+              onClick={() => {
+                t.action?.onClick();
+                // Default: dismiss after the action fires. Callers
+                // that want to keep the toast open (e.g. multi-step
+                // flows) pass dismissOnClick: false. The "?? true"
+                // preserves backwards-compatible behavior for any
+                // pre-existing callers that don't set the flag.
+                if (t.action?.dismissOnClick ?? true) onDismiss();
+              }}
               className="mt-2 text-[11px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 rounded px-1 -mx-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1a2e]"
             >
               {t.action.label}

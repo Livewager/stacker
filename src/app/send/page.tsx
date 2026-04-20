@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
 import { PrincipalScanner } from "@/components/send/PrincipalScanner";
 import { useCopyable } from "@/lib/clipboard";
+import { useToast } from "@/components/dunk/Toast";
 import {
   listRecentRecipients,
   rememberRecipient,
@@ -30,6 +31,7 @@ const short = (s: string, head = 10, tail = 10) =>
 
 export default function SendPage() {
   const { identity, principal, balance, status, login, transfer } = useWalletState();
+  const toast = useToast();
 
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
@@ -262,8 +264,29 @@ export default function SendPage() {
                       <button
                         type="button"
                         onClick={() => {
+                          // Capture the full row before we wipe it so
+                          // the Undo path can re-insert it with its
+                          // original label (if any). rememberRecipient
+                          // bumps ts on re-add, which is fine — the
+                          // user's recent intent is the new timestamp.
+                          const snapshot = r;
                           forgetRecipient(r.principal);
                           setRecents(listRecentRecipients());
+                          toast.push({
+                            kind: "info",
+                            title: "Recipient forgotten",
+                            description: `@${short(r.principal, 6, 4)} removed from recents`,
+                            action: {
+                              label: "Undo",
+                              onClick: () => {
+                                rememberRecipient(
+                                  snapshot.principal,
+                                  snapshot.label,
+                                );
+                                setRecents(listRecentRecipients());
+                              },
+                            },
+                          });
                         }}
                         className="px-2 py-1 text-gray-500 hover:text-red-300 transition focus:outline-none focus-visible:text-red-300"
                         aria-label={`Forget recipient ${r.principal}`}
