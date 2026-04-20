@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { WalletProvider } from "@/components/dunk/WalletContext";
-import { ToastHost } from "@/components/dunk/Toast";
 
 const TITLE = "LiveWager · Dunk — Tilt. Pour. Don't spill.";
 const DESC =
@@ -46,9 +44,7 @@ export default function DunkLayout({ children }: { children: React.ReactNode }) 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
-      <ToastHost>
-        <WalletProvider>{children}</WalletProvider>
-      </ToastHost>
+      {children}
     </>
   );
 }

@@ -18,19 +18,28 @@ export type { PointsLedgerOpts } from "./actor";
 export { getAuthClient, currentIdentity, loginWithII, logout } from "./auth";
 export { formatLWP, parseLWP, LWP_DECIMALS } from "./format";
 export { idlFactory } from "./idl";
+export { decodeBlock, eventInvolvesOwner, relTimeFromNs } from "./blocks";
+export type { BlockEvent, BlockEventKind, Principalish } from "./blocks";
 export type {
   Account,
   Allowance,
   AllowanceArgs,
   ApproveArgs,
   ApproveError,
+  ArchivedBlocks,
+  BlockWithId,
   BurnArgs,
   BurnError,
+  DataCertificate,
+  GetBlocksRequest,
+  GetBlocksResult,
+  ICRC3Value,
   Memo,
   MetadataValue,
   MintArgs,
   MintError,
   PointsLedgerService,
+  SupportedBlockType,
   SupportedStandard,
   TransferArg,
   TransferError,

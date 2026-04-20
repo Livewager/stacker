@@ -138,6 +138,57 @@ const BurnError = IDL.Variant({
   InsufficientFunds: IDL.Record({ balance: IDL.Nat }),
 });
 
+// ICRC-3 block value. Recursive: a block can contain arrays / maps of
+// more values. IDL.Rec lets us forward-declare the self-reference.
+const ICRC3Value = IDL.Rec();
+ICRC3Value.fill(
+  IDL.Variant({
+    Blob: IDL.Vec(IDL.Nat8),
+    Text: IDL.Text,
+    Nat: IDL.Nat,
+    Int: IDL.Int,
+    Array: IDL.Vec(ICRC3Value),
+    Map: IDL.Vec(IDL.Tuple(IDL.Text, ICRC3Value)),
+  }),
+);
+
+const GetBlocksRequest = IDL.Record({
+  start: IDL.Nat,
+  length: IDL.Nat,
+});
+
+const BlockWithId = IDL.Record({
+  id: IDL.Nat,
+  block: ICRC3Value,
+});
+
+// Archived blocks — empty in our current canister but the candid shape
+// must still match. We mirror the canonical ICRC-3 reference.
+const ArchivedBlocks = IDL.Record({
+  args: IDL.Vec(GetBlocksRequest),
+  callback: IDL.Func(
+    [IDL.Vec(GetBlocksRequest)],
+    [IDL.Record({ blocks: IDL.Vec(BlockWithId) })],
+    ["query"],
+  ),
+});
+
+const GetBlocksResult = IDL.Record({
+  log_length: IDL.Nat,
+  blocks: IDL.Vec(BlockWithId),
+  archived_blocks: IDL.Vec(ArchivedBlocks),
+});
+
+const SupportedBlockType = IDL.Record({
+  block_type: IDL.Text,
+  url: IDL.Text,
+});
+
+const DataCertificate = IDL.Record({
+  certificate: IDL.Vec(IDL.Nat8),
+  hash_tree: IDL.Vec(IDL.Nat8),
+});
+
 export const idlFactory: InterfaceFactory = () =>
   IDL.Service({
     // Metadata queries
@@ -185,9 +236,17 @@ export const idlFactory: InterfaceFactory = () =>
       [],
     ),
 
+    // ICRC-3 block log
+    icrc3_get_blocks: IDL.Func([IDL.Vec(GetBlocksRequest)], [GetBlocksResult], ["query"]),
+    icrc3_supported_block_types: IDL.Func([], [IDL.Vec(SupportedBlockType)], ["query"]),
+    icrc3_log_length: IDL.Func([], [IDL.Nat], ["query"]),
+    icrc3_tip_hash: IDL.Func([], [IDL.Vec(IDL.Nat8)], ["query"]),
+    icrc3_get_tip_certificate: IDL.Func([], [IDL.Opt(DataCertificate)], ["query"]),
+
     // Canister meta
     canister_principal: IDL.Func([], [IDL.Principal], ["query"]),
     version: IDL.Func([], [IDL.Text], ["query"]),
+    tx_counter: IDL.Func([], [IDL.Nat], ["query"]),
   });
 
 export type { InterfaceFactory } from "@dfinity/candid/lib/cjs/idl";

@@ -1,6 +1,7 @@
 import "@/css/satoshi.css";
 import "@/css/style.css";
 import type { Metadata } from "next";
+import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "Dunk",
@@ -16,8 +17,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, user-scalable=no" />
       </head>
       <body className="bg-background text-white antialiased">
-        {/* Chrome removed — /dunk has its own in-page nav and footer. */}
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

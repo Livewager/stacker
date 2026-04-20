@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { WalletProvider } from "@/components/dunk/WalletContext";
-import { ToastHost } from "@/components/dunk/Toast";
 
 export const metadata: Metadata = {
   title: "Stacker — Livewager",
@@ -8,9 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function StackerLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ToastHost>
-      <WalletProvider>{children}</WalletProvider>
-    </ToastHost>
-  );
+  return <>{children}</>;
 }

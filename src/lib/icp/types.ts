@@ -152,4 +152,49 @@ export interface PointsLedgerService {
 
   canister_principal: () => Promise<Principal>;
   version: () => Promise<string>;
+  tx_counter: () => Promise<bigint>;
+
+  // ICRC-3 block log
+  icrc3_get_blocks: (reqs: GetBlocksRequest[]) => Promise<GetBlocksResult>;
+  icrc3_supported_block_types: () => Promise<SupportedBlockType[]>;
+  icrc3_log_length: () => Promise<bigint>;
+  icrc3_tip_hash: () => Promise<Uint8Array | number[]>;
+  icrc3_get_tip_certificate: () => Promise<[] | [DataCertificate]>;
+}
+
+// ICRC-3 block value is recursive.
+export type ICRC3Value =
+  | { Blob: Uint8Array | number[] }
+  | { Text: string }
+  | { Nat: bigint }
+  | { Int: bigint }
+  | { Array: ICRC3Value[] }
+  | { Map: Array<[string, ICRC3Value]> };
+
+export interface GetBlocksRequest {
+  start: bigint;
+  length: bigint;
+}
+export interface BlockWithId {
+  id: bigint;
+  block: ICRC3Value;
+}
+export interface ArchivedBlocks {
+  args: GetBlocksRequest[];
+  // Candid Func ref — agent-js decodes to a [Principal, string] tuple.
+  // We don't invoke it from client code yet.
+  callback: [Principal, string];
+}
+export interface GetBlocksResult {
+  log_length: bigint;
+  blocks: BlockWithId[];
+  archived_blocks: ArchivedBlocks[];
+}
+export interface SupportedBlockType {
+  block_type: string;
+  url: string;
+}
+export interface DataCertificate {
+  certificate: Uint8Array | number[];
+  hash_tree: Uint8Array | number[];
 }
