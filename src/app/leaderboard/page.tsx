@@ -239,16 +239,26 @@ function LiveHourPanel({
             const active = tab === g;
             const label =
               g === "dunk" ? "Dunk" : g === "pour" ? "Pour" : "Stacker";
+            // Active tone matches each game's hero accent so a peripheral
+            // glance at the tab strip conveys both "which game" and
+            // "which one's selected" without reading labels.
+            const activeTone =
+              g === "dunk"
+                ? "text-cyan-200"
+                : g === "pour"
+                  ? "text-violet-200"
+                  : "text-orange-200";
             return (
               <button
                 key={g}
                 role="tab"
                 aria-selected={active}
                 onClick={() => setTab(g)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                  active ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  active ? `bg-white/10 ${activeTone}` : "text-gray-400 hover:text-white"
                 }`}
               >
+                <GameTabIcon game={g} className="h-3.5 w-3.5" />
                 {label}
               </button>
             );
@@ -757,4 +767,64 @@ function readAllTimePourBest(): number {
   } catch {
     return 0;
   }
+}
+
+/**
+ * Monochrome game glyphs for the tab strip. currentColor so the tab's
+ * active/inactive tone just propagates. Sized by the caller via
+ * className.
+ *   - dunk:    simple hoop-arc silhouette (rim + net)
+ *   - pour:    droplet
+ *   - stacker: three stacked bars, uneven widths (hints at chop-off)
+ */
+function GameTabIcon({
+  game,
+  className,
+}: {
+  game: "dunk" | "pour" | "stacker";
+  className?: string;
+}) {
+  if (game === "dunk") {
+    return (
+      <svg
+        viewBox="0 0 16 16"
+        className={className}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        <path d="M3 5h10" />
+        <path d="M4 5l1.2 6.5a1 1 0 0 0 1 .85h3.6a1 1 0 0 0 1-.85L12 5" />
+        <path d="M7 7.5v4.5M9 7.5v4.5M5.8 9.5h4.4" />
+      </svg>
+    );
+  }
+  if (game === "pour") {
+    return (
+      <svg
+        viewBox="0 0 16 16"
+        className={className}
+        fill="currentColor"
+        aria-hidden
+      >
+        <path d="M8 1.5c.35 0 .67.18.86.48 1.2 1.94 3.64 5.16 3.64 7.52a4.5 4.5 0 1 1-9 0c0-2.36 2.44-5.58 3.64-7.52A1 1 0 0 1 8 1.5Zm0 2.3c-1.03 1.72-2.5 4.23-2.5 5.7a2.5 2.5 0 1 0 5 0c0-1.47-1.47-3.98-2.5-5.7Z" />
+      </svg>
+    );
+  }
+  // stacker — three stacked bars, uneven widths (chop-off hint)
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className={className}
+      fill="currentColor"
+      aria-hidden
+    >
+      <rect x="3" y="11" width="10" height="2.2" rx="0.4" />
+      <rect x="4" y="7.5" width="8" height="2.2" rx="0.4" opacity="0.85" />
+      <rect x="5.5" y="4" width="5" height="2.2" rx="0.4" opacity="0.7" />
+    </svg>
+  );
 }
