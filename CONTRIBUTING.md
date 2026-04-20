@@ -70,13 +70,16 @@ The suite is intentionally lean — pure-JS `node:test` files in
 mirrors the contract under test inline at the top, so a refactor has
 to update the mirror in lockstep with the source.
 
-Coverage today (all 61 tests pass in ~50ms):
+Coverage today (all 107 tests pass in ~55ms):
 
 - `prefs.contract` — useLocalPref storage round-trips
 - `clipboard.contract` — useCopyable happy path + fallback
-- `ltc.contract` — LTC address validator
+- `ltc.contract` — LTC address validator + kind discriminator
 - `activityFilter.contract` — ActivityFeed kind filter
 - `principal.contract` — shortenPrincipal edge cases
+- `txIdDisplay.contract` — bigint → string shortening (tx id column)
+- `formatLWP.contract` — base-unit bigint → display string
+- `parseLWP.contract` — display string → base-unit bigint
 
 Add new coverage when you find a pure helper worth pinning. Skip it
 for component-heavy surfaces — the 10-route smoke plus manual QA is
@@ -102,6 +105,12 @@ keeps each commit reviewable in isolation.
 
 ## Scope cuts that keep ticking fast
 
+The golden rule: every tick should be reviewable in isolation. If a
+diff spans three unrelated areas, you've bundled three tickets into
+one PR and any reviewer needs to hold three contexts at once. Cut.
+
+### The recurring rules
+
 - **One focused unit per tick.** If a finding spans multiple areas
   (accessibility audits tend to), pick the top 3–4 and queue the rest.
 - **Don't swap libraries.** The stack (Next 15, React 19 RC, Tailwind,
@@ -115,6 +124,74 @@ keeps each commit reviewable in isolation.
   canonical pattern.
 - **Demo labeling stays.** Every stubbed money flow (LTC deposits,
   withdrawals, buy LWP) must still read "demo" to the user.
+
+### Worked examples
+
+Real cuts from the polish wave, so future-you has a reference when
+the same shape shows up. If a tick looks like one of these, cut it.
+
+**POLISH-232 — tickets can be wrong about the axis.**
+Ticket: "Mobile: Toast stack vertical offset from safe-area-inset-
+bottom." Turned out toasts already stacked from the bottom correctly;
+the actual clipping was on the top-right edge under iOS Safari's
+status bar and the rotated-landscape notch. Cut: fix the real axis
+(`max(1rem, env(safe-area-inset-top|right))`), pin the reason in an
+inline comment, close the ticket. Don't invent a second ticket to
+"address bottom" because the ticket title said bottom.
+
+**POLISH-242 — "perf" tickets that have already been fixed.**
+Ticket: "Perf: eager Principal.fromText on every ActivityFeed poll."
+The code already memoized via `useMemo([ownerBytes])`. Measured with
+`performance.now()` anyway (0.95 μs/call, 1,000-row page) so the
+close isn't handwavy. Cut: add a one-line audit comment pinning the
+real rationale (identity stability for the `useEffect` dep array,
+not per-call cost) so the next reader doesn't retry the "fix."
+
+**POLISH-247 — empty-state tickets that the code already handles.**
+Ticket: "Empty state: /send compose when signed out → clearer sign-
+in CTA." `SignInGate` was already wrapping the page. Cut: add a
+three-way consistency note at the top of `/send/page.tsx` pointing
+to the identical shape on `/withdraw` and `/wallet`, so the next
+person diffing the three routes doesn't propose consolidating them
+(they have different copy / tone on purpose).
+
+**POLISH-243 — consolidation that would have flattened distinctions.**
+Ticket: "Visual consistency: /deposit rose/cyan/orange tabs match
+other tab strips." Three tab strips existed (/deposit, /leaderboard,
+ActivityFeed). Each used a different accent for a reason — deposit
+tabs map to rails (LTC/card/bank), leaderboard tabs to game kind,
+ActivityFeed filters to tx kind. Cut: add a focus ring to /deposit
+(the only real gap) and leave the accent divergence alone. Resist
+the refactor that would produce one shared `<TabStrip>` with six
+props to re-encode the three semantics.
+
+**POLISH-248 — don't add a new pref when an existing one works.**
+Ticket: "/stacker in-game settings gear." Tempting to add a new
+`stackerAudio`/`stackerHaptics` pair to avoid the game sharing
+prefs with the rest of the app. Cut: reuse the existing
+`PREF_KEYS.sound` and `PREF_KEYS.haptics` — the sfx + haptics libs
+re-read localStorage per call, so flipping a shared pref mid-round
+still lands on the next SFX invocation. Zero new storage keys, zero
+migration surface, same UX.
+
+### The anti-patterns to watch for
+
+- Writing a `<Foo2>` because `<Foo>` doesn't quite fit. Either
+  extend `<Foo>` with a prop, or accept the two-component cost —
+  rewriting callers to migrate later is cheaper than the wrong
+  abstraction today.
+- Adding a fallback branch for "what if the user is offline during
+  X." If we don't have a signal, the `online`/`offline` events are
+  the boundary — trust them (see POLISH-212 for the real pattern).
+- Catching an error "just in case." Only catch when you have
+  different UI for the failure vs the success. Bare `try/catch` that
+  logs and re-throws is noise.
+- Adding a `useLayoutEffect` when `useEffect` would work. LE blocks
+  paint; use it only when you're measuring layout before the user
+  sees a frame.
+- Naming something `utils.ts`. Name the module by what it does
+  (`ltc.ts`, `icp/format.ts`, `prefs.ts`). `utils.ts` becomes a
+  junk drawer in four commits.
 
 ## Useful scripts
 
