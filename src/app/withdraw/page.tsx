@@ -8,6 +8,7 @@ import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
 import { useToast } from "@/components/dunk/Toast";
+import { validateLtcAddress } from "@/lib/ltc";
 
 // Mirror the deposit side's fixed rate: 10M LWP per 1 LTC.
 const LWP_PER_LTC = 10_000_000;
@@ -58,15 +59,17 @@ export default function WithdrawPage() {
     ltcAmount: number;
   } | null>(null);
 
+  // Structural LTC address check — shared with /deposit and anywhere
+  // else we surface a destination field. Only flags format errors;
+  // the real oracle still runs a cryptographic checksum before
+  // broadcast, which we can't do without adding base58 + bech32 libs
+  // to the client bundle.
+  const addrCheck = useMemo(() => validateLtcAddress(ltcAddress), [ltcAddress]);
+
   // --- validation ---
   const validation = useMemo(() => {
     const errors: Record<string, string> = {};
-
-    const a = ltcAddress.trim();
-    if (!a) errors.ltcAddress = "Required";
-    else if (a.length < 25 || a.length > 90) errors.ltcAddress = "Looks too short / long";
-    else if (!/^[a-km-zA-HJ-NP-Z0-9]+$|^ltc1[0-9a-z]+$/.test(a))
-      errors.ltcAddress = "Contains characters an LTC address shouldn't";
+    if (!addrCheck.ok) errors.ltcAddress = addrCheck.reason || "Invalid";
 
     const n = Number(amount);
     if (!amount) {
@@ -81,7 +84,7 @@ export default function WithdrawPage() {
     }
 
     return errors;
-  }, [ltcAddress, amount, balance]);
+  }, [addrCheck, amount, balance]);
   const formValid = Object.keys(validation).length === 0;
 
   // LTC estimate: amount (LWP) / LWP_PER_LTC.
@@ -184,7 +187,15 @@ export default function WithdrawPage() {
             <Field
               label="Destination LTC address"
               error={validation.ltcAddress}
-              hint="Bech32 ('ltc1…') or legacy. The real oracle validates strictly; demo is generous."
+              hint={
+                addrCheck.ok && addrCheck.kind
+                  ? addrCheck.kind === "bech32"
+                    ? "Bech32 address detected (ltc1…) — recommended."
+                    : addrCheck.kind === "p2sh"
+                      ? "Legacy P2SH address detected (M… / 3…)."
+                      : "Legacy address detected (L…)."
+                  : "Bech32 ('ltc1…') or legacy (L…/M…). Real oracle validates strictly; demo is generous."
+              }
             >
               <div className="flex items-stretch gap-2">
                 <input
@@ -194,7 +205,13 @@ export default function WithdrawPage() {
                   placeholder="ltc1q…"
                   value={ltcAddress}
                   onChange={(e) => setLtcAddress(e.target.value)}
-                  className="flex-1 min-w-0 rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-white focus:border-rose-300/60 focus:outline-none"
+                  className={`flex-1 min-w-0 rounded-md bg-black/40 border px-3 py-2.5 text-sm font-mono text-white focus:outline-none ${
+                    ltcAddress.length === 0
+                      ? "border-white/10 focus:border-rose-300/60"
+                      : addrCheck.ok
+                        ? "border-emerald-300/40 focus:border-emerald-300/70"
+                        : "border-red-400/40 focus:border-red-300/70"
+                  }`}
                 />
                 <button
                   type="button"
