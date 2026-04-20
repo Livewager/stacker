@@ -564,6 +564,54 @@ encode real tiers. Before "consolidating" one of these, check here:
   with landing eyebrows for visual weight. If a new route needs
   an eyebrow: pick utility vs landing from the surface type, not
   from the tone you want. Don't invent a third shape.
+- **`.sr-only` has five legitimate roles** (audited POLISH-361).
+  The app uses Tailwind's `.sr-only` utility only — zero
+  hand-rolled `visually-hidden` / `clip: rect(...)` strays across
+  31 uses. Reach for sr-only when one of these applies; otherwise
+  prefer `aria-label` (simpler, no DOM node):
+  1. **Input `<label>` when the visible affordance replaces the
+     label text** — e.g. DropWallet `<label htmlFor="buy-amt"
+     className="sr-only">Amount</label>` when the input already
+     has a visible numeric label adjacent. Keeps `htmlFor` →
+     `id` wiring correct for AT without duplicating text.
+  2. **aria-live announcement region** — `<span className="sr-only"
+     aria-live="polite" aria-atomic="true">`. Used for ephemeral
+     updates that need SR attention without a visible toast or
+     banner: wallet balance change (POLISH-318), deposit stage
+     (POLISH-228), memo-counter approaching cap (POLISH-89),
+     BottomNav route-change announcement (POLISH-354). Always
+     paired with aria-atomic when the whole message should be
+     re-read on update.
+  3. **aria-describedby hint** — `<span id="field-hint"
+     className="sr-only">...</span>` with a matching
+     `aria-describedby="field-hint"` on the input. Used when the
+     visible affordance doesn't carry enough context (validation
+     rule, format expectation) and an aria-label on the input
+     itself would be too long / would step on the visible label.
+  4. **Supplemental text next to an aria-hidden visual** — e.g.
+     CommandPalette's "here" pill is `aria-hidden` (redundant
+     with aria-current) and an `sr-only ", current page"` sibling
+     carries the AT message. Use when the visual element is
+     decorative + the semantic message is a distinct phrase.
+  5. **Hidden interactive form input** — Toggle primitive uses
+     `peer sr-only` on the real `<input type="checkbox">` so
+     the visible slider gets keyboard focus via the peer selector
+     while the input stays out of the visual flow. Not a text
+     pattern; included here so "sr-only on an input" reads as
+     intentional not dead code.
+  When NOT to use sr-only: a single-word accessible name on a
+  button/link — use `aria-label="Copy principal"`, not an sr-only
+  `<span>`. aria-label is simpler, doesn't emit an extra DOM
+  node, and is easier to grep for. The sr-only span is for
+  *phrase-length* content or when aria-label can't sit on the
+  right element (e.g. label for an input).
+  One pattern to avoid: conditional `sr-only` as a visibility
+  toggle is fine when the element is a persistent live-region
+  (/leaderboard's rank callout, POLISH-300) — but don't use it to
+  "hide a link when the page doesn't need it." That's a
+  `{condition && <Link/>}` conditional render, not an sr-only
+  gate. The live-region exception works because the `<div
+  role="status">` must stay mounted to collect announcements.
 
 ### The anti-patterns to watch for
 
