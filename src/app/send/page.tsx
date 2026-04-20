@@ -172,10 +172,30 @@ export default function SendPage() {
 
   const onConfirm = async () => {
     setSubmitError(null);
+    // Pre-flight balance check. Compose-stage already gates this, but
+    // the user can linger on the review screen while a buy/burn in
+    // another tab settles — balance state here can be stale by the
+    // time they hit Confirm. Pre-check with the current WalletContext
+    // balance so we surface the concrete shortfall ("You need X more
+    // LWP") rather than letting the canister return a generic
+    // InsufficientFunds reject that shows up as a bare error string.
+    const amountLwp = Number(amount);
+    if (balance !== null && Number.isFinite(amountLwp) && amountLwp > 0) {
+      const wantBase =
+        BigInt(Math.round(amountLwp * 1e8)) + TRANSFER_FEE_BASE;
+      if (wantBase > balance) {
+        const shortBase = wantBase - balance;
+        const shortLwp = Number(shortBase) / 1e8;
+        setSubmitError(
+          `Not enough LWP to send. You need ${shortLwp.toFixed(4)} more (includes the ${feeLwp.toFixed(4)} LWP fee).`,
+        );
+        return;
+      }
+    }
     try {
       const r = await transfer({
         to: to.trim(),
-        amountLwp: Number(amount),
+        amountLwp,
         memo: memo || undefined,
       });
       setTxId(r.txId.toString());
@@ -183,7 +203,19 @@ export default function SendPage() {
       setRecents(listRecentRecipients());
       setStage("sent");
     } catch (e) {
-      setSubmitError((e as Error).message);
+      const raw = (e as Error).message;
+      // Canister-side InsufficientFunds can still land here if balance
+      // moved between pre-flight and the actual call. Re-shape the
+      // message into the same user-friendly form so the two paths
+      // read identically. ICRC typed reject shapes vary across agent
+      // versions — substring-match is intentionally loose.
+      if (/insufficient\s*funds|insufficientfunds/i.test(raw)) {
+        setSubmitError(
+          "Not enough LWP to send. Your balance changed since the review — return to compose to see the new max.",
+        );
+      } else {
+        setSubmitError(raw);
+      }
       // Stay on the review screen so the user can adjust and retry.
     }
   };
