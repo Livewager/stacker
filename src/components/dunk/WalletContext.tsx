@@ -487,6 +487,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       owner: id.getPrincipal(),
       subaccount: [],
     });
+    // POLISH-359 — setBalance is unconditional here and that's fine.
+    // React bails out of useState updates when Object.is(next, prev)
+    // is true, and Object.is(123n, 123n) === true for BigInts (per
+    // ECMA-262 spec). So a refresh that fetches the same balance
+    // (common after a rejected mutation retry) doesn't propagate a
+    // re-render through consumers — WalletNav, /dunk hero, /wallet
+    // balance card all stay still when the number is unchanged.
+    // Don't add a manual `if (bal !== balance)` guard — reading
+    // balance here would close over a stale value and cause the
+    // opposite bug (dropping a legitimate change after rapid
+    // mutations). React's built-in dedupe is the correct layer.
     setBalance(bal);
   }, []);
 
