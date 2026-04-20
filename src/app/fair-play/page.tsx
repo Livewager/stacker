@@ -264,6 +264,15 @@ function Card({
   flavor: string;
   children: React.ReactNode;
 }) {
+  // POLISH-337 audit: inline p-5 is deliberate, not drift from the
+  // POLISH-265 Card primitive (which offers
+  // sm=p-3, md=p-5 md:p-6, lg=p-6 md:p-10). The primitive's md
+  // density bumps to 24px on ≥768px, which at /fair-play's
+  // md:grid-cols-3 tight layout would eat 8px × 3 cards = 24px of
+  // content width per row. Keeping p-5 flat matches the existing
+  // exception shape (CONTRIBUTING allows p-5 md:p-7 / p-5 md:p-8
+  // for cards that want tighter density than the primitive). No
+  // migration.
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
