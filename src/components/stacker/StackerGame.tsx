@@ -312,6 +312,33 @@ export default function StackerGame({
       lockedLeft = Math.max(curLeft, belowLeft);
       lockedRight = Math.min(curRight, belowRight);
       if (lockedRight < lockedLeft) {
+        // Coyote-time: if the slider's unrounded fractional position
+        // still overlaps the row beneath (i.e. the user tapped just
+        // after the visible cell edge but before the slider had
+        // really cleared), rescue the lock with a 1-column overlap
+        // at the near edge. Threshold kept tight (~0.35 cells) so
+        // genuinely-cleared misses still end the round — this is a
+        // "I swear that was on" rescue, not a free save.
+        const sliderLeftF = cur.x;
+        const sliderRightF = cur.x + cur.width - 1;
+        const COYOTE_COLS = 0.35;
+        let rescued = false;
+        if (curRight < belowLeft) {
+          // Overshot to the right of the row below.
+          if (belowLeft - sliderRightF <= COYOTE_COLS) {
+            lockedLeft = belowLeft;
+            lockedRight = belowLeft;
+            rescued = true;
+          }
+        } else if (curLeft > belowRight) {
+          // Overshot to the left of the row below.
+          if (sliderLeftF - belowRight <= COYOTE_COLS) {
+            lockedLeft = belowRight;
+            lockedRight = belowRight;
+            rescued = true;
+          }
+        }
+        if (!rescued) {
         // No overlap — game over.
         sfx.over();
         haptics.over();
@@ -333,6 +360,10 @@ export default function StackerGame({
         if (t) setLastTranscript(t);
         onPhaseChange?.("over");
         return;
+        }
+        // Rescued: fall through to the normal lock path with the
+        // 1-col overlap we pinned above. Reads as a minimum-width
+        // block placed on the near edge of the row beneath.
       }
     }
 
