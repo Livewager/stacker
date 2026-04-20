@@ -34,5 +34,9 @@ export function shortenPrincipal(
   const tail = opts.tail ?? DEFAULT_TAIL;
   const ellipsis = opts.ellipsis ?? "…";
   if (principal.length <= head + tail + 1) return principal;
-  return `${principal.slice(0, head)}${ellipsis}${principal.slice(-tail)}`;
+  // Guard: slice(-0) returns the full string in JS, not an empty
+  // slice — so `tail === 0` has to special-case or the output
+  // collapses to head + ellipsis + full-string.
+  const tailSlice = tail === 0 ? "" : principal.slice(-tail);
+  return `${principal.slice(0, head)}${ellipsis}${tailSlice}`;
 }
