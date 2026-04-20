@@ -265,6 +265,22 @@ export function ToastHost({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Pause every active timer when the tab hides; resume when it
+  // returns. Without this, a 4.5s toast fired the instant before a
+  // user ⌘-tabs away simply disappears — they come back to silence.
+  // Mirrors the hover-pause semantics at the tab level.
+  useEffect(() => {
+    const onVisibility = () => {
+      const hidden = document.visibilityState === "hidden";
+      timers.current.forEach((_st, id) => {
+        if (hidden) pause(id);
+        else resume(id);
+      });
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [pause, resume]);
+
   const api = useMemo<ToastApi>(() => ({ push, dismiss }), [push, dismiss]);
 
   // Show the newest VISIBLE_CAP toasts; older ones are hidden but kept
