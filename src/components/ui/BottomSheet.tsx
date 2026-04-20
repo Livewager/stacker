@@ -51,16 +51,27 @@ export function BottomSheet({
         onClose();
       }
       if (e.key === "Tab" && panelRef.current) {
-        const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        const panel = panelRef.current;
+        const focusables = panel.querySelectorAll<HTMLElement>(
           'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
         );
         if (focusables.length === 0) return;
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+        const current = document.activeElement as HTMLElement | null;
+        // Escape-through guard: if focus has somehow landed outside
+        // the panel (click on a document element, focus scripted by
+        // another lib), yank it back in. Without this the wrap logic
+        // below is a no-op and the user can tab away from a modal.
+        if (!current || !panel.contains(current)) {
+          e.preventDefault();
+          (e.shiftKey ? last : first).focus();
+          return;
+        }
+        if (e.shiftKey && current === first) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+        } else if (!e.shiftKey && current === last) {
           e.preventDefault();
           first.focus();
         }
@@ -83,7 +94,19 @@ export function BottomSheet({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
       window.clearTimeout(t);
-      previouslyFocused.current?.focus?.();
+      // Only restore focus if the original trigger is still in the
+      // DOM. Otherwise silently drop — focusing a detached element
+      // logs a React warning in dev and does nothing in prod. Skip
+      // also if the previously-focused element is already hidden
+      // (display:none / aria-hidden) which .focus() ignores.
+      const prev = previouslyFocused.current;
+      if (prev && document.body.contains(prev)) {
+        try {
+          prev.focus();
+        } catch {
+          /* focus can throw in some edge cases (disabled, removed) */
+        }
+      }
     };
   }, [open, onClose]);
 
