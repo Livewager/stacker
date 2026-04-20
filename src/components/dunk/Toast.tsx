@@ -389,6 +389,25 @@ export function ToastHost({ children }: { children: ReactNode }) {
           // Capped at 3 steps of recession so a five-deep stack
           // doesn't vanish. Newest-first visual order: reverse-index
           // from the end of the array.
+          //
+          // Reflow motion (POLISH-285 audit). When a middle toast
+          // dismisses, the flex-col + gap-2 closes the hole
+          // instantly — the layout jump isn't animated because CSS
+          // transitions can't smooth layout-driven position
+          // changes. A FLIP-style technique (capture positions in a
+          // ref, measure after unmount, apply inverse transform +
+          // transition to rest) would fix it but costs ~60 LOC of
+          // bookkeeping for a surface that rarely stacks 3+ deep.
+          // What DOES animate: the surviving toasts' depth-scale
+          // values update on re-render (a toast that was steps=2
+          // becomes steps=1), and the transition-[transform,opacity]
+          // below smooths that 200ms. The user sees the layout jump
+          // but also sees the pile visibly settle into its new
+          // shape. Net effect reads as intentional, not broken.
+          // Revisit if the stack commonly goes deeper than 3 or
+          // users complain. Same don't-fiddle discipline as
+          // POLISH-267/279 — defaults are near-optimal for the
+          // common case.
           const fromNewest = visible.length - 1 - i;
           const steps = Math.min(fromNewest, 3);
           const scale = 1 - steps * 0.03;
