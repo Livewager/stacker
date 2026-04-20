@@ -7,6 +7,17 @@ export const metadata: Metadata = {
     "Tiered defense, risk score, not one-rule bans. Server-authoritative canister, signed input transcripts, anomaly scoring with rare supporting signals.",
 };
 
+// POLISH-341 bundle baseline (measured 2026-04-20 against
+// commit d53bbe0):
+//   /fair-play · 2.85 kB per-page · 227 kB first-load JS
+//
+// Smallest per-page chunk in the app. The 102 kB shared baseline
+// includes React + framer-motion + @dfinity/agent + WalletContext,
+// unavoidable via AppHeader. Per-page is pure static JSX → the
+// 2.85 kB is the accent-class switch maps (Tier/Card/Tag/Ladder).
+// For comparison: /deposit 7.33 / 243, /settings 9.78 / 234,
+// /send 11.6 / 236. Audit-close.
+
 export default function FairPlayPage() {
   return (
     <>
