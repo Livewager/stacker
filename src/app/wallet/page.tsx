@@ -24,6 +24,13 @@ const short = (s: string) => shortenPrincipal(s, { head: 8, tail: 8 });
 // it for a live oracle.
 const DEMO_USD_PER_LWP = 1;
 
+// Must stay in sync with MAX_AMOUNT_BASE_UNITS in
+// src/app/api/dunk/buy/route.ts (10_000_000_000n base units with 8
+// decimals = 100 LWP). Surfacing this client-side lets the input
+// reject obvious typos immediately rather than round-tripping the
+// API for a "cap exceeded" error.
+const BUY_MAX_LWP = 100;
+
 type QuickTab = "buy" | "deposit" | "send" | "withdraw";
 const QUICK_TABS: readonly QuickTab[] = ["buy", "deposit", "send", "withdraw"];
 
@@ -43,6 +50,16 @@ export default function WalletPage() {
   const setTab = (next: QuickTab) => setRawTab(next);
   const [buyAmount, setBuyAmount] = useState("1");
   const [buyPulse, setBuyPulse] = useState(0);
+  // Client-side mirror of MAX_AMOUNT_BASE_UNITS in the /buy API.
+  // Short-circuits the round-trip when a user fat-fingers 1000 —
+  // the inline "Exceeds demo cap" error appears on keystroke, and
+  // the Button is disabled so they can't submit it anyway.
+  const buyAmountNum = Number(buyAmount);
+  const buyOverCap =
+    Number.isFinite(buyAmountNum) && buyAmountNum > BUY_MAX_LWP;
+  const buyError = buyOverCap
+    ? `Exceeds demo cap (${BUY_MAX_LWP} LWP)`
+    : undefined;
 
   const signedIn = !!identity;
 
@@ -309,7 +326,8 @@ export default function WalletPage() {
                       value={buyAmount}
                       onChange={setBuyAmount}
                       tone="cyan"
-                      hint="Local demo mint · per-request cap 100 LWP · demo rate, not market"
+                      error={buyError}
+                      hint={`Local demo mint · per-request cap ${BUY_MAX_LWP} LWP · demo rate, not market`}
                       rate={DEMO_USD_PER_LWP}
                       disabled={status === "buying"}
                       className="mb-3"
@@ -322,6 +340,7 @@ export default function WalletPage() {
                       tone="cyan"
                       size="lg"
                       fullWidth
+                      disabled={buyOverCap || !buyAmount || buyAmountNum <= 0}
                     >
                       {status === "buying" ? "Minting…" : `Buy ${buyAmount || "?"} LWP`}
                     </Button>
