@@ -765,52 +765,119 @@ function WagerPrimer() {
 function FairPlay() {
   return (
     <section className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
-      <div className="mb-6 max-w-xl">
+      <div className="mb-6 max-w-2xl">
         <div className="flex items-center gap-2 mb-2">
-          <Pill status="live">human-only</Pill>
+          <Pill status="live">fair play</Pill>
           <span className="text-[10px] uppercase tracking-widest text-gray-500">
-            fair play
+            tiered defense · risk score, not one-rule bans
           </span>
         </div>
         <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
           Skill, not scripts.
         </h2>
         <p className="text-sm text-gray-400 leading-snug">
-          Prize mode only pays when we&apos;re confident a human tapped. Three
-          layered signals — device motion, tap entropy, and an optional camera
-          liveness check — make bots and macros impractical without ever
-          recording you.
+          Every round runs against a server-authoritative canister with a
+          signed input transcript. Day-to-day anomaly scoring catches bots and
+          farms. Motion and camera checks only kick in when a flagged round
+          needs a second opinion. Three tiers, increasing intrusion — and the
+          top tier is rare.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <FairCard
-          idx="01"
-          title="Motion signature"
-          tone="cyan"
-          kicker="accelerometer"
-          body="A real hand holding a phone produces sub-degree micro-tremor. A script replaying taps produces perfectly flat signal. We sample motion during your round and attach a signature to the score claim."
-          visual={<MotionAnim />}
+      {/* ---- Tier 1 ---- */}
+      <div className="mb-6">
+        <TierHeader
+          tier="T1"
+          title="Authoritative truth"
+          blurb="The server is the game. Client is a view. Without this, nothing else matters."
+          tone="emerald"
         />
-        <FairCard
-          idx="02"
-          title="Tap entropy"
-          tone="violet"
-          kicker="timing + position"
-          body="Every tap captures the slider position, frame time, and inter-tap delta. Humans drift. Bots don't. The distribution of deltas over a round is fingerprint-grade — scripted play stands out instantly."
-          visual={<EntropyAnim />}
-        />
-        <FairCard
-          idx="03"
-          title="Liveness (optional)"
-          tone="orange"
-          kicker="camera · opt-in"
-          body="Enable the camera to add a human-presence probe. We run eye and face landmarks on-device (WASM, no upload) and only record that a face was present — never video. Decline it and you can still play ranked with the other two signals."
-          visual={<EyeAnim />}
-        />
+        <div className="grid gap-4 md:grid-cols-3">
+          <FairCard
+            idx="01"
+            title="Server-authoritative rounds"
+            tone="emerald"
+            kicker="canister replays the game"
+            body="The points_ledger canister holds the seed, re-simulates the round from your signed tap transcript, and only mints a score that matches byte-for-byte. No replay, no prize."
+            visual={<ServerReplayAnim />}
+          />
+          <FairCard
+            idx="02"
+            title="Signed input events"
+            tone="emerald"
+            kicker="II signature per tap"
+            body="Every tap is signed by your Internet Identity with position, timestamp, and round id. The full transcript hashes into the score claim — a bot can't forge taps without your key."
+            visual={<SignedInputAnim />}
+          />
+          <FairCard
+            idx="03"
+            title="Trust ladder"
+            tone="emerald"
+            kicker="progressive payouts"
+            body="New accounts play free-only. Consistent human-like play bumps you up: small stakes, normal stakes, withdrawable winnings. Risk is amortized — no single round decides eligibility."
+            visual={<TrustLadderAnim />}
+          />
+        </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-4 flex flex-wrap items-start gap-3 text-[12px] text-emerald-100/90">
+      {/* ---- Tier 2 ---- */}
+      <div className="mb-6">
+        <TierHeader
+          tier="T2"
+          title="Behavioral anomaly scoring"
+          blurb="Day-to-day layer. Feeds a risk score — not a ban hammer."
+          tone="violet"
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <FairCard
+            idx="04"
+            title="Tap pattern + touch dynamics"
+            tone="violet"
+            kicker="distribution, not rules"
+            body="Inter-tap delta variance, autocorrelation, touch radius and pressure when available. Humans drift; scripts don't. Flagged distributions raise risk score, they don't auto-ban — false positives are a feature only at the review layer."
+            visual={<EntropyAnim />}
+          />
+          <FairCard
+            idx="05"
+            title="Device + account reputation"
+            tone="violet"
+            kicker="clustering, privacy-preserving"
+            body="Fingerprint hashes into a bucket id, not a profile. Many-principals-one-device bursts and impossibly fast account creation raise the cluster's risk. High-reputation device + account pair glides through ranked play; low-reputation gets the second-opinion checks."
+            visual={<ClusterAnim />}
+          />
+        </div>
+      </div>
+
+      {/* ---- Tier 3 ---- */}
+      <div className="mb-5">
+        <TierHeader
+          tier="T3"
+          title="Supporting signals · rare"
+          blurb="Only when a round is already flagged, or at large-payout withdrawal."
+          tone="orange"
+        />
+        <div className="grid gap-4 md:grid-cols-2">
+          <FairCard
+            idx="06"
+            title="Motion (flagged rounds only)"
+            tone="orange"
+            kicker="accelerometer · sampled"
+            body="Sub-degree hand tremor is hard to fake at scale. We only sample it when Tier 2 raises your risk score mid-round — or when you voluntarily enable high-trust mode. A clean motion signature reduces risk, absence doesn't prove anything."
+            visual={<MotionAnim />}
+          />
+          <FairCard
+            idx="07"
+            title="Camera liveness (withdrawals)"
+            tone="orange"
+            kicker="one-time · on-device"
+            body="Not required to play. Triggered only at withdrawals above a risk-adjusted threshold. On-device face landmarks (WASM, no upload) confirm a human is behind the payout — then the camera releases. Never during rounds."
+            visual={<EyeAnim />}
+          />
+        </div>
+      </div>
+
+      {/* ---- Honesty banner ---- */}
+      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-4 flex flex-wrap items-start gap-3 text-[12px] text-emerald-100/90">
         <span
           aria-hidden
           className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300"
@@ -819,17 +886,60 @@ function FairPlay() {
             <path d="M16.707 5.293a1 1 0 0 1 0 1.414l-7.5 7.5a1 1 0 0 1-1.414 0l-3.5-3.5a1 1 0 1 1 1.414-1.414L8.5 12.086l6.793-6.793a1 1 0 0 1 1.414 0Z" />
           </svg>
         </span>
-        <div className="min-w-0">
-          <strong className="text-emerald-200 font-semibold">
-            No video leaves your device.
-          </strong>{" "}
-          Liveness uses MediaPipe face landmarks running entirely in your
-          browser. We log only a time-stamped &quot;human present&quot; flag. Motion
-          and tap entropy work without camera at all — liveness is bonus
-          evidence, not a requirement.
+        <div className="min-w-0 space-y-1">
+          <div>
+            <strong className="text-emerald-200 font-semibold">
+              We use a risk score, not one-rule bans.
+            </strong>{" "}
+            A single weird signal doesn&apos;t eject you. Multiple persistent
+            anomalies plus payout behavior do. Flagged accounts get held for
+            manual review, not instant account death.
+          </div>
+          <div>
+            <strong className="text-emerald-200 font-semibold">
+              No video, no constant camera, no hidden outcome manipulation.
+            </strong>{" "}
+            The game logic is deterministic and server-authoritative. What you
+            see on screen is what the ledger records.
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function TierHeader({
+  tier,
+  title,
+  blurb,
+  tone,
+}: {
+  tier: string;
+  title: string;
+  blurb: string;
+  tone: "emerald" | "violet" | "orange";
+}) {
+  const fg =
+    tone === "emerald"
+      ? "text-emerald-300"
+      : tone === "violet"
+        ? "text-violet-300"
+        : "text-orange-300";
+  const border =
+    tone === "emerald"
+      ? "border-emerald-400/40 bg-emerald-400/[0.06]"
+      : tone === "violet"
+        ? "border-violet-400/40 bg-violet-400/[0.06]"
+        : "border-orange-400/40 bg-orange-400/[0.06]";
+  return (
+    <div className="mb-3 flex flex-wrap items-baseline gap-3">
+      <span
+        className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-widest font-mono font-semibold ${border} ${fg}`}
+      >
+        {tier} · {title}
+      </span>
+      <span className="text-[11px] text-gray-500 leading-snug">{blurb}</span>
+    </div>
   );
 }
 
@@ -846,14 +956,16 @@ function FairCard({
   kicker: string;
   body: string;
   visual: React.ReactNode;
-  tone: "cyan" | "violet" | "orange";
+  tone: "cyan" | "violet" | "orange" | "emerald";
 }) {
   const toneText =
     tone === "cyan"
       ? "text-cyan-300"
       : tone === "violet"
         ? "text-violet-300"
-        : "text-orange-300";
+        : tone === "emerald"
+          ? "text-emerald-300"
+          : "text-orange-300";
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -1021,6 +1133,186 @@ function EyeAnim() {
       ))}
 
       <text x="6" y="8" fontSize="4.5" fontFamily="ui-monospace" fill="rgba(251,146,60,0.9)">ON-DEVICE · NO UPLOAD</text>
+    </svg>
+  );
+}
+
+// ---- Tier-1 animations ----
+
+function ServerReplayAnim() {
+  const reduced = useReducedMotion();
+  return (
+    <svg viewBox="0 0 100 60" className="absolute inset-0 w-full h-full p-3" aria-hidden>
+      {/* Client box */}
+      <rect x={4} y={20} width={24} height={20} rx={2} fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.25)" strokeWidth={0.6} />
+      <text x={16} y={32} fontSize="4.5" fontFamily="ui-monospace" fill="rgba(255,255,255,0.8)" textAnchor="middle">CLIENT</text>
+
+      {/* Server box */}
+      <rect x={72} y={20} width={24} height={20} rx={2} fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.4)" strokeWidth={0.6} />
+      <text x={84} y={32} fontSize="4.5" fontFamily="ui-monospace" fill="#34d399" textAnchor="middle">CANISTER</text>
+
+      {/* transcript packets flowing left → right, repeating */}
+      {[0, 1, 2].map((i) => (
+        <motion.circle
+          key={i}
+          r={1.6}
+          fill="#34d399"
+          initial={{ cx: 28, cy: 30, opacity: 0 }}
+          animate={reduced ? { cx: 72, opacity: 1 } : { cx: [28, 72], opacity: [0, 1, 1, 0] }}
+          transition={{
+            duration: 1.6,
+            repeat: Infinity,
+            delay: i * 0.5,
+            times: [0, 0.2, 0.9, 1],
+            ease: "linear",
+          }}
+        />
+      ))}
+
+      {/* Match check */}
+      <motion.g
+        initial={{ opacity: 0 }}
+        animate={reduced ? { opacity: 1 } : { opacity: [0, 0, 1, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, times: [0, 0.5, 0.7, 1] }}
+      >
+        <circle cx={84} cy={12} r={3.5} fill="rgba(16,185,129,0.25)" stroke="#34d399" strokeWidth={0.6} />
+        <path d="M 82.5 12 L 83.8 13.3 L 85.8 10.8" stroke="#34d399" strokeWidth={0.8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </motion.g>
+
+      <text x={50} y={58} fontSize="4.5" fontFamily="ui-monospace" fill="rgba(255,255,255,0.4)" textAnchor="middle">signed transcript → replay → match</text>
+    </svg>
+  );
+}
+
+function SignedInputAnim() {
+  const reduced = useReducedMotion();
+  const rows = [
+    { label: "tap #01  row 0  t=312ms", delay: 0 },
+    { label: "tap #02  row 1  t=801ms", delay: 0.3 },
+    { label: "tap #03  row 2  t=1147ms", delay: 0.6 },
+    { label: "tap #04  row 3  t=1502ms", delay: 0.9 },
+  ];
+  return (
+    <svg viewBox="0 0 100 60" className="absolute inset-0 w-full h-full p-3" aria-hidden>
+      {rows.map((r, i) => (
+        <motion.text
+          key={i}
+          x={6}
+          y={10 + i * 8}
+          fontSize="4"
+          fontFamily="ui-monospace"
+          fill="rgba(52,211,153,0.85)"
+          initial={{ opacity: 0, x: 0 }}
+          animate={reduced ? { opacity: 1 } : { opacity: [0, 1, 1, 0.5] }}
+          transition={{ duration: 3.2, repeat: Infinity, delay: r.delay, times: [0, 0.15, 0.85, 1] }}
+        >
+          {r.label}
+        </motion.text>
+      ))}
+      {/* Signature seal */}
+      <motion.g
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={reduced ? { opacity: 1, scale: 1 } : { opacity: [0, 0, 1, 1, 0], scale: [0.6, 0.6, 1, 1, 0.6] }}
+        transition={{ duration: 3.2, repeat: Infinity, times: [0, 0.6, 0.75, 0.9, 1] }}
+        style={{ transformOrigin: "75px 48px" }}
+      >
+        <circle cx={75} cy={48} r={9} fill="rgba(52,211,153,0.1)" stroke="#34d399" strokeWidth={0.8} />
+        <text x={75} y={50} fontSize="4" fontFamily="ui-monospace" fill="#34d399" textAnchor="middle" fontWeight="bold">II SIG</text>
+      </motion.g>
+    </svg>
+  );
+}
+
+function TrustLadderAnim() {
+  const reduced = useReducedMotion();
+  const rungs = [
+    { y: 48, w: 70, label: "NEW · free only" },
+    { y: 38, w: 60, label: "LOW · small stakes" },
+    { y: 28, w: 50, label: "MED · ranked" },
+    { y: 18, w: 40, label: "HIGH · withdrawable" },
+  ];
+  return (
+    <svg viewBox="0 0 100 60" className="absolute inset-0 w-full h-full p-3" aria-hidden>
+      {rungs.map((r, i) => (
+        <motion.g
+          key={i}
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-20px" }}
+          transition={reduced ? { duration: 0 } : { duration: 0.35, delay: i * 0.1 }}
+        >
+          <rect
+            x={50 - r.w / 2}
+            y={r.y - 2.5}
+            width={r.w}
+            height={5}
+            rx={1}
+            fill={i === rungs.length - 1 ? "rgba(52,211,153,0.85)" : "rgba(52,211,153,0.25)"}
+            stroke="rgba(52,211,153,0.4)"
+            strokeWidth="0.3"
+          />
+          <text x={50} y={r.y + 1.3} fontSize="3.2" fontFamily="ui-monospace" fill="rgba(255,255,255,0.7)" textAnchor="middle">{r.label}</text>
+        </motion.g>
+      ))}
+      {/* Climbing dot */}
+      {!reduced && (
+        <motion.circle
+          r={1.6}
+          fill="#facc15"
+          initial={{ cx: 8, cy: 48 }}
+          animate={{ cx: [8, 8, 8, 8], cy: [48, 38, 28, 18] }}
+          transition={{ duration: 4.5, repeat: Infinity, times: [0, 0.3, 0.6, 0.9], ease: "easeInOut" }}
+        />
+      )}
+    </svg>
+  );
+}
+
+function ClusterAnim() {
+  const reduced = useReducedMotion();
+  // One "good" cluster (single principal) and one "bad" (multi)
+  return (
+    <svg viewBox="0 0 100 60" className="absolute inset-0 w-full h-full p-3" aria-hidden>
+      {/* Good: one device, one account */}
+      <g>
+        <circle cx={25} cy={30} r={11} fill="none" stroke="rgba(167,139,250,0.4)" strokeWidth="0.6" strokeDasharray="2 2" />
+        <rect x={21} y={26} width={8} height={10} rx={1.2} fill="rgba(167,139,250,0.5)" />
+        <motion.circle
+          cx={25}
+          cy={30}
+          r={1.3}
+          fill="#a78bfa"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+        <text x={25} y={50} fontSize="3.6" fontFamily="ui-monospace" fill="rgba(167,139,250,0.9)" textAnchor="middle">1 : 1</text>
+      </g>
+      {/* Bad: one device, many accounts */}
+      <g>
+        <circle cx={75} cy={30} r={13} fill="none" stroke="rgba(239,68,68,0.6)" strokeWidth="0.6" strokeDasharray="2 2" />
+        <rect x={71} y={26} width={8} height={10} rx={1.2} fill="rgba(239,68,68,0.5)" />
+        {[
+          [63, 23],
+          [87, 23],
+          [63, 38],
+          [87, 38],
+          [75, 45],
+        ].map(([cx, cy], i) => (
+          <motion.circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={1.3}
+            fill="#ef4444"
+            initial={{ opacity: 0 }}
+            animate={reduced ? { opacity: 0.9 } : { opacity: [0.2, 1, 0.5] }}
+            transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.15 }}
+          />
+        ))}
+        <text x={75} y={52} fontSize="3.6" fontFamily="ui-monospace" fill="rgba(239,68,68,0.9)" textAnchor="middle">1 : N</text>
+      </g>
+      <text x={50} y={10} fontSize="3.6" fontFamily="ui-monospace" fill="rgba(255,255,255,0.4)" textAnchor="middle">device : principal ratio</text>
     </svg>
   );
 }
