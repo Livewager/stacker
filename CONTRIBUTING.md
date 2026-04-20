@@ -292,6 +292,24 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Settings-row layout contract** (audited POLISH-314). Any row
+  in /settings with [label + description + right-side control]
+  must follow the `Toggle` primitive's shape, regardless of
+  whether the control is a switch or a button:
+    outer:   `flex items-start justify-between gap-4`
+    text:    `min-w-0 flex-1`  (both are load-bearing — `min-w-0`
+             alone doesn't grow, `flex-1` alone can't shrink below
+             word-boundary min-content)
+    control: `shrink-0`
+  `items-start` (not `items-center`) so a two-line description
+  doesn't vertical-center the control against the middle of the
+  wrap — the control aligns with the title, which reads
+  "anchored" rather than "floating." This is the pattern that
+  keeps 320px viewports from pushing the control off-edge or
+  forcing mid-word wraps in the description when the row has
+  non-trivial helper copy. Toggle.tsx enforces this internally;
+  hand-rolled rows (Replay onboarding, Test haptic) should mirror
+  it rather than diverge.
 - **Skeleton shimmer layering** (audited POLISH-313). The
   `animate-pulse` utility modulates opacity — and that's the
   footgun. If a parent *and* its children both animate-pulse, the

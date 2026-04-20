@@ -266,8 +266,20 @@ export default function SettingsPage() {
                 a toast confirm since the nudge itself only materializes
                 post-hydration — users won't see the state change
                 otherwise and might tap twice. */}
-            <div className="flex items-center justify-between gap-3 py-1">
-              <div className="min-w-0">
+            {/* POLISH-314 — mirror the Toggle primitive's row layout
+                so a hand-rolled row doesn't regress on 320px when the
+                description spans two lines:
+                  - items-start (not center) so the two-line description
+                    doesn't vertical-center against the button;
+                    button aligns with the title.
+                  - min-w-0 flex-1 on the text column (was min-w-0 only).
+                    flex-1 is load-bearing: without a positive grow
+                    factor the text column can't claim remaining space
+                    reliably when the description wraps.
+                  - gap-4 (was gap-3) to match Toggle's spacing so
+                    adjacent rows in the same Section look tuned. */}
+            <div className="flex items-start justify-between gap-4 py-1">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm text-gray-100">Replay onboarding tip</div>
                 <div className="text-[11px] text-gray-500 leading-snug mt-0.5">
                   Re-shows the first-visit tip bar on the next route.
@@ -329,8 +341,16 @@ export default function SettingsPage() {
               disabled={!hapticsSupported}
             />
             {hapticsSupported && haptics && (
-              <div className="mt-2 flex items-center justify-between gap-3 pl-0 sm:pl-2">
-                <span className="text-[11px] text-gray-500 leading-snug">
+              // POLISH-314 — haptics test-button row. The <span>
+              // sibling had no min-w-0 / flex-1 wrapping; on a 320px
+              // viewport the two-line copy could push the button off
+              // the right edge or force mid-word wrap. Wrapping the
+              // copy in min-w-0 flex-1 + items-start matches the
+              // Toggle primitive's contract so the text claims
+              // remaining space and wraps naturally; the Test button
+              // pins at fixed width via shrink-0 (already present).
+              <div className="mt-2 flex items-start justify-between gap-4 pl-0 sm:pl-2">
+                <span className="min-w-0 flex-1 text-[11px] text-gray-500 leading-snug">
                   Feel the tap? If nothing happens your device ignored the
                   request — some phones rate-limit or suppress in silent mode.
                 </span>
