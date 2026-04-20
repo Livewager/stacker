@@ -207,11 +207,8 @@ export default function SendPage() {
         : "text-gray-500";
 
   // ----- handlers -----
-  const setMax = () => {
-    if (balance === null) return;
-    const sendable = balance > TRANSFER_FEE_BASE ? balance - TRANSFER_FEE_BASE : 0n;
-    setAmount((Number(sendable) / 1e8).toString());
-  };
+  // (AmountField owns its own 25/50/75/Max chip row; we don't call
+  // setAmount for Max here.)
 
   const onReview = (e: React.FormEvent) => {
     e.preventDefault();

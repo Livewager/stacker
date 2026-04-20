@@ -5,7 +5,7 @@
  * with btype ∈ {"1xfer","2xfer","2approve","1mint","1burn"}.
  */
 
-import type { Account, BlockWithId, ICRC3Value } from "./types";
+import type { BlockWithId, ICRC3Value } from "./types";
 
 export type BlockEventKind = "mint" | "transfer" | "transfer_from" | "approve" | "burn" | "unknown";
 

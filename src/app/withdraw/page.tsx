@@ -114,12 +114,8 @@ export default function WithdrawPage() {
   }, [amount]);
 
   // --- handlers ---
-  const setMax = () => {
-    if (balance === null) return;
-    // No fee to burn (canister burn is fee-free), so we can withdraw
-    // the entire balance if they want.
-    setAmount((Number(balance) / 1e8).toString());
-  };
+  // (AmountField owns its own 25/50/75/Max chip row; we don't call
+  // setAmount for Max here.)
 
   const onReview = (e: React.FormEvent) => {
     e.preventDefault();
