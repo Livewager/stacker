@@ -9,6 +9,12 @@ import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
 import { PrincipalScanner } from "@/components/send/PrincipalScanner";
+import {
+  listRecentRecipients,
+  rememberRecipient,
+  forgetRecipient,
+  type RecentRecipient,
+} from "@/lib/recentRecipients";
 
 // Must mirror canisters/points_ledger/src/lib.rs TRANSFER_FEE.
 const TRANSFER_FEE_BASE = 10_000n; // 0.0001 LWP at 8 decimals
@@ -29,6 +35,12 @@ export default function SendPage() {
   const [memo, setMemo] = useState("");
   const [stage, setStage] = useState<Stage>("compose");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [recents, setRecents] = useState<RecentRecipient[]>([]);
+
+  // Hydrate recents after mount so SSR markup matches.
+  useEffect(() => {
+    setRecents(listRecentRecipients());
+  }, []);
   const [txId, setTxId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -98,6 +110,8 @@ export default function SendPage() {
         memo: memo || undefined,
       });
       setTxId(r.txId.toString());
+      rememberRecipient(to.trim());
+      setRecents(listRecentRecipients());
       setStage("sent");
     } catch (e) {
       setSubmitError((e as Error).message);
@@ -190,6 +204,47 @@ export default function SendPage() {
                 </button>
               </div>
             </Field>
+
+            {/* Recent recipients. Collapses to nothing on first-time
+                use so the form stays clean; appears as tappable chips
+                once history exists. Click pastes, "×" forgets. */}
+            {recents.length > 0 && (
+              <div className="-mt-3" aria-label="Recent recipients">
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+                  Recent
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {recents.map((r) => (
+                    <div
+                      key={r.principal}
+                      className="group inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] hover:border-violet-300/40 hover:bg-violet-300/[0.05] transition"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setTo(r.principal)}
+                        className="px-3 py-1 text-[11px] font-mono text-gray-200 hover:text-white transition focus:outline-none focus-visible:text-white"
+                        title={`Use ${r.principal}`}
+                      >
+                        {short(r.principal, 6, 4)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          forgetRecipient(r.principal);
+                          setRecents(listRecentRecipients());
+                        }}
+                        className="px-2 py-1 text-gray-500 hover:text-red-300 transition focus:outline-none focus-visible:text-red-300"
+                        aria-label={`Forget recipient ${r.principal}`}
+                      >
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+                          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Amount: balance passed fee-reduced so "Max" chip auto-
                 subtracts the 0.0001 LWP transfer fee the ledger will
