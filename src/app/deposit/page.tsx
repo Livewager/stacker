@@ -7,6 +7,7 @@ import { LtcDepositPanel } from "@/components/deposit/LtcDepositPanel";
 import { useToast } from "@/components/dunk/Toast";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
+import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 
 type Tab = "ltc" | "card" | "bank";
 
@@ -16,12 +17,29 @@ const TABS: { id: Tab; label: string; tone: string; status: "live" | "soon" }[] 
   { id: "bank", label: "Bank transfer", tone: "#60a5fa", status: "soon" },
 ];
 
+function narrowTab(v: string | null): Tab | null {
+  return v === "ltc" || v === "card" || v === "bank" ? v : null;
+}
+
 function DepositInner() {
   const params = useSearchParams();
-  const queryTab = params.get("via");
-  const initial: Tab =
-    queryTab === "card" || queryTab === "bank" ? (queryTab as Tab) : "ltc";
-  const [tab, setTab] = useState<Tab>(initial);
+  const queryTab = narrowTab(params.get("via"));
+  // Pref holds the last-used tab across visits. Query param always
+  // wins when present — a shared link like /deposit?via=card should
+  // override any stored preference. Absent ?via=, fall back to the
+  // stored pref, then ltc. Writes flow through setTab below so taps
+  // update the pref naturally.
+  const [storedTab, setStoredTab] = useLocalPref<Tab>(
+    PREF_KEYS.depositTab,
+    "ltc",
+  );
+  const storedSafe = narrowTab(storedTab) ?? "ltc";
+  const initial: Tab = queryTab ?? storedSafe;
+  const [tab, setTabState] = useState<Tab>(initial);
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    setStoredTab(next);
+  };
 
   return (
     <>

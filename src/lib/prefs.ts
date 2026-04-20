@@ -136,6 +136,10 @@ export const PREF_KEYS = {
   // ActivityFeed filter pill selection. Values: "all" | "mint" |
   // "burn" | "transfer" | "approve". Narrowed at the hook site.
   activityFilter: "activityFilter",
+
+  // /deposit tab selection. "ltc" | "card" | "bank". Persisted so
+  // repeat visits land on the method the user actually uses.
+  depositTab: "depositTab",
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];
