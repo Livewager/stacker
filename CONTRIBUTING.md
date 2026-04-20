@@ -292,6 +292,27 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Error-boundary copy contract** (audited POLISH-304). Every
+  `error.tsx` should answer three questions in its body, in this
+  order:
+  1. *What happened?* ("Something threw while rendering.")
+  2. *What didn't happen?* — the reassurance. On any route that
+     touches money (wallet, send, withdraw, deposit, account), say
+     "Nothing on the ledger moved — balance, principal, and
+     pending tx are untouched." On game routes, the equivalent is
+     "No round state survives a reload, so this is safe."
+  3. *What to do next?* — one verb, pointing at the primary CTA.
+  Primary action: always `reset()` (never an href) unless the
+  boundary is non-recoverable. Secondary action: the **nearest
+  sibling the user was likely heading to**, NOT the marketing
+  landing. Generic catch-all → `/wallet` (most-visited authed
+  surface). `/wallet` → `/dunk` (closest out if wallet itself
+  crashes). `/account` → `/wallet`. `/stacker` → `/play`.
+  Eyebrow tone: `tone="danger"` only when the error implicates a
+  money-touching surface (generic catch-all + /wallet);
+  `tone="muted"` for read-only surfaces (/account, /stacker, 404).
+  Auto-retry: `autoRetrySeconds={5}` everywhere *except* 404 (no
+  retry for missing URLs).
 
 ### The anti-patterns to watch for
 
