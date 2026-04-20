@@ -24,13 +24,14 @@
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { ToastHost } from "@/components/dunk/Toast";
 import { WalletProvider } from "@/components/dunk/WalletContext";
 import { BottomNav } from "@/components/BottomNav";
 import CommandPalette from "@/components/CommandPalette";
 import AppFooter from "@/components/AppFooter";
 import { NetworkBanner } from "@/components/NetworkBanner";
-import { ANCHORS } from "@/lib/routes";
+import { ANCHORS, ROUTES } from "@/lib/routes";
 import { usePrefs } from "@/lib/prefs";
 
 /**
@@ -56,9 +57,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <ToastHost>
       <WalletProvider>
         <ReducedMotionBridge />
+        {/* Paired skip-links. DOM order matters: "main content" is
+            the first Tab stop (matches tab-order invariant in the
+            file header), "games" is second. Both use the shared
+            .skip-link style which is invisible until focused. The
+            games link is a Next Link (client nav) so it also bails
+            into prefetch — useful because a keyboard user
+            activating it is about to play a round. */}
         <a href={ANCHORS.content} className="skip-link">
           Skip to main content
         </a>
+        <Link href={ROUTES.play} className="skip-link">
+          Skip to games
+        </Link>
         <NetworkBanner />
         <main id={ANCHORS.content.slice(1)} tabIndex={-1} className="outline-none">
           {children}
