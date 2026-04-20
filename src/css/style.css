@@ -105,6 +105,16 @@
   html {
     scroll-behavior: smooth;
   }
+  /* scroll-margin-top offset for deep-link anchors (POLISH-83,
+     re-audited POLISH-278). 72px ≈ AppHeader intrinsic height
+     (~60px: py-2.5 + 40px logo) + ~12px breathing room. When adding
+     a new deep-link-navigable section anywhere in the app (e.g.
+     /account#tips, /wallet#advanced), apply the .lw-section class
+     so the hash-nav lands below the sticky header instead of
+     hiding under it. Today only /settings uses deep-link anchors
+     (#display, #audio, #cap, #account, #diagnostics, #data), but
+     the class is globally safe — it's zero-cost for sections that
+     never receive hash navigation. */
   .lw-section {
     scroll-margin-top: 72px;
   }
