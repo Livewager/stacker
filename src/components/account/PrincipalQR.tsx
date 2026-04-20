@@ -25,6 +25,44 @@ export function PrincipalQR({ principal }: Props) {
   const [open, setOpen] = useState(false);
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  // Generate an SVG string fresh on click, wrap in a Blob, and trigger
+  // a download via a synthesized <a>. Kept outside the render effect
+  // so it only runs when the user actually asks — saves a second
+  // encoder call on every panel open. Filename includes a short
+  // principal prefix so multiple saves stay distinguishable.
+  const downloadSvg = async () => {
+    if (!principal || downloading) return;
+    setDownloading(true);
+    try {
+      const svg = await QRCode.toString(principal, {
+        type: "svg",
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 512,
+        color: {
+          dark: "#0a0a0a", // darker for print — the dark-on-dark UI theme
+          light: "#ffffff", // would be illegible on paper.
+        },
+      });
+      const blob = new Blob([svg], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const tag = principal.slice(0, 6);
+      a.href = url;
+      a.download = `principal-${tag}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Revoke after a beat so the browser can actually fetch the href.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -97,6 +135,20 @@ export function PrincipalQR({ principal }: Props) {
           </div>
           <div className="mt-2 text-[10px] uppercase tracking-widest text-gray-500">
             Raw principal · safe to share
+          </div>
+          {/* SVG download — vector so it scales without artifacts for
+              print/handoff, 512×512 viewbox, dark-on-light so it
+              remains legible on paper. */}
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadSvg}
+              disabled={downloading}
+              aria-label="Download QR as SVG"
+            >
+              {downloading ? "Generating…" : "Download SVG"}
+            </Button>
           </div>
         </div>
       )}
