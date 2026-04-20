@@ -13,6 +13,7 @@ import { ROUTES } from "@/lib/routes";
 import { useCopyable } from "@/lib/clipboard";
 import { sfx, unlockAudio } from "@/lib/audio";
 import { StorageUsage } from "@/components/settings/StorageUsage";
+import { resolveCanisterId, resolveHost } from "@/lib/icp/actor";
 
 import { shortenPrincipal } from "@/lib/principal";
 
@@ -137,6 +138,20 @@ export default function SettingsPage() {
         }
       }
     }
+    // ICP actor config — resolver can throw on malformed env; guard
+    // so a misconfigured deploy still yields a copyable report.
+    let canisterId = "n/a";
+    let host = "n/a";
+    let network = "n/a";
+    try {
+      canisterId = resolveCanisterId().toString();
+      host = resolveHost();
+      network = host.includes("127.0.0.1") || host.includes("localhost")
+        ? "local"
+        : "ic";
+    } catch {
+      /* leave defaults */
+    }
     const lines = [
       `livewager-dunk · diagnostics`,
       `ts: ${new Date().toISOString()}`,
@@ -145,6 +160,17 @@ export default function SettingsPage() {
       `viewport: ${vw}`,
       `reduced-motion (OS): ${rm}`,
       `principal: ${principal ? shortenPrincipal(principal, { head: 6, tail: 4 }) : "anon"}`,
+      // Network / ICP context. Support threads almost always need
+      // to know "local replica vs mainnet" and which canister the
+      // client is pointed at — including them by default saves a
+      // round-trip question.
+      `network: ${network}`,
+      `canister: ${canisterId}`,
+      `host: ${host}`,
+      // Placeholder for the filer to fill in — cheap signal about
+      // whether the bug reproduces in the unit test suite
+      // (prefs/clipboard/ltc contract tests) before fingering the UI.
+      `npm-test-local: <y/n — fill in before sending>`,
       `prefs:`,
       ...Object.entries(prefsSnapshot).map(
         ([k, v]) => `  ${k}: ${JSON.stringify(v)}`,
