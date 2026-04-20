@@ -109,8 +109,27 @@ export default function AppHeader() {
       router.push(ROUTES.play);
     }
   };
+  // Soft depth cue: once the page has scrolled, cast a faint shadow
+  // under the header so it reads as elevated above the scrolling
+  // content instead of a flat strip. Threshold is low (4px) so even a
+  // tiny scroll registers — passive listener so we don't block
+  // scrolling on low-end mobile.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const check = () => setScrolled(window.scrollY > 4);
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    return () => window.removeEventListener("scroll", check);
+  }, []);
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-background/85 backdrop-blur-md">
+    <header
+      className={`sticky top-0 z-40 border-b bg-background/85 backdrop-blur-md transition-shadow duration-200 ${
+        scrolled
+          ? "border-white/15 shadow-[0_8px_24px_-16px_rgba(0,0,0,0.65)]"
+          : "border-white/10"
+      }`}
+    >
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 md:px-8">
         <Link
           href={ROUTES.dunk}
