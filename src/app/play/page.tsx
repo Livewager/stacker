@@ -424,7 +424,13 @@ function ParallaxCard({
     <Link
       ref={ref}
       href={href}
-      className={className}
+      // Built-in keyboard focus ring: cyan + 2px outline-offset so
+      // the ring sits outside the card's own border instead of
+      // hugging it. Tilt transform lives via `style`; the ring
+      // uses outline (not box-shadow) so preserve-3d doesn't
+      // flatten it when enabled. Call sites only need to pass
+      // their shape/color classes.
+      className={`${className ?? ""} focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300/70`}
       style={style}
       onPointerMove={onMove}
       onPointerLeave={reset}
