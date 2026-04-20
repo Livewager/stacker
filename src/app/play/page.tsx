@@ -10,7 +10,7 @@
  */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import AppHeader from "@/components/AppHeader";
 import OnboardingNudge from "@/components/OnboardingNudge";
@@ -151,7 +151,7 @@ export default function PlayHubPage() {
                   ? formatRelative(lp, Date.now())
                   : null;
               return (
-                <Link
+                <ParallaxCard
                   key={g.href}
                   href={g.href}
                   className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/25 hover:bg-white/[0.05]"
@@ -224,7 +224,7 @@ export default function PlayHubPage() {
                       </svg>
                     </span>
                   </div>
-                </Link>
+                </ParallaxCard>
               );
             })}
           </div>
@@ -241,6 +241,86 @@ export default function PlayHubPage() {
 }
 
 // ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// Parallax tilt wrapper. Desktop-only (md+) via window.matchMedia +
+// prefers-reduced-motion gate. Tracks pointer position within the
+// card and applies a tiny rotateX/Y transform so the card feels
+// three-dimensional when hovered. The underlying preview SVGs pop
+// a bit because their "depth" now shifts with the cursor.
+//
+// Mobile + reduced-motion paths short-circuit and just render the
+// Link so touch users never trigger an accidental parallax.
+// ---------------------------------------------------------------
+
+function ParallaxCard({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLAnchorElement | null>(null);
+  const reduced = useReducedMotion();
+  const [enabled, setEnabled] = useState(false);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0 });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Tailwind md breakpoint = 768px. Only enable above that — touch
+    // viewports and mobile Safari don't benefit from pointermove
+    // tracking.
+    const mq = window.matchMedia("(hover: hover) and (min-width: 768px)");
+    const update = () => setEnabled(mq.matches && !reduced);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [reduced]);
+
+  const onMove = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    if (!enabled) return;
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width; // 0..1
+    const py = (e.clientY - rect.top) / rect.height; // 0..1
+    // Max 6° each axis; flip Y so top-of-card tilts toward viewer.
+    const ry = (px - 0.5) * 12;
+    const rx = -(py - 0.5) * 12;
+    setTilt({ rx, ry });
+  };
+  const reset = () => setTilt({ rx: 0, ry: 0 });
+
+  const style = enabled
+    ? {
+        transform: `perspective(900px) rotateX(${tilt.rx.toFixed(
+          2,
+        )}deg) rotateY(${tilt.ry.toFixed(2)}deg)`,
+        transformStyle: "preserve-3d" as const,
+        transition:
+          tilt.rx === 0 && tilt.ry === 0
+            ? "transform 260ms cubic-bezier(0.2,0.8,0.2,1)"
+            : "none",
+        willChange: "transform",
+      }
+    : undefined;
+
+  return (
+    <Link
+      ref={ref}
+      href={href}
+      className={className}
+      style={style}
+      onPointerMove={onMove}
+      onPointerLeave={reset}
+      onPointerCancel={reset}
+    >
+      {children}
+    </Link>
+  );
+}
+
 // Per-game animated previews. Inline SVG + framer-motion so the
 // cards render a living peek at each mechanic. Loops continuously
 // rather than hover-only so mobile sees them too.
