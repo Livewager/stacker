@@ -166,12 +166,50 @@ function ArrivingMethod({
   btnTone: "violet" | "cyan" | "orange" | "rose";
 }) {
   const toast = useToast();
-  const join = () =>
-    toast.push({
-      kind: "info",
-      title: `You're on the list for ${label}`,
-      description: "We'll ping you the day this rail flips live.",
-    });
+  const [email, setEmail] = useState("");
+  // "idle" → "sending" → "done" | "error". Once done we lock the form
+  // so repeat clicks on the tab don't re-submit; a fresh tab mount
+  // resets state, but that also resets the locally-typed email which
+  // is fine for this flow.
+  const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">(
+    "idle",
+  );
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (status === "sending" || status === "done") return;
+    const trimmed = email.trim();
+    // Mirror the server-side EMAIL_RX — cheap client check so the
+    // button's disabled state lines up with server validity.
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
+      toast.push({ kind: "error", title: "Enter a valid email" });
+      return;
+    }
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/dunk/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+      setStatus("done");
+      toast.push({
+        kind: "success",
+        title: `You're on the list for ${label}`,
+        description: "We'll ping you the day this rail flips live.",
+      });
+    } catch (err) {
+      setStatus("error");
+      toast.push({
+        kind: "error",
+        title: "Couldn't save your email",
+        description: (err as Error).message,
+      });
+    }
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_1.2fr] items-center">
@@ -192,9 +230,38 @@ function ArrivingMethod({
             </li>
           ))}
         </ul>
-        <Button onClick={join} tone={btnTone} className="mt-5">
-          Notify me
-        </Button>
+        {/* Notify-me micro-form. Posts to the existing /api/dunk/
+            waitlist endpoint so interest lands in whatever Slack/
+            Zapier webhook is wired via DUNK_WAITLIST_WEBHOOK. On
+            "done" the input + button lock so the user sees the
+            decision stuck, and the copy swaps to a confirmation. */}
+        <form onSubmit={submit} className="mt-5 flex items-stretch gap-2 max-w-sm">
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={status === "sending" || status === "done"}
+            className="flex-1 min-w-0 rounded-md border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-white/30 disabled:opacity-60"
+            aria-label={`Email address for ${label} notification`}
+          />
+          <Button
+            type="submit"
+            tone={btnTone}
+            disabled={status === "sending" || status === "done"}
+          >
+            {status === "done"
+              ? "On the list"
+              : status === "sending"
+                ? "Saving…"
+                : "Notify me"}
+          </Button>
+        </form>
+        <div className="mt-2 text-[11px] text-gray-500 leading-snug max-w-sm">
+          One email when this rail lands. No other use, no newsletter.
+        </div>
       </div>
       <div
         className="relative aspect-square rounded-2xl border border-white/10 overflow-hidden"
