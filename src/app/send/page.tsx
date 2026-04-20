@@ -53,7 +53,7 @@ const short = (s: string, head = 10, tail = 10) =>
   shortenPrincipal(s, { head, tail });
 
 export default function SendPage() {
-  const { identity, principal, balance, status, login, transfer } = useWalletState();
+  const { identity, principal, balance, status, login, transfer, error: walletError } = useWalletState();
   const toast = useToast();
 
   // POLISH-371 — /send accepts a ?to=<principal> deep link so the
@@ -688,6 +688,7 @@ export default function SendPage() {
             feeLwp={feeLwp}
             busy={status === "sending"}
             error={submitError}
+            replicaDown={!!walletError}
             onBack={() => setStage("compose")}
             onConfirm={onConfirm}
           />
@@ -849,6 +850,7 @@ function ReviewCard({
   feeLwp,
   busy,
   error,
+  replicaDown,
   onBack,
   onConfirm,
 }: {
@@ -859,6 +861,7 @@ function ReviewCard({
   feeLwp: number;
   busy: boolean;
   error: string | null;
+  replicaDown: boolean;
   onBack: () => void;
   onConfirm: () => void;
 }) {
@@ -959,16 +962,33 @@ function ReviewCard({
           ref={confirmRef}
           onClick={onConfirm}
           loading={busy}
+          disabled={replicaDown}
           tone="violet"
           className="sm:w-auto w-full"
         >
-          {busy ? "Signing…" : "Confirm & send"}
+          {busy
+            ? "Signing…"
+            : replicaDown
+              ? "Replica unavailable"
+              : "Confirm & send"}
         </Button>
       </div>
 
+      {/* POLISH-388 — when WalletContext.error is non-null (the
+          replica ping failed, surfaced globally via NetworkBanner),
+          disable the Confirm button and swap its label. Without
+          this gate, users could click Confirm, see the button go
+          into loading state for the full RPC timeout, then land on
+          a cryptic "failed to fetch" error. The banner already
+          tells them the replica is down — this closes the loop by
+          preventing the wasted click in the first place. The
+          button re-enables the moment the error clears (which
+          happens automatically on the next successful balance
+          refresh). */}
       <div className="text-[11px] text-gray-500 leading-snug">
-        Your II will sign this transfer. Nothing touches our servers — the call goes
-        straight to the ICRC-1 ledger.
+        {replicaDown
+          ? "The local IC replica isn't responding — Confirm is disabled until it's back. The banner above has retry."
+          : "Your II will sign this transfer. Nothing touches our servers — the call goes straight to the ICRC-1 ledger."}
       </div>
     </div>
   );
