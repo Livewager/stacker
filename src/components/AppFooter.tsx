@@ -56,6 +56,21 @@ export default function AppFooter() {
   }
 
   const sha = process.env.NEXT_PUBLIC_BUILD_SHA;
+  // Optional commit-browser URL. Two supported shapes:
+  //   - Full template with {sha} — e.g.
+  //     "https://github.com/org/repo/commit/{sha}"
+  //   - Bare repo root — we append /commit/<sha>. Good enough for
+  //     GitHub, GitLab, Codeberg, sourcehut-*.sr.ht/refs/log/<sha>
+  //     users can still supply the templated form.
+  const repoBase = process.env.NEXT_PUBLIC_BUILD_REPO_URL;
+  let commitUrl: string | null = null;
+  if (sha && repoBase) {
+    if (repoBase.includes("{sha}")) {
+      commitUrl = repoBase.replace("{sha}", encodeURIComponent(sha));
+    } else {
+      commitUrl = `${repoBase.replace(/\/+$/, "")}/commit/${encodeURIComponent(sha)}`;
+    }
+  }
 
   return (
     <footer
@@ -103,18 +118,49 @@ export default function AppFooter() {
               deployed build without screenshotting. Clicking copies the
               full sha (not the truncated display). Still desktop-only
               since mobile's footer is tight and this is a power-user
-              affordance. */}
+              affordance. When NEXT_PUBLIC_BUILD_REPO_URL is also set,
+              the chip splits: primary action copies the SHA, the
+              trailing "↗" opens the commit on the repo host. Repo URL
+              template understands {sha} — falls back to
+              `${repoBase}/commit/${sha}` so a bare
+              https://github.com/org/repo works. */}
           {sha && (
-            <button
-              type="button"
-              onClick={() => copy(sha, { label: "Build SHA" })}
-              className="font-mono hidden md:inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-200 transition focus:outline-none focus-visible:text-gray-200 focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
-              title={`Click to copy · ${sha}`}
-              aria-label={`Copy build SHA ${sha}`}
-            >
-              <span>build</span>
-              <span className="text-gray-300">{sha.slice(0, 7)}</span>
-            </button>
+            <span className="hidden md:inline-flex items-center gap-1 font-mono text-gray-500">
+              <button
+                type="button"
+                onClick={() => copy(sha, { label: "Build SHA" })}
+                className="inline-flex items-center gap-1.5 hover:text-gray-200 transition focus:outline-none focus-visible:text-gray-200 focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
+                title={`Click to copy · ${sha}`}
+                aria-label={`Copy build SHA ${sha}`}
+              >
+                <span>build</span>
+                <span className="text-gray-300">{sha.slice(0, 7)}</span>
+              </button>
+              {commitUrl && (
+                <a
+                  href={commitUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center h-4 w-4 rounded-sm hover:text-gray-200 transition focus:outline-none focus-visible:text-gray-200 focus-visible:ring-2 focus-visible:ring-cyan-300/40"
+                  title={`View commit ${sha.slice(0, 7)} on the repo`}
+                  aria-label={`View commit ${sha.slice(0, 7)} on the source repository`}
+                >
+                  <svg
+                    viewBox="0 0 10 10"
+                    className="h-2.5 w-2.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M4 1H1v8h8V6" />
+                    <path d="M6 1h3v3M9 1 4.5 5.5" />
+                  </svg>
+                </a>
+              )}
+            </span>
           )}
 
           {/* Routes */}
