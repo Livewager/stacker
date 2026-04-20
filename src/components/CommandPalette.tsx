@@ -484,10 +484,21 @@ export default function CommandPalette() {
                 <button
                   onClick={c.run}
                   aria-current={isCurrent ? "page" : undefined}
+                  // POLISH-309 — hover + focus-visible bg tints were
+                  // diverged (3% vs 5%) so a user moving between mouse
+                  // and keyboard saw two different "this is the row"
+                  // treatments. Unified on 5% — the brighter bg reads
+                  // as confident selection for both input modes. The
+                  // focus-visible ring stays keyboard-only: a mouse
+                  // user doesn't need it (the cursor is already the
+                  // pointer), but a keyboard user needs an unmissable
+                  // second signal beyond bg. Using the same bg opacity
+                  // plus an additive ring for keyboard is the standard
+                  // "command-k" menu pattern (Linear, Raycast, GitHub).
                   className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-300/50 ${
                     isCurrent
                       ? "bg-cyan-300/[0.04] cursor-default"
-                      : "hover:bg-white/[0.03] focus-visible:bg-white/[0.05]"
+                      : "hover:bg-white/[0.05] focus-visible:bg-white/[0.05]"
                   }`}
                 >
                   <span
