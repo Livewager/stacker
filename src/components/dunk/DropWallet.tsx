@@ -98,7 +98,7 @@ export default function DropWallet() {
         {identity && (
           <button
             onClick={logout}
-            className="shrink-0 text-[11px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-300 hover:border-white/30 hover:text-white transition"
+            className="shrink-0 text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-300 hover:border-white/30 hover:text-white transition"
           >
             Sign out
           </button>

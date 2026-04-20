@@ -1416,7 +1416,7 @@ export default function StackerGame({
                           copy(line, { label: "Run" });
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
-                        className="text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                        className="text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
                         aria-label="Share run details"
                       >
                         Share run

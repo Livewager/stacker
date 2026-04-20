@@ -255,6 +255,21 @@ encode real tiers. Before "consolidating" one of these, check here:
   button → /lg, input → /md, pill → /full. Don't mix tiers on
   the same hierarchy level (e.g. a card with /xl buttons inside
   /2xl container — the button reads as a mini-card).
+- **`font-mono`** — data-first tier (audited POLISH-295). Use only
+  where the content is:
+  - cryptographic strings (principals, canister ids, tx ids,
+    SHAs, LTC addresses, signatures)
+  - numeric values that benefit from tabular-nums (balances,
+    amounts, countdowns, HUD meters)
+  - keyboard hints (⌘K, ^K)
+  - debug / HUD overlays showing numeric state
+  Eyebrows (`uppercase tracking-widest`) already carry their
+  own weight — don't stack `font-mono` on top unless the eyebrow
+  itself contains a token or number (e.g. "Last played · 3h",
+  "Build abc1234"). Plain-text eyebrows like "Sign out" or
+  "Share run" stay proportional; mono there reads as cargo-cult
+  drift. Pair `font-mono` with `tabular-nums` when the content is
+  numeric and will re-render (keeps digits from jumping width).
 
 ### The anti-patterns to watch for
 
