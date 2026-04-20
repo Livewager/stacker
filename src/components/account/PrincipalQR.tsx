@@ -135,16 +135,30 @@ export function PrincipalQR({ principal }: Props) {
       </Button>
 
       {open && (
+        // POLISH-290 mobile width. Container math on a 320px viewport:
+        // page px-4 (32) → max-w-3xl card (288) → profile p-5 (40)
+        // → 248 inner → this panel's p-3 (24) → 224 inner. A fixed
+        // 240×240 QR + 240-wide principal text box used to overflow
+        // that budget by ~16–24px. Fix: size the QR wrapper to
+        // min(240px, 100%) so the cam-needed pixels stay close to
+        // 240 on viewports that have room, and shrink gracefully
+        // on narrow ones. Drop panel padding 4→3 to reclaim 8px
+        // of width for the QR itself. Principal caption matches
+        // the wrapper width so the break-all wrapping respects
+        // the same envelope.
         <div
           id="principal-qr-panel"
-          className="lw-reveal mt-3 rounded-xl border border-white/10 bg-black/40 p-4 flex flex-col items-center"
+          className="lw-reveal mt-3 rounded-xl border border-white/10 bg-black/40 p-3 flex flex-col items-center"
         >
           <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-3">
             Scan to send
           </div>
-          <div className="rounded-lg overflow-hidden border border-white/10 bg-[#020b18]">
+          <div
+            className="rounded-lg overflow-hidden border border-white/10 bg-[#020b18] w-full aspect-square"
+            style={{ maxWidth: 240 }}
+          >
             {error ? (
-              <div className="w-[240px] h-[240px] grid place-items-center text-xs text-red-300 text-center px-3">
+              <div className="w-full h-full grid place-items-center text-xs text-red-300 text-center px-3">
                 Couldn&apos;t generate QR: {error}
               </div>
             ) : dataUrl ? (
@@ -154,13 +168,21 @@ export function PrincipalQR({ principal }: Props) {
                 alt={`QR code for ${principal}`}
                 width={240}
                 height={240}
-                style={{ display: "block", imageRendering: "pixelated" }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "100%",
+                  imageRendering: "pixelated",
+                }}
               />
             ) : (
-              <div className="w-[240px] h-[240px] animate-pulse bg-white/5" />
+              <div className="w-full h-full animate-pulse bg-white/5" />
             )}
           </div>
-          <div className="mt-3 text-[11px] font-mono text-gray-400 break-all max-w-[240px] text-center">
+          <div
+            className="mt-3 text-[11px] font-mono text-gray-400 break-all text-center"
+            style={{ maxWidth: 240, width: "100%" }}
+          >
             {principal}
           </div>
           <div className="mt-2 text-[10px] uppercase tracking-widest text-gray-500">
