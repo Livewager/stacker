@@ -422,6 +422,24 @@ export default function CommandPalette() {
     if (!open) setHintIndex(0);
   }, [open]);
 
+  // Entrance animation is inherited from BottomSheet — slideUp 180ms
+  // cubic-bezier(0.2,0.8,0.2,1) + scrim fadeIn 120ms. POLISH-267
+  // audit: considered switching the palette to a fade-only entrance
+  // (palette is a power-user utility and the 40–60ms of perceived
+  // weight from the slide is mild friction), but cut it. Reasons
+  // against: (1) BottomSheet is shared across 9 call sites
+  // (Connect sheet, Settings modals, OnboardingNudge, StackerGame
+  // settings, …) and a fade-vs-slide per-caller prop is more
+  // surface area than the tweak's perceived benefit; (2) the
+  // global prefers-reduced-motion / html.lw-reduce-motion clamp
+  // already collapses animation-duration to 0.001ms, so the
+  // "special-case gate" the ticket worried about isn't a real
+  // cost — it's handled globally; (3) 180ms is well within the
+  // "doesn't feel slow" threshold and the palette's input is
+  // autofocused so the user is typing by the time the slide
+  // completes. If the palette ever grows a faster-entry variant
+  // (e.g. a ⌘K-twice accelerator), that's the right time to
+  // revisit. For now: pinned audit, no change.
   return (
     <BottomSheet
       open={open}
