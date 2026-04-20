@@ -292,6 +292,28 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Entrance motion by surface type** (audited POLISH-321). Use
+  `lw-reveal` on surfaces where arrival is **expected and
+  voluntary** — the user navigated to a route, opened a drawer,
+  clicked Review. There, a 220ms fade + 6px translateY
+  subtly confirms "here's what you asked for" without
+  demanding attention.
+  Skip entrance motion on surfaces where arrival is
+  **involuntary or adversarial** — error boundaries,
+  crash-reset screens, timeout recoveries. Reasons:
+    1. Motion frames the state as presentation ("ta-da, here's
+       your error") rather than recovery context ("you're
+       already here, fix it").
+    2. If the primary CTA is focused on mount (our error
+       pattern — POLISH-274), a 220ms fade lands Enter presses
+       on a mid-fade element — looks janky.
+    3. aria-live countdowns / announcements paired with
+       entrance motion read as too busy for a recovery surface.
+    4. Reduced-motion users chose calm exactly to avoid the
+       worst-case surfaces — don't override where it matters
+       most.
+  The broader test: ask "did the user choose to arrive here?"
+  Yes → motion is a reward. No → motion is noise.
 - **Hover-bg opacity contract** (audited POLISH-319). The
   implicit rule across the app: hover adds **+2 to +5 percentage
   points** to whatever the base bg opacity is, not a fixed tier.

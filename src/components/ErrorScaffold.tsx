@@ -182,6 +182,25 @@ export function ErrorScaffold({
     // here and in SkeletonPage; both migrated to div.
     // NOTE: global-error.tsx replaces the whole document and
     // doesn't use this scaffold, so this change is safe.
+    //
+    // POLISH-321 — deliberately NO lw-reveal on this container.
+    // Wallet cards use lw-reveal (POLISH-303) as a subtle "it's
+    // here" affirmation for expected navigation. An error boundary
+    // is unexpected, and framing it with a 220ms fade reads as
+    // "ta-da, here's your error page" — tonally wrong. Three
+    // concrete reasons to keep the entrance static:
+    //   1. Primary button is focused on mount (POLISH-274) so
+    //      keyboard users can hit Enter to retry instantly — an
+    //      entrance fade would land clicks on a mid-fade element
+    //      for the first 220ms, looks janky.
+    //   2. aria-live countdown starts immediately (POLISH-306
+    //      kept it when motion allowed) — pairing motion with a
+    //      ticking announcement reads as too busy for a
+    //      recovery surface.
+    //   3. Reduced-motion users already opted out of decorative
+    //      animation; adding one to the worst-case surface would
+    //      undermine that signal exactly where it matters most.
+    // Pinned so the next motion sweep doesn't re-ask.
     <div
       className="min-h-screen bg-background text-white flex items-center justify-center px-5 py-16"
       onMouseMove={cancelAutoRetry}
