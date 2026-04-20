@@ -6,6 +6,14 @@
  * which must appear once at the top of the layout.
  *
  * Fire toasts anywhere via useToast().push({ ... }).
+ *
+ * Variants: success | error | warning | info. Each has a tinted border,
+ * matching background, and a dedicated icon so the signal survives a
+ * glance without reading.
+ *
+ * The stack is capped to VISIBLE_CAP; overflow collapses into a
+ * "+N more" pill that clears everything on click. Keeps the screen
+ * readable on mobile during a burst of events.
  */
 
 import {
@@ -19,7 +27,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type ToastKind = "success" | "error" | "info";
+export type ToastKind = "success" | "error" | "warning" | "info";
 
 export interface ToastInput {
   kind?: ToastKind;
@@ -47,6 +55,8 @@ interface ToastApi {
 
 const ToastCtx = createContext<ToastApi | null>(null);
 
+const VISIBLE_CAP = 5;
+
 export function useToast(): ToastApi {
   const ctx = useContext(ToastCtx);
   if (!ctx) throw new Error("useToast requires <ToastHost /> in the tree");
@@ -64,6 +74,12 @@ export function ToastHost({ children }: { children: ReactNode }) {
       clearTimeout(h);
       timers.current.delete(id);
     }
+  }, []);
+
+  const dismissAll = useCallback(() => {
+    setToasts([]);
+    timers.current.forEach((h) => clearTimeout(h));
+    timers.current.clear();
   }, []);
 
   const push = useCallback(
@@ -102,6 +118,12 @@ export function ToastHost({ children }: { children: ReactNode }) {
 
   const api = useMemo<ToastApi>(() => ({ push, dismiss }), [push, dismiss]);
 
+  // Show the newest VISIBLE_CAP toasts; older ones are hidden but kept
+  // in state so their auto-dismiss timer still runs. Prevents the stack
+  // from eating the whole viewport on mobile during a burst of events.
+  const visible = toasts.slice(-VISIBLE_CAP);
+  const hiddenCount = Math.max(0, toasts.length - VISIBLE_CAP);
+
   return (
     <ToastCtx.Provider value={api}>
       {children}
@@ -109,9 +131,19 @@ export function ToastHost({ children }: { children: ReactNode }) {
         role="region"
         aria-label="Notifications"
         aria-live="polite"
-        className="pointer-events-none fixed top-4 right-4 z-[1000] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2"
+        className="pointer-events-none fixed top-4 right-4 z-[1000] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2 max-h-[calc(100vh-2rem)] overflow-y-auto"
+        style={{ scrollbarWidth: "none" }}
       >
-        {toasts.map((t) => (
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={dismissAll}
+            className="pointer-events-auto self-end text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border border-white/15 bg-black/60 text-gray-300 hover:text-white hover:border-white/30 transition backdrop-blur"
+          >
+            +{hiddenCount} more · clear all
+          </button>
+        )}
+        {visible.map((t) => (
           <ToastCard key={t.id} t={t} onDismiss={() => dismiss(t.id)} />
         ))}
       </div>
@@ -119,23 +151,49 @@ export function ToastHost({ children }: { children: ReactNode }) {
   );
 }
 
+const KIND_STYLES: Record<
+  ToastKind,
+  { shell: string; icon: string; iconColor: string }
+> = {
+  success: {
+    shell: "border-emerald-400/40 bg-emerald-400/[0.07]",
+    icon: "M16.707 5.293a1 1 0 0 1 0 1.414l-7.5 7.5a1 1 0 0 1-1.414 0l-3.5-3.5a1 1 0 1 1 1.414-1.414L8.5 12.086l6.793-6.793a1 1 0 0 1 1.414 0Z",
+    iconColor: "text-emerald-300",
+  },
+  error: {
+    shell: "border-red-400/40 bg-red-400/[0.07]",
+    icon: "M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z",
+    iconColor: "text-red-300",
+  },
+  warning: {
+    shell: "border-yellow-400/40 bg-yellow-400/[0.07]",
+    icon: "M10 2a1 1 0 0 1 .894.553l7.5 15A1 1 0 0 1 17.5 19h-15a1 1 0 0 1-.894-1.447l7.5-15A1 1 0 0 1 10 2Zm0 6a1 1 0 0 0-1 1v3a1 1 0 1 0 2 0V9a1 1 0 0 0-1-1Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z",
+    iconColor: "text-yellow-300",
+  },
+  info: {
+    shell: "border-cyan-300/40 bg-cyan-300/[0.07]",
+    icon: "M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm1 11a1 1 0 1 1-2 0V9a1 1 0 1 1 2 0v4Zm-1-8a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z",
+    iconColor: "text-cyan-300",
+  },
+};
+
 function ToastCard({ t, onDismiss }: { t: ToastEntry; onDismiss: () => void }) {
-  const accent =
-    t.kind === "success"
-      ? "border-emerald-400/40 bg-emerald-400/[0.07]"
-      : t.kind === "error"
-        ? "border-red-400/40 bg-red-400/[0.07]"
-        : "border-cyan-300/40 bg-cyan-300/[0.07]";
-  const dot =
-    t.kind === "success" ? "bg-emerald-400" : t.kind === "error" ? "bg-red-400" : "bg-cyan-300";
+  const s = KIND_STYLES[t.kind];
 
   return (
     <div
       role="status"
-      className={`pointer-events-auto rounded-xl border backdrop-blur-md px-4 py-3 shadow-xl ${accent}`}
+      className={`lw-reveal pointer-events-auto rounded-xl border backdrop-blur-md px-4 py-3 shadow-xl ${s.shell}`}
     >
       <div className="flex items-start gap-3">
-        <span className={`mt-1 inline-block h-2 w-2 flex-shrink-0 rounded-full ${dot}`} aria-hidden />
+        <span
+          aria-hidden
+          className={`mt-0.5 shrink-0 inline-flex h-5 w-5 items-center justify-center ${s.iconColor}`}
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+            <path d={s.icon} />
+          </svg>
+        </span>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-white leading-snug">{t.title}</div>
           {t.description && (
