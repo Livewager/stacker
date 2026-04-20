@@ -15,7 +15,7 @@
  *   - ledger call errors (silent)
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Principal } from "@dfinity/principal";
 import {
   decodeBlock,
@@ -110,40 +110,111 @@ export function BalanceSparkline({ principal }: { principal: string }) {
     };
   }, [principal]);
 
-  if (!points || points.length < 2) return null;
+  return <SparklineSvg points={points} />;
+}
 
-  // Normalize to 0..1 against the series min/max so the curve fills
-  // the box, with a small pad so flatlines still read.
-  const ys = points.map((p) => p.balance);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
+// Split the render into a subcomponent so hover state + refs don't
+// churn when the ledger effect is still resolving. The subcomponent
+// only mounts once there are points to draw, so its hooks can safely
+// assume `points.length >= 2`.
+function SparklineSvg({ points }: { points: Point[] | null }) {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const tooltipId = useId();
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  const ys = useMemo(() => (points ?? []).map((p) => p.balance), [points]);
+  const minY = ys.length ? Math.min(...ys) : 0;
+  const maxY = ys.length ? Math.max(...ys) : 1;
   const range = maxY - minY || 1;
   const W = 160;
   const H = 36;
-  const d = points
-    .map((p, i) => {
-      const x = (i / Math.max(1, points.length - 1)) * W;
-      const y = H - ((p.balance - minY) / range) * (H - 4) - 2;
-      return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
+
+  // Pre-computed x/y per point — both for the polyline path and the
+  // hover-snap math. One pass, no recompute on hover.
+  const plotted = useMemo(() => {
+    if (!points) return [] as Array<{ x: number; y: number; p: Point }>;
+    return points.map((p, i) => ({
+      x: (i / Math.max(1, points.length - 1)) * W,
+      y: H - ((p.balance - minY) / range) * (H - 4) - 2,
+      p,
+    }));
+  }, [points, minY, range]);
+
+  if (!points || points.length < 2) return null;
+
+  const d = plotted
+    .map((pt, i) => `${i === 0 ? "M" : "L"} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`)
     .join(" ");
-
-  // Last-point dot and a subtle area fill for depth.
-  const last = points[points.length - 1];
-  const lastX = W;
-  const lastY = H - ((last.balance - minY) / range) * (H - 4) - 2;
+  const last = plotted[plotted.length - 1];
   const areaD = `${d} L ${W} ${H} L 0 ${H} Z`;
+  const tone = last.p.balance >= plotted[0].p.balance ? "#22d3ee" : "#fda4af";
 
-  const tone = last.balance >= points[0].balance ? "#22d3ee" : "#fda4af";
+  // Convert a client x into the nearest plotted index. We use the svg
+  // bounding box rather than viewBox-transformed pointer coords because
+  // the svg renders at fixed 160×36 CSS size, making the ratio direct.
+  function indexFromClientX(clientX: number): number {
+    const el = svgRef.current;
+    if (!el) return 0;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0) return 0;
+    const ratio = (clientX - rect.left) / rect.width;
+    const clamped = Math.min(1, Math.max(0, ratio));
+    const idx = Math.round(clamped * (plotted.length - 1));
+    return Math.max(0, Math.min(plotted.length - 1, idx));
+  }
+
+  const hovered = hoverIdx !== null ? plotted[hoverIdx] : null;
+  // Anchor the tooltip to the hovered point; keep it inside the svg
+  // box horizontally (small chance the left/right edge clips otherwise).
+  const tipW = 86;
+  const rawTipX = hovered ? hovered.x - tipW / 2 : 0;
+  const tipX = hovered
+    ? Math.max(0, Math.min(W - tipW, rawTipX))
+    : 0;
+  const tipAbove = hovered ? hovered.y > H / 2 : true;
+  const tipY = hovered ? (tipAbove ? hovered.y - 20 : hovered.y + 6) : 0;
+
+  const tipText = hovered
+    ? `${hovered.p.balance.toFixed(2)} LWP · ${new Date(hovered.p.ts).toLocaleDateString(
+        undefined,
+        { month: "short", day: "numeric" },
+      )}`
+    : "";
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
       width={W}
       height={H}
-      className="block"
-      aria-label={`Balance trend across ${points.length} events`}
+      className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded"
+      aria-label={`Balance trend across ${points.length} events. Arrow keys to inspect points.`}
+      aria-describedby={hovered ? tooltipId : undefined}
       role="img"
+      tabIndex={0}
+      onPointerMove={(e) => setHoverIdx(indexFromClientX(e.clientX))}
+      onPointerLeave={() => setHoverIdx(null)}
+      onFocus={() => setHoverIdx(plotted.length - 1)}
+      onBlur={() => setHoverIdx(null)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          e.preventDefault();
+          const step = e.key === "ArrowLeft" ? -1 : 1;
+          setHoverIdx((i) => {
+            const base = i ?? plotted.length - 1;
+            return Math.max(0, Math.min(plotted.length - 1, base + step));
+          });
+        } else if (e.key === "Home") {
+          e.preventDefault();
+          setHoverIdx(0);
+        } else if (e.key === "End") {
+          e.preventDefault();
+          setHoverIdx(plotted.length - 1);
+        } else if (e.key === "Escape") {
+          setHoverIdx(null);
+          (e.currentTarget as SVGSVGElement).blur();
+        }
+      }}
     >
       <defs>
         <linearGradient id="bal-spark-fill" x1="0" x2="0" y1="0" y2="1">
@@ -160,7 +231,52 @@ export function BalanceSparkline({ principal }: { principal: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx={lastX} cy={lastY} r={1.8} fill={tone} />
+      <circle cx={last.x} cy={last.y} r={1.8} fill={tone} />
+      {hovered && (
+        <g aria-hidden>
+          <line
+            x1={hovered.x}
+            x2={hovered.x}
+            y1={0}
+            y2={H}
+            stroke={tone}
+            strokeOpacity={0.25}
+            strokeWidth={1}
+          />
+          <circle
+            cx={hovered.x}
+            cy={hovered.y}
+            r={2.6}
+            fill="#0a0a0a"
+            stroke={tone}
+            strokeWidth={1.2}
+          />
+          <g transform={`translate(${tipX} ${tipY})`}>
+            <rect
+              width={tipW}
+              height={14}
+              rx={3}
+              fill="#0a0a0a"
+              stroke={tone}
+              strokeOpacity={0.4}
+              strokeWidth={0.8}
+            />
+            <text
+              x={tipW / 2}
+              y={10}
+              textAnchor="middle"
+              fontSize={9}
+              fill="#f4f4f5"
+              fontFamily="ui-sans-serif, system-ui"
+            >
+              {tipText}
+            </text>
+          </g>
+        </g>
+      )}
+      {hovered && (
+        <desc id={tooltipId}>{tipText}</desc>
+      )}
     </svg>
   );
 }
