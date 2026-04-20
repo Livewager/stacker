@@ -17,16 +17,38 @@ export type ConfirmationStep = "idle" | "signed" | "seen" | "confirm" | "minted"
 
 const ORDER: ConfirmationStep[] = ["signed", "seen", "confirm", "minted"];
 
-const LABELS: Record<ConfirmationStep, { title: string; detail: string }> = {
+const DEFAULT_LABELS: Record<ConfirmationStep, { title: string; detail: string }> = {
   idle: { title: "Ready", detail: "Enter an amount to preview your deposit." },
   signed: { title: "Signed", detail: "Request queued with your II principal." },
   seen: { title: "Observed", detail: "Oracle picked up the transaction." },
-  confirm: { title: "1 / 2 confirmations", detail: "Minter warming up." },
+  confirm: { title: "Confirming", detail: "Waiting on block confirmations." },
   minted: { title: "Minted", detail: "LWP credited. ICRC-3 block emitted." },
 };
 
-export function ConfirmationRail({ step }: { step: ConfirmationStep }) {
+export interface ConfirmationRailProps {
+  step: ConfirmationStep;
+  /**
+   * Live confirmation counter. When provided and `step === "confirm"`, the
+   * rail replaces the default label with "N/M confirmations" and renders
+   * a thin progress arc inside the active step's dot. Omit to fall back
+   * to the static "Confirming" copy.
+   */
+  confirmations?: { current: number; target: number };
+}
+
+export function ConfirmationRail({ step, confirmations }: ConfirmationRailProps) {
   const activeIdx = step === "idle" ? -1 : ORDER.indexOf(step);
+  const LABELS = { ...DEFAULT_LABELS };
+  if (confirmations && step === "confirm") {
+    const { current, target } = confirmations;
+    LABELS.confirm = {
+      title: `${current} / ${target} confirmations`,
+      detail:
+        current >= target
+          ? "Confirmations satisfied. Finalising the mint."
+          : `Waiting on ${target - current} more block${target - current === 1 ? "" : "s"}.`,
+    };
+  }
   // Human-readable "Step N of 4" phrasing for the live region. When
   // idle we don't emit a stage announcement — the rail hasn't started.
   const stepNumber = activeIdx + 1;
@@ -53,9 +75,16 @@ export function ConfirmationRail({ step }: { step: ConfirmationStep }) {
         {ORDER.map((s, i) => {
           const done = activeIdx > i;
           const active = activeIdx === i;
+          // During the confirm step, use the real N/M ratio to fill the
+          // dot's ring so the progress is physically visible — not just
+          // an abstract "something is happening" pulse.
+          const ratio =
+            s === "confirm" && active && confirmations
+              ? Math.min(1, Math.max(0, confirmations.current / confirmations.target))
+              : undefined;
           return (
             <div key={s} className="flex items-center flex-1 min-w-0">
-              <StepDot done={done} active={active} />
+              <StepDot done={done} active={active} ratio={ratio} />
               {i < ORDER.length - 1 && (
                 <div
                   className="flex-1 h-[2px] mx-1.5 rounded-full overflow-hidden"
@@ -66,7 +95,7 @@ export function ConfirmationRail({ step }: { step: ConfirmationStep }) {
                     className="h-full origin-left transition-transform duration-500 ease-out"
                     style={{
                       background: "linear-gradient(90deg,#22d3ee,#0891b2)",
-                      transform: `scaleX(${done ? 1 : active ? 0.6 : 0})`,
+                      transform: `scaleX(${done ? 1 : active ? (ratio ?? 0.6) : 0})`,
                     }}
                   />
                 </div>
@@ -86,7 +115,17 @@ export function ConfirmationRail({ step }: { step: ConfirmationStep }) {
   );
 }
 
-function StepDot({ done, active }: { done: boolean; active: boolean }) {
+function StepDot({
+  done,
+  active,
+  ratio,
+}: {
+  done: boolean;
+  active: boolean;
+  /** 0..1 progress fill for the active dot. When provided, replaces
+   *  the generic pulse with a real arc driven by block confirmations. */
+  ratio?: number;
+}) {
   return (
     <div
       className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors ${
@@ -100,11 +139,46 @@ function StepDot({ done, active }: { done: boolean; active: boolean }) {
         <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor">
           <path d="M16.707 5.293a1 1 0 0 1 0 1.414l-7.5 7.5a1 1 0 0 1-1.414 0l-3.5-3.5a1 1 0 1 1 1.414-1.414L8.5 12.086l6.793-6.793a1 1 0 0 1 1.414 0Z" />
         </svg>
+      ) : active && typeof ratio === "number" ? (
+        <ProgressArc ratio={ratio} />
       ) : active ? (
         <span className="h-2 w-2 rounded-full bg-cyan-300 animate-pulse" />
       ) : (
         <span className="h-1.5 w-1.5 rounded-full bg-gray-500" />
       )}
     </div>
+  );
+}
+
+/** Thin cyan arc that sweeps from top (12 o'clock) clockwise in
+ *  proportion to `ratio`. Pure SVG; no motion lib; composites on
+ *  the GPU. Radius is sized to match the dot's 28px box. */
+function ProgressArc({ ratio }: { ratio: number }) {
+  const r = 9;
+  const c = 2 * Math.PI * r;
+  const dashOffset = c * (1 - Math.min(1, Math.max(0, ratio)));
+  return (
+    <svg viewBox="0 0 22 22" className="h-5 w-5 -rotate-90" aria-hidden>
+      <circle
+        cx={11}
+        cy={11}
+        r={r}
+        fill="none"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth={2}
+      />
+      <circle
+        cx={11}
+        cy={11}
+        r={r}
+        fill="none"
+        stroke="#22d3ee"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={dashOffset}
+        style={{ transition: "stroke-dashoffset 400ms ease-out" }}
+      />
+    </svg>
   );
 }

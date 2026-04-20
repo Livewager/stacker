@@ -12,10 +12,18 @@ const LWP_PER_LTC = 10_000_000;
 // oracle canister at init time.
 const DEMO_WATCH_ADDRESS = "ltc1qdemo0dunk0app0watch0address0xxxxxxxxxx0k9";
 
+// LTC typically finalises at 6 confirmations. We fake-tick toward that
+// target during the confirm step so the UI shows real progression
+// instead of a vague spinner. Demo-only — the real oracle waits on
+// actual block observations.
+const DEMO_CONFIRM_TARGET = 6;
+const DEMO_CONFIRM_TICK_MS = 450;
+
 export function LtcDepositPanel() {
   const { identity, principal, depositLTC, login, status } = useWalletState();
   const [amount, setAmount] = useState("0.001");
   const [step, setStep] = useState<ConfirmationStep>("idle");
+  const [confirmCount, setConfirmCount] = useState(0);
   const [copied, setCopied] = useState<"addr" | "mem" | null>(null);
 
   const lwpPreview =
@@ -38,21 +46,37 @@ export function LtcDepositPanel() {
   const runDeposit = async () => {
     if (!identity) return;
     setStep("signed");
+    setConfirmCount(0);
     // Simulate the oracle's stages. The real /api call runs concurrently;
     // the staged timeouts give the cadence an oracle-like feel so the
-    // visualizer isn't just two instant states.
+    // visualizer isn't just two instant states. A separate interval
+    // ticks the confirmation counter once we enter the confirm stage
+    // — clamped to TARGET so it never visually outruns the /api.
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(setTimeout(() => setStep("seen"), 350));
-    timers.push(setTimeout(() => setStep("confirm"), 900));
+    timers.push(
+      setTimeout(() => {
+        setStep("confirm");
+      }, 900),
+    );
+    const confirmInterval = window.setInterval(() => {
+      setConfirmCount((c) => Math.min(DEMO_CONFIRM_TARGET, c + 1));
+    }, DEMO_CONFIRM_TICK_MS);
     try {
       await depositLTC(Number(amount));
+      setConfirmCount(DEMO_CONFIRM_TARGET); // snap to full on success
       setStep("minted");
-      setTimeout(() => setStep("idle"), 3200);
+      setTimeout(() => {
+        setStep("idle");
+        setConfirmCount(0);
+      }, 3200);
     } catch {
       // depositLTC already surfaced the error via toast.
       setStep("idle");
+      setConfirmCount(0);
     } finally {
       timers.forEach(clearTimeout);
+      window.clearInterval(confirmInterval);
     }
   };
 
@@ -167,7 +191,10 @@ export function LtcDepositPanel() {
           </button>
         )}
 
-        <ConfirmationRail step={step} />
+        <ConfirmationRail
+          step={step}
+          confirmations={{ current: confirmCount, target: DEMO_CONFIRM_TARGET }}
+        />
 
         <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-[11px] text-gray-400 leading-snug">
           <div className="text-orange-300 font-semibold mb-1">Demo oracle</div>
