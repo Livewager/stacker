@@ -709,6 +709,33 @@ export default function StackerGame({
             <p className="text-sm text-gray-300 max-w-xs mx-auto mb-5 leading-snug">
               {statusCopy.sub}
             </p>
+
+            {/* Pre-round difficulty hint. Only on idle — leaving it on
+                won/over would bury the score. Cues match the actual
+                mechanic rows in SPEED_BY_ROW / RANDOM_DIR_ROW / JITTER_ROW. */}
+            {hudState.phase === "idle" && (
+              <ul className="mb-5 mx-auto max-w-[260px] space-y-1 text-left">
+                <DifficultyCue
+                  dot="bg-cyan-300"
+                  tone="text-cyan-300"
+                  rows="0–5"
+                  text="Predictable slider"
+                />
+                <DifficultyCue
+                  dot="bg-orange-400"
+                  tone="text-orange-300"
+                  rows="6+"
+                  text="Spawn side randomizes"
+                />
+                <DifficultyCue
+                  dot="bg-yellow-300"
+                  tone="text-yellow-300"
+                  rows="8+"
+                  text="Speed jitters — no rhythm"
+                />
+              </ul>
+            )}
+
             <div className="text-[11px] font-mono text-gray-400 uppercase tracking-widest">
               Press space or tap to {statusCopy.cta.toLowerCase()}
             </div>
@@ -734,5 +761,27 @@ function HudPill({
       <span className="text-gray-400">{label}</span>{" "}
       <span className={`${color} tabular-nums`}>{value}</span>
     </div>
+  );
+}
+
+function DifficultyCue({
+  dot,
+  tone,
+  rows,
+  text,
+}: {
+  dot: string;
+  tone: string;
+  rows: string;
+  text: string;
+}) {
+  return (
+    <li className="flex items-center gap-2 text-[11px]">
+      <span className={`h-1.5 w-1.5 rounded-full ${dot} shrink-0`} />
+      <span className={`font-mono uppercase tracking-widest ${tone}`}>
+        row {rows}
+      </span>
+      <span className="text-gray-300">{text}</span>
+    </li>
   );
 }
