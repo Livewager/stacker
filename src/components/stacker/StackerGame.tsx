@@ -1039,7 +1039,7 @@ export default function StackerGame({
                     <div className="pt-2 flex justify-center pointer-events-auto">
                       <button
                         type="button"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           // Don't let the tap bubble into the canvas
                           // handler (which would restart the round).
                           e.stopPropagation();
@@ -1055,13 +1055,39 @@ export default function StackerGame({
                           // to re-parse into a deterministic replay
                           // once ANTICHEAT-T1 ships.
                           const line = `Stacker · ${outcome} · score ${score} · row ${hudState.level}/${GRID_ROWS} · seed 0x${seedHex} · ${taps} taps · μΔt ${mean}ms · livewager.io/stacker`;
+                          // Prefer the native share sheet when
+                          // available (mobile browsers + some
+                          // desktop). If the user cancels, the API
+                          // throws AbortError — treat that as a
+                          // terminal decision, not a fallback
+                          // trigger. Only fall back to clipboard
+                          // when share is truly unavailable.
+                          const nav =
+                            typeof navigator !== "undefined"
+                              ? navigator
+                              : null;
+                          if (nav && typeof nav.share === "function") {
+                            try {
+                              await nav.share({
+                                title: "Stacker run",
+                                text: line,
+                              });
+                              return;
+                            } catch (err) {
+                              const name = (err as Error)?.name;
+                              if (name === "AbortError") return;
+                              // NotAllowedError / unknown failure —
+                              // fall through to clipboard so the
+                              // click still produces something.
+                            }
+                          }
                           copy(line, { label: "Run" });
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
                         className="text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
-                        aria-label="Copy run details"
+                        aria-label="Share run details"
                       >
-                        Copy run
+                        Share run
                       </button>
                     </div>
                   )}
