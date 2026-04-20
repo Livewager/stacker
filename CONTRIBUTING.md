@@ -672,6 +672,20 @@ npm run typecheck      # tsc --noEmit
 npm test               # node:test contract suite
 ```
 
+- **Money-flow compose-card shape** (audited POLISH-373).
+  `/send` and `/withdraw` compose-stage and review-stage cards share
+  exactly `rounded-2xl border border-white/10 bg-white/[0.02] p-5
+  md:p-7 space-y-5` for compose, and `lw-reveal rounded-2xl border
+  border-{accent}-300/30 bg-{accent}-300/[0.04] p-5 md:p-7 space-y-5`
+  for review (accent = violet on /send, rose on /withdraw). The
+  `space-y-5` ladder and `p-5 md:p-7` padding pair are load-bearing:
+  any new money-flow card (tip, stake, batch-send) should match
+  verbatim. If a surface genuinely needs tighter spacing (e.g. a
+  collapsible advanced drawer), nest a second container with its
+  own `space-y-*` instead of overriding on the outer card. Don't
+  split the ladder mid-card — that reads as two cards when it's
+  still one thought.
+
 ## Files you'll want to know about
 
 - `docs/bundle-baseline.md` — route First-Load-JS budget; update when
