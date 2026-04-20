@@ -424,26 +424,58 @@ function ToastCard({
 }) {
   const s = KIND_STYLES[t.kind];
   const dragStart = useRef<{ x: number; t: number } | null>(null);
+  // Trailing window of recent samples so the release-velocity check
+  // measures the *end* of the gesture, not the whole drag. A user
+  // who hesitates mid-swipe and then flicks should still dismiss —
+  // averaging across the slow start would hide that flick.
+  const samples = useRef<Array<{ x: number; t: number }>>([]);
   const [dragX, setDragX] = useState(0);
 
   // Touch-only swipe-to-dismiss so desktop mouse hover keeps
   // pause/resume intact.
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "touch") return;
-    dragStart.current = { x: e.clientX, t: performance.now() };
+    const now = performance.now();
+    dragStart.current = { x: e.clientX, t: now };
+    samples.current = [{ x: e.clientX, t: now }];
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     onPause();
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragStart.current) return;
+    const now = performance.now();
+    samples.current.push({ x: e.clientX, t: now });
+    // Keep only the last ~120ms so the ring never grows unbounded
+    // during a long slow drag. 120ms is enough headroom to land on
+    // an ≥80ms window even at the edges of the gesture.
+    const cutoff = now - 120;
+    while (samples.current.length > 2 && samples.current[0].t < cutoff) {
+      samples.current.shift();
+    }
     setDragX(e.clientX - dragStart.current.x);
   };
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!dragStart.current) return;
     const dx = e.clientX - dragStart.current.x;
-    const dt = performance.now() - dragStart.current.t;
-    const velocity = Math.abs(dx) / Math.max(1, dt);
     dragStart.current = null;
+    // Trailing-window velocity (last ~80ms) — captures a flick at
+    // the end of a slower drag. Falls back to the overall gesture
+    // when the window has fewer than two samples (very short tap).
+    const now = performance.now();
+    const window = samples.current.filter((s) => now - s.t <= 80);
+    let velocity = 0;
+    if (window.length >= 2) {
+      const first = window[0];
+      const last = window[window.length - 1];
+      const wdx = last.x - first.x;
+      const wdt = Math.max(1, last.t - first.t);
+      velocity = Math.abs(wdx) / wdt;
+    } else if (samples.current.length >= 2) {
+      const first = samples.current[0];
+      const last = samples.current[samples.current.length - 1];
+      velocity = Math.abs(last.x - first.x) / Math.max(1, last.t - first.t);
+    }
+    samples.current = [];
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
