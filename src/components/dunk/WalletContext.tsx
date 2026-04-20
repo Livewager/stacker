@@ -95,6 +95,61 @@ export interface WithdrawResult {
   ltcAmount: number;
 }
 
+/**
+ * Shape a raw /api/dunk/ltc-deposit error string into user-facing
+ * title + description. The API returns a small catalogue of error
+ * forms (validation, cap, canister reject, replica down); pattern-
+ * match them so the toast reads like an instruction instead of a
+ * backend dump. Any unmatched shape falls through to a generic
+ * "Deposit failed" with the raw message as description.
+ *
+ * POLISH-240. Loose substring matches because the API text could
+ * evolve and a too-narrow prefix check would silently fall through
+ * to the generic branch on a minor word tweak.
+ */
+function mapLtcDepositError(raw: string): { title: string; description: string } {
+  const e = raw.toLowerCase();
+  if (e.includes("replica") || e.includes("dfx") || e.includes("mint call failed")) {
+    return {
+      title: "Replica not reachable",
+      description:
+        "The local IC replica isn't responding. Start it with `dfx start --background`, redeploy the ledger, and try again.",
+    };
+  }
+  if (e.includes("invalid principal")) {
+    return {
+      title: "Invalid principal",
+      description: "The signed-in II principal didn't parse. Try signing out and back in.",
+    };
+  }
+  if (e.includes("demo cap") || e.includes("per request")) {
+    return {
+      title: "Demo cap reached",
+      description:
+        "The demo caps each request at 10 LTC so a typo can't mint unbounded LWP. Lower the amount and try again.",
+    };
+  }
+  if (e.includes("ltcamount must be") || e.includes("must be > 0")) {
+    return {
+      title: "Invalid amount",
+      description: "Amount must be a positive LTC value. Zero and negatives are rejected.",
+    };
+  }
+  if (e.includes("mint rejected")) {
+    // Extract the ICRC-2 Err variant if present — BadFee,
+    // InsufficientAllowance, etc. Surfacing the canonical name helps
+    // power users debug without reading raw Candid.
+    const variant = raw.match(/mint rejected:\s*(\w+)/i)?.[1];
+    return {
+      title: "Ledger rejected the mint",
+      description: variant
+        ? `The points ledger returned "${variant}". This is usually a canister-side policy error; your LTC hasn't moved.`
+        : "The points ledger rejected the mint call. Your LTC hasn't moved.",
+    };
+  }
+  return { title: "Deposit failed", description: raw };
+}
+
 const Ctx = createContext<WalletState | null>(null);
 
 export function useWalletState(): WalletState {
@@ -274,9 +329,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           description: `${amountLtc} LTC → ${(data.mintedLwp ?? 0).toLocaleString()} LWP`,
         });
       } catch (e) {
-        const msg = (e as Error).message;
-        setError(msg);
-        toast.push({ kind: "error", title: "Deposit failed", description: msg });
+        const raw = (e as Error).message;
+        // Pattern-match the canonical API error shapes (POLISH-240) so
+        // the toast reads in user language instead of backend phrasing.
+        // The raw string still reaches setError so the LedgerErrorCard
+        // can surface it in Technical detail for bug reports.
+        const friendly = mapLtcDepositError(raw);
+        setError(raw);
+        toast.push({
+          kind: "error",
+          title: friendly.title,
+          description: friendly.description,
+        });
         throw e;
       } finally {
         setStatus("idle");
