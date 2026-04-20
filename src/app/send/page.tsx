@@ -820,12 +820,41 @@ function ResultCard({
       28,
       H - 30,
     );
-    canvas.toBlob((blob) => {
+    canvas.toBlob(async (blob) => {
       if (!blob) return;
+      const filename = `livewager-receipt-${txId}.png`;
+      // Try Web Share API with a File first. On iOS/Android the
+      // native share sheet handles "Save to Photos" and "Save to
+      // Files" cleanly — both surfaces that an `<a download>` on
+      // iOS Safari can't reach (the anchor-download falls through
+      // to an "Open" prompt in a new tab on iOS, which is awkward).
+      // Feature detection must include canShare({ files }) because
+      // navigator.share exists without file support on some
+      // Android WebViews. POLISH-246.
+      try {
+        const file = new File([blob], filename, { type: "image/png" });
+        if (
+          typeof navigator !== "undefined" &&
+          typeof navigator.share === "function" &&
+          typeof navigator.canShare === "function" &&
+          navigator.canShare({ files: [file] })
+        ) {
+          await navigator.share({
+            files: [file],
+            title: "Livewager · Send receipt",
+            text: `Sent ${amountLwp} LWP · tx #${txId}`,
+          });
+          return;
+        }
+      } catch {
+        // Share can throw AbortError if the user dismisses the
+        // sheet — fall through to the anchor-download as a
+        // deliberate retry path, same as before the share attempt.
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `receipt-${txId}.png`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
