@@ -483,7 +483,13 @@ function LiveHourPanel({
             <PodiumRow key={e.id} entry={e} rank={i + 1} me={e.handle === myHandle} />
           ))}
           {board.slice(3).map((e, i) => (
-            <Row key={e.id} entry={e} rank={i + 4} me={e.handle === myHandle} />
+            <Row
+              key={e.id}
+              entry={e}
+              rank={i + 4}
+              me={e.handle === myHandle}
+              signedIn={!!myHandle}
+            />
           ))}
         </ol>
       )}
@@ -636,14 +642,33 @@ function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
   );
 }
 
-function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean }) {
+function Row({
+  entry,
+  rank,
+  me,
+  signedIn,
+}: {
+  entry: ScoreEntry;
+  rank: number;
+  me: boolean;
+  signedIn: boolean;
+}) {
   const copy = useCopyable();
   // Tip button appears on hover (desktop) or focus-within (keyboard)
   // for any non-self row. Demo entries ("sim-…") include it too —
   // the URL just carries the handle forward; /send can wire
   // handle→principal resolution in a later pass without touching
   // this component.
-  const canTip = !me;
+  //
+  // POLISH-382 — also gate on `signedIn` (derived from myHandle
+  // truthiness upstream). A signed-out user clicking Tip would
+  // land on /send's SignInGate — a dead-end flow that looks like
+  // a bug. Hide the button outright instead. The handle is still
+  // copyable via the inline button L660, so a signed-out user
+  // can grab the handle and come back after signing in; we just
+  // don't surface the tip-authoring affordance they can't act on
+  // yet.
+  const canTip = !me && signedIn;
   return (
     <li
       className={`group/row relative flex items-center gap-3 px-4 py-2.5 transition ${
