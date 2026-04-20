@@ -67,7 +67,15 @@ export function Card({
       : density === "lg"
         ? "p-6 md:p-10"
         : "p-5 md:p-6";
-  const bg = elevated ? "bg-white/[0.035]" : "bg-white/[0.02]";
+  // POLISH-367 — align the elevated bg to 0.03 (the dominant
+  // "elevated card" token across 58 ad-hoc sites), not 0.035.
+  // The Card primitive was a lonely outlier at 0.035 while every
+  // hand-rolled "pop this card a touch" reached for 0.03; future
+  // Card adopters would visibly diverge from neighboring panels
+  // on the same page. Ladder: 0.02 default → 0.03 elevated →
+  // 0.04 chrome (Pill/kbd/active-tab) → 0.05 hover → 0.06
+  // marketing-hero hover ceiling. Pinned in CONTRIBUTING.
+  const bg = elevated ? "bg-white/[0.03]" : "bg-white/[0.02]";
   return (
     <div
       className={[

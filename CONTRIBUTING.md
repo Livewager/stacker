@@ -299,6 +299,35 @@ encode real tiers. Before "consolidating" one of these, check here:
   and don't demote these to /lg just because the Button primitive
   uses that rung. Inner cards (tier cards in /fair-play, stat
   chips on /dunk) at /xl are the tile rung working correctly.
+- **`bg-white/[...]` surface-tint ladder** — a 5-rung elevation
+  ramp, not drift (audited POLISH-367). Pick by role, not by
+  "this one feels right":
+  - `bg-white/[0.02]` (~42 hits) — default card rest. Card
+    primitive default, skeletons, utility-route panels.
+  - `bg-white/[0.03]` (~58 hits) — elevated card rest. /dunk
+    hero panels, GamesHub tiles, TryGame surfaces, /play cards,
+    DropWallet, any "pop this card a touch against a dark hero."
+    Card primitive's `elevated=true` now emits this token too
+    (was 0.035 pre-POLISH-367, a lonely outlier while 58 sites
+    used 0.03 — the primitive is back aligned with call sites).
+  - `bg-white/[0.04]` (~7 hits) — chrome-active rest. Pill
+    primitive default, CommandPalette kbd wells, StackerGame HUD
+    active tab, Settings active-tab segment, GamesHub active
+    state. Reads as "a small surface that's semi-active" — not
+    a card, not hovered, but currently selected.
+  - `bg-white/[0.05]` (~10 hits) — hover tint on clickable cards.
+    CommandPalette active row, /dunk + /play card hover, /deposit
+    hover tab. Pair with a 0.02/0.03 rest.
+  - `bg-white/[0.06]` (1 site, POLISH-367 ceiling) — hottest
+    marketing-hero hover only. /dunk hero-card hover is the one
+    legitimate use; anything else reaching for 0.06 should step
+    back to 0.05. If a new hot-hover wants this rung, justify it
+    or demote.
+  Writing a new surface? Card rest → /02, elevated-card rest →
+  /03, Pill/kbd/active-tab → /04, card hover → /05. Don't invent
+  new stops (0.025, 0.045) — the 5-rung spread is enough
+  elevation resolution for dark-mode contrast and adding between
+  rungs makes the ladder read as arbitrary, not intentional.
 - **Route-accent eyebrow colors** — each primary route has a
   canonical accent (audited POLISH-301, all 10 routes clean):
   - /wallet, /leaderboard, /account, /stacker, /settings →
