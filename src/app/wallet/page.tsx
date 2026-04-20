@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { AmountField } from "@/components/ui/AmountField";
 import { shortenPrincipal } from "@/lib/principal";
+import { WalletAdvanced } from "@/components/wallet/WalletAdvanced";
 
 const short = (s: string) => shortenPrincipal(s, { head: 8, tail: 8 });
 
@@ -389,6 +390,11 @@ export default function WalletPage() {
                   />
                 </ul>
               </section>
+
+              {/* Power-user disclosure: raw balance units, ICRC-1
+                  decimals/symbol, canister id, IC host. Collapsed
+                  by default; all rows are copyable. */}
+              <WalletAdvanced />
             </div>
 
             {/* Right column: activity */}
