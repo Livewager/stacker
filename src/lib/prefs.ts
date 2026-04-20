@@ -34,7 +34,14 @@ function readRaw<T>(key: string, dflt: T): T {
   }
 }
 
-function writeRaw<T>(key: string, v: T) {
+/**
+ * Writes a value to the shared pref store + fans out to same-tab
+ * subscribers. Exposed for non-component callers (e.g. WalletContext
+ * needs to stamp lastAuthAt from outside the React tree). Still goes
+ * through the same prefix + publish pipeline as useLocalPref, so
+ * listeners hear the change uniformly.
+ */
+export function writeRaw<T>(key: string, v: T) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(LS_PREFIX + key, JSON.stringify(v));
@@ -114,6 +121,9 @@ export const PREF_KEYS = {
   pourLastPlayed: "pourLastPlayed", // epoch ms | null
   leaderboardTab: "leaderboardTab", // "dunk" | "pour" | "stacker"
   hasSeenOnboarding: "hasSeenOnboarding", // boolean
+
+  // Auth session metadata (not user-settable; written by WalletContext)
+  lastAuthAt: "lastAuthAt", // epoch ms of last II login | null
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];

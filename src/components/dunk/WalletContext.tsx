@@ -30,6 +30,7 @@ import {
   logout as iiLogout,
   pointsLedger,
 } from "@/lib/icp";
+import { writeRaw, PREF_KEYS } from "@/lib/prefs";
 import { useToast } from "./Toast";
 
 export type WalletStatus =
@@ -171,6 +172,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       idRef.current = id;
       setIdentity(id);
       setPrincipal(id.getPrincipal().toString());
+      // Stamp the successful auth moment so /account can show a
+      // human-readable "authed Xm ago" chip. Written through the prefs
+      // pipeline so cross-tab sign-ins propagate to any open /account.
+      writeRaw<number>(PREF_KEYS.lastAuthAt, Date.now());
       await refreshBalance(id);
       toast.push({ kind: "success", title: "Signed in", description: "Internet Identity connected." });
     } catch (e) {
@@ -190,6 +195,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setIdentity(null);
     setPrincipal("");
     setBalance(null);
+    writeRaw<number | null>(PREF_KEYS.lastAuthAt, null);
     setStatus("idle");
     toast.push({ kind: "info", title: "Signed out" });
   }, [toast]);

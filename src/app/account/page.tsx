@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import { formatLWP } from "@/lib/icp";
 import { useWalletState } from "@/components/dunk/WalletContext";
@@ -11,6 +11,7 @@ import { useCopyable } from "@/lib/clipboard";
 import { PrincipalQR } from "@/components/account/PrincipalQR";
 import { BalanceSparkline } from "@/components/account/BalanceSparkline";
 import { shortenPrincipal } from "@/lib/principal";
+import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 
 export default function AccountPage() {
   const {
@@ -118,6 +119,8 @@ export default function AccountPage() {
                     >
                       {shortPrincipal}
                     </div>
+                    <SessionChip />
+
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         onClick={copyPrincipal}
@@ -194,4 +197,65 @@ function StatItem({ label, value }: { label: string; value: string }) {
       <dd className="text-sm font-mono text-white">{value}</dd>
     </div>
   );
+}
+
+/**
+ * Small chip under the principal showing "authed Xm ago · expires
+ * in Yh Zm". The TTL is pulled from the II login config (8 hours)
+ * — if a future change moves that knob, update SESSION_TTL_MS here
+ * so the chip stays accurate.
+ *
+ * Re-renders once per minute via a local interval; stops ticking
+ * when the session is expired or absent. Never triggers a toast or
+ * takes action — purely informational so the user can reason about
+ * whether they'll get logged out mid-round.
+ */
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+function SessionChip() {
+  const [lastAuthAt] = useLocalPref<number | null>(PREF_KEYS.lastAuthAt, null);
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    if (!lastAuthAt) return;
+    const id = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, [lastAuthAt]);
+  if (!lastAuthAt) return null;
+
+  const sinceMs = Math.max(0, now - lastAuthAt);
+  const remainMs = Math.max(0, SESSION_TTL_MS - sinceMs);
+  const expired = remainMs === 0;
+
+  const since = fmtDurationShort(sinceMs);
+  const remain = fmtDurationShort(remainMs);
+  // Amber when <30min left. Red once expired; the II client will
+  // re-prompt on the next call so we flag it visually here first.
+  const tone = expired
+    ? "border-red-400/40 bg-red-500/10 text-red-200"
+    : remainMs < 30 * 60 * 1000
+      ? "border-amber-300/40 bg-amber-500/10 text-amber-200"
+      : "border-white/10 bg-white/[0.03] text-gray-400";
+  return (
+    <div
+      className={`mt-2 inline-flex items-center gap-1.5 rounded-full border px-2 py-[2px] text-[10px] font-mono tabular-nums ${tone}`}
+      title={`Session started ${new Date(lastAuthAt).toLocaleString()}`}
+    >
+      <span className={`inline-block h-1.5 w-1.5 rounded-full ${expired ? "bg-red-400" : "bg-emerald-400"}`} />
+      {expired ? (
+        <>Session expired — sign in again</>
+      ) : (
+        <>authed {since} ago · {remain} left</>
+      )}
+    </div>
+  );
+}
+
+/** Compact "2h 14m" / "47m" / "just now" formatter for SessionChip. */
+function fmtDurationShort(ms: number): string {
+  const totalMin = Math.floor(ms / 60_000);
+  if (totalMin < 1) return "just now";
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
