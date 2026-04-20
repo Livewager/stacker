@@ -203,6 +203,22 @@ function LiveHourPanel({
   const board =
     tab === "dunk" ? dunkBoard : tab === "pour" ? pourBoard : stackerBoard;
 
+  // Surface a "you're at #N" callout above the list so the signed-in
+  // player doesn't have to scroll the board looking for the cyan row.
+  // `delta` is how many points the next-higher entry scored; if the
+  // user is #1 there's no delta to show. Recomputed per-tab so
+  // switching Dunk → Pour refreshes the stats.
+  const myIdx = myHandle ? board.findIndex((e) => e.handle === myHandle) : -1;
+  const myCallout =
+    myIdx >= 0 && myHandle
+      ? {
+          rank: myIdx + 1,
+          score: board[myIdx].score,
+          delta: myIdx > 0 ? board[myIdx - 1].score - board[myIdx].score : null,
+          nextHandle: myIdx > 0 ? board[myIdx - 1].handle : null,
+        }
+      : null;
+
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
       <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
@@ -240,6 +256,33 @@ function LiveHourPanel({
         </div>
       </header>
 
+      {myCallout && (
+        <div
+          className="flex items-center justify-between gap-3 border-b border-white/5 bg-cyan-300/[0.03] px-4 py-2.5 text-xs"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex items-center rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-cyan-200">
+              rank #{myCallout.rank}
+            </span>
+            <span className="text-gray-300 truncate">
+              <span className="text-white font-semibold">@{myHandle}</span>
+              {" · "}
+              <span className="font-mono tabular-nums text-cyan-200">{myCallout.score}</span>
+            </span>
+          </div>
+          <div className="shrink-0 text-gray-400 font-mono tabular-nums text-[11px]">
+            {myCallout.rank === 1 ? (
+              <span className="text-yellow-300">holding #1</span>
+            ) : myCallout.delta !== null ? (
+              <>
+                +<span className="text-white">{myCallout.delta}</span> to pass{" "}
+                <span className="text-gray-300">@{myCallout.nextHandle}</span>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
       {board.length === 0 ? (
         <EmptyBoard tab={tab} />
       ) : (
