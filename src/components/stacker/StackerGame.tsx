@@ -610,11 +610,27 @@ export default function StackerGame({
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         handleTap();
+        return;
+      }
+      // "r" restarts after a round ends. Ignored during live play so
+      // a stray keystroke can't abort a climb, and skipped when the
+      // user is typing into a text field (share memo, search, etc).
+      if (e.key === "r" || e.key === "R") {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const t = e.target as HTMLElement | null;
+        const tag = t?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || t?.isContentEditable) return;
+        const s = stateRef.current;
+        if (s.phase !== "won" && s.phase !== "over") return;
+        e.preventDefault();
+        sfx.ping();
+        haptics.tick();
+        startRound();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleTap]);
+  }, [handleTap, startRound]);
 
   // ----------------------------------------------------------------
   // Render loop
@@ -1094,6 +1110,9 @@ export default function StackerGame({
 
             <div className="text-[11px] font-mono text-gray-400 uppercase tracking-widest">
               Press space or tap to {statusCopy.cta.toLowerCase()}
+              {(hudState.phase === "won" || hudState.phase === "over") && (
+                <span className="hidden md:inline"> · R to replay</span>
+              )}
             </div>
 
             {/* "New best streak!" flourish — only when the round
