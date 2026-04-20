@@ -8,6 +8,8 @@ import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { useToast } from "@/components/dunk/Toast";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
+import { Button } from "@/components/ui/Button";
+import { Pill } from "@/components/ui/Pill";
 
 function short(s: string, h = 8, t = 8): string {
   if (s.length <= h + t + 1) return s;
@@ -192,9 +194,7 @@ export default function WalletPage() {
                         </div>
                         <div className="text-lg font-semibold">Mint test credits</div>
                       </div>
-                      <span className="text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border border-cyan-300/30 text-cyan-300">
-                        demo
-                      </span>
+                      <Pill status="demo">demo</Pill>
                     </div>
                     <div className="flex items-center gap-2 mb-3">
                       <input
@@ -211,14 +211,15 @@ export default function WalletPage() {
                         per-request cap 100 LWP
                       </div>
                     </div>
-                    <button
+                    <Button
                       onClick={onBuy}
-                      disabled={status === "buying"}
-                      className="w-full py-3 rounded-xl font-bold text-black transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
+                      loading={status === "buying"}
+                      tone="cyan"
+                      size="lg"
+                      fullWidth
                     >
                       {status === "buying" ? "Minting…" : `Buy ${buyAmount || "?"} LWP`}
-                    </button>
+                    </Button>
                     <p className="text-[11px] text-gray-500 mt-3 leading-snug">
                       Local demo: our minter mints directly to your II principal. Real
                       funding paths (LTC, card) live under the Deposit tab.

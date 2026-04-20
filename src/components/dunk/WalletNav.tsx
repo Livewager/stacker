@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { formatLWP } from "@/lib/icp";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
 import { useWalletState } from "./WalletContext";
 
 export function WalletNav() {
@@ -37,14 +38,14 @@ export function WalletNav() {
   if (!identity) {
     return (
       <>
-        <button
+        <Button
           onClick={handleConnect}
-          disabled={status === "loading"}
-          className="text-xs md:text-sm px-4 py-2 rounded-lg text-black font-bold transition hover:brightness-110 disabled:opacity-60"
-          style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
+          loading={status === "loading"}
+          tone="cyan"
+          size="sm"
         >
           {status === "loading" ? "Connecting…" : "Connect"}
-        </button>
+        </Button>
 
         <BottomSheet
           open={sheetOpen}
@@ -67,21 +68,25 @@ export function WalletNav() {
             </li>
           </ul>
 
-          <button
+          <Button
             data-autofocus
             onClick={confirmConnect}
-            disabled={status === "loading"}
-            className="mt-6 w-full rounded-xl py-4 text-base font-bold text-black transition hover:brightness-110 disabled:opacity-60"
-            style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
+            loading={status === "loading"}
+            tone="cyan"
+            size="lg"
+            fullWidth
+            className="mt-6"
           >
             {status === "loading" ? "Opening II…" : "Sign in with Internet Identity"}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setSheetOpen(false)}
-            className="mt-2 w-full rounded-xl py-3 text-sm text-gray-400 hover:text-white transition"
+            variant="ghost"
+            fullWidth
+            className="mt-2"
           >
             Not now
-          </button>
+          </Button>
         </BottomSheet>
       </>
     );
