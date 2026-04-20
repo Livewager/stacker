@@ -292,6 +292,19 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Route-transition loader: we don't have one** (audited POLISH-333).
+  The task log has POLISH-136 ("Global loading indicator during
+  route transitions") marked complete, but grep finds no route-
+  transition loader component in `src/` — POLISH-136 must have
+  audit-closed back to "Next's per-segment loading.tsx is enough"
+  without committing a new component. That's still the right call:
+  Next App Router only mounts `loading.tsx` when a segment's data
+  is actually suspended, so fast same-origin cached navigations
+  don't flash a spinner in the first place. The POLISH-333
+  "sub-100ms flash" concern is moot — there's nothing firing to
+  flash. If we ever add a top-bar progress indicator (à la nprogress),
+  then the POLISH-333 120ms delay gate becomes relevant. Until
+  then, no-op.
 - **Toast button accessible names** (audited POLISH-324). In a
   stack of N live toasts, VoiceOver rotor / quick-nav lists every
   button in the "Notifications" region. Bare labels ("Undo",
