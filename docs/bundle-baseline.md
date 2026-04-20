@@ -73,6 +73,19 @@ split-point in `src/lib/icp/*`.
 - **POLISH-204 convention**: bump this doc when median drift exceeds
   +10 kB, or when any single route jumps more than +20 kB, whichever
   comes first.
+- **useSearchParams does NOT force dynamic rendering** (audited
+  POLISH-376). Adding `useSearchParams()` to `/send` in POLISH-371
+  kept the route at `○` (static) in the build output — the page
+  still prerenders an empty-query skeleton, then hydration reads
+  the actual URL params client-side. This is the intended Next 15
+  behavior. What *would* force `ƒ` (dynamic): a top-level
+  `export const dynamic = 'force-dynamic'`, a `cookies()` /
+  `headers()` read, or an uncached `fetch()` at the RSC level —
+  none of which `/send` does. Drift since POLISH-204: `/send`
+  10.4 kB → 11.9 kB (+1.5 kB route / +5 kB first-load),
+  attributable to POLISH-224/235/247/268/292/296/328/371/372/374/
+  375 shipping between the baselines. No single jump exceeds the
+  +20 kB gate, so no doc refresh required yet.
 
 ## How to re-run
 
