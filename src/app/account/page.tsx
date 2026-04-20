@@ -59,7 +59,15 @@ export default function AccountPage() {
       <AppHeader />
       <div className="mx-auto max-w-5xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-8">
-          <div className="text-xs uppercase tracking-widest text-cyan-300 mb-2">Account</div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs uppercase tracking-widest text-cyan-300">Account</span>
+            <span
+              className="inline-flex items-center rounded-full border border-cyan-300/30 bg-cyan-300/[0.06] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-cyan-200"
+              title="Local ICRC-1 ledger — no real money moves"
+            >
+              demo
+            </span>
+          </div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">Your profile</h1>
           <p className="text-sm text-gray-400 mt-1 max-w-xl">
             Internet Identity-backed. You hold the keys. This page reads from the public

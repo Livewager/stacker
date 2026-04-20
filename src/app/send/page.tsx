@@ -164,7 +164,15 @@ export default function SendPage() {
       <AppHeader />
       <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-6">
-          <div className="text-xs uppercase tracking-widest text-violet-300 mb-2">Send</div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs uppercase tracking-widest text-violet-300">Send</span>
+            <span
+              className="inline-flex items-center rounded-full border border-violet-300/30 bg-violet-300/[0.06] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-violet-200"
+              title="Local ICRC-1 ledger — no real money moves"
+            >
+              demo
+            </span>
+          </div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">Send LWP</h1>
           <p className="text-sm text-gray-400 mt-1 max-w-xl">
             ICRC-1 transfer, signed by your Internet Identity. The points ledger
