@@ -37,10 +37,10 @@ import { strict as assert } from "node:assert";
 // ------------------------------------------------------------------
 const POOL = [
   { id: 1,  user: "stax_main",   tone: "cyan",    body: "clean tower run incoming" },
-  { id: 2,  user: "queenpour",   tone: "amber",   body: "nah the 12th row got me" },
+  { id: 2,  user: "queenstacks", tone: "amber",   body: "nah the 12th row got me" },
   { id: 3,  user: "ftboi",       tone: "violet",  body: "ranked only cowards" },
   { id: 4,  user: "r3m",         tone: "rose",    body: "someone tip the streamer lmao" },
-  { id: 5,  user: "atxdunk",     tone: "emerald", body: "that perfect streak was nuts" },
+  { id: 5,  user: "atxstax",     tone: "emerald", body: "that perfect streak was nuts" },
   { id: 6,  user: "lowroll",     tone: "cyan",    body: "im up 40 LWP tonight" },
   { id: 7,  user: "mimic",       tone: "amber",   body: "go fair-play tier 3 bro" },
   { id: 8,  user: "halfdecaf",   tone: "violet",  body: "seeds are public check fair play" },

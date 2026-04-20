@@ -51,7 +51,7 @@ type ChatMsg = {
 // manic "POGGERS" type copy reads as placeholder-mush.
 const POOL: ChatMsg[] = [
   { id: 1, user: "stax_main", tone: "cyan", body: "clean tower run incoming" },
-  { id: 2, user: "queenpour", tone: "amber", body: "nah the 12th row got me" },
+  { id: 2, user: "queenstacks", tone: "amber", body: "nah the 12th row got me" },
   { id: 3, user: "ftboi", tone: "violet", body: "ranked only cowards" },
   { id: 4, user: "r3m", tone: "rose", body: "someone tip the streamer lmao" },
   { id: 5, user: "atxstax", tone: "emerald", body: "that perfect streak was nuts" },
