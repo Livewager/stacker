@@ -182,3 +182,47 @@ export function clearAllLocalData() {
   // Publish best-effort notifications so open hooks re-read defaults.
   Object.values(PREF_KEYS).forEach((k) => publish(k, undefined));
 }
+
+/**
+ * Lighter-weight reset: wipes only session-scoped state — the session
+ * cap, recent send recipients, last-played timestamps, last auth
+ * stamp, and the persisted tilt calibration — while preserving the
+ * user's long-lived profile choices (theme, sound, haptics, reduced
+ * motion, onboarding flag, command-palette discovery flag).
+ *
+ * Useful after you've been testing / playing and want a clean state
+ * without losing the settings you actually configured. Complements
+ * `clearAllLocalData` for users who do want the nuclear option.
+ */
+const SESSION_KEYS: readonly string[] = [
+  PREF_KEYS.sessionCapUsd,
+  PREF_KEYS.walletQuickTab,
+  PREF_KEYS.leaderboardTab,
+  PREF_KEYS.stackerLastPlayed,
+  PREF_KEYS.pourLastPlayed,
+  PREF_KEYS.lastAuthAt,
+  PREF_KEYS.tiltCalibration,
+  PREF_KEYS.stackerWager,
+  PREF_KEYS.stackerMode,
+];
+const SESSION_EXTRA_PREFIXES: readonly string[] = [
+  // Non-PREF_KEYS but still in the livewager-* namespace — tracked
+  // separately so the "session" reset matches the user's mental
+  // model (clear what a reviewer might want to start fresh).
+  "livewager-recent-recipients",
+  "livewager-stacker-best",
+];
+export function clearSessionState() {
+  if (typeof window === "undefined") return;
+  for (const k of SESSION_KEYS) {
+    window.localStorage.removeItem(LS_PREFIX + k);
+    publish(k, undefined);
+  }
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const k = window.localStorage.key(i);
+    if (!k) continue;
+    if (SESSION_EXTRA_PREFIXES.some((p) => k === p || k.startsWith(p))) {
+      window.localStorage.removeItem(k);
+    }
+  }
+}

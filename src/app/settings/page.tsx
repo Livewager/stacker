@@ -6,7 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { clearAllLocalData, usePrefs } from "@/lib/prefs";
+import { clearAllLocalData, clearSessionState, usePrefs } from "@/lib/prefs";
 import { useToast } from "@/components/dunk/Toast";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { ROUTES } from "@/lib/routes";
@@ -71,6 +71,21 @@ export default function SettingsPage() {
       description: "Local prefs, high scores, and session history reset.",
     });
     setConfirmingReset(false);
+  };
+
+  // Lighter-weight reset — just session-scoped state. No confirm
+  // dialog because the surface area is small and recoverable: the
+  // user's long-lived preferences (theme, sound, haptics) survive.
+  // Useful after a test run when the session cap + recent recipients
+  // clutter up the state.
+  const onClearSession = () => {
+    clearSessionState();
+    toast.push({
+      kind: "success",
+      title: "Session cleared",
+      description:
+        "Session cap, recent recipients, last-played, and calibration reset. Preferences kept.",
+    });
   };
 
   const setCap = (usd: number | null) => {
@@ -327,6 +342,24 @@ export default function SettingsPage() {
             subtitle="Clears local prefs, high scores, cached session cap, Internet Identity session hints. Does not touch the ledger."
             tone="danger"
           >
+            {/* Session reset — kept above the nuclear row so it's the
+                first affordance in reach. No confirm dialog: the
+                surface is recoverable (preferences stay, session
+                state regenerates as you use the app). */}
+            <div className="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-white/5">
+              <div className="text-sm text-gray-300 max-w-md">
+                Wipe session state only — session cap, recent
+                recipients, last-played, last auth stamp, tilt
+                calibration. Your preferences stay.
+              </div>
+              <button
+                onClick={onClearSession}
+                aria-label="Clear session state"
+                className="shrink-0 rounded-md border border-white/15 px-3 py-2 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+              >
+                Clear session
+              </button>
+            </div>
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm text-gray-300 max-w-md">
                 {confirmingReset
