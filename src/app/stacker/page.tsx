@@ -541,6 +541,17 @@ function HeroTower() {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, delay: 0.1 }}
       className="relative mx-auto w-full max-w-[360px]"
+      // CLS guard: aspect-[3/5] on the inner div reserves the box,
+      // but framer-motion's SSR path occasionally emits a collapsed
+      // wrapper in the brief window before hydration resolves the
+      // `initial` prop. A CSS containIntrinsicSize + content-visibility
+      // hint pins the layout contribution to the expected 360×600
+      // rectangle regardless, so the hero never shifts content below
+      // it during the fade-in. No visible effect on the modern path.
+      style={{
+        contentVisibility: "auto",
+        containIntrinsicSize: "360px 600px",
+      }}
     >
       <div
         className="relative aspect-[3/5] rounded-2xl border border-white/10 overflow-hidden shadow-2xl"
