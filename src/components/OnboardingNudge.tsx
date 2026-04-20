@@ -11,8 +11,19 @@
  * Non-blocking: waits until the pref has hydrated before considering
  * showing — avoids a flash of the modal on second visits. When the
  * user lands signed-out they also see this; once they sign in with
- * II the useEffect below auto-dismisses it (no point showing the
+ * II the useEffect below auto-dismiss it (no point showing the
  * explainer to someone who already did the thing).
+ *
+ * Scope boundary (POLISH-280 audit): OnboardingNudge is a purely
+ * presentational modal. It does NOT ping the ledger, read balances,
+ * or react to replica state. The dismissal lifecycle is driven by
+ * `identity` + `seen` only. If the replica is down on first load,
+ * NetworkBanner (POLISH-62) surfaces it above the AppHeader; adding
+ * retry-ping logic here would cross-wire two independent concerns
+ * (an explainer vs. a connection indicator) and double-up the user-
+ * facing signal on the same failure. Deliberate audit-close: keep
+ * the component presentational; don't grow a replica-state
+ * dependency.
  */
 
 import Link from "next/link";
