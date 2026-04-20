@@ -312,7 +312,18 @@ encode real tiers. Before "consolidating" one of these, check here:
   money-touching surface (generic catch-all + /wallet);
   `tone="muted"` for read-only surfaces (/account, /stacker, 404).
   Auto-retry: `autoRetrySeconds={5}` everywhere *except* 404 (no
-  retry for missing URLs).
+  retry for missing URLs). Auto-retry is **disabled entirely under
+  reduced-motion** (OS `prefers-reduced-motion` OR in-app
+  `usePrefs().reducedMotion`, loose OR) — audited POLISH-306. The
+  rationale: a ticking countdown is visual motion *and* the
+  `aria-live="polite"` announcement fires every second (chattery for
+  screen readers). The retry button stays focused on mount
+  (POLISH-274), so a keyboard user can hit Enter and still get an
+  instant retry. The flag is read dual-gate (both sources). If the
+  pref flips mid-countdown, the timer cancels; it does not re-arm
+  if the pref flips back. Don't "be clever" and just multiply the
+  countdown duration — the motion + chatter concerns don't scale
+  away with a longer fuse.
 
 ### The anti-patterns to watch for
 

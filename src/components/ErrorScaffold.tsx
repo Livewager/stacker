@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
+import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
+import { usePrefs } from "@/lib/prefs";
 
 /**
  * Visual shell shared by not-found + error + global-error pages.
@@ -38,13 +40,43 @@ export function ErrorScaffold({
   autoRetrySeconds?: number;
 }) {
   const accent = tone === "danger" ? "#f87171" : "#22d3ee";
+  // POLISH-306 — dual-gate reduced-motion disables auto-retry
+  // entirely. The rationale: auto-retry on an error boundary is a
+  // micro-interaction that ticks a visible number every second and
+  // then *acts on its own*. Users with reduced-motion preferences
+  // (OS or in-app) overlap heavily with users who want predictable,
+  // self-directed interaction — a ticking countdown + forced action
+  // violates both the spirit (calmer, less surprising) and the
+  // aria-live chatter (one announcement per tick). Manual retry
+  // still works — the Button is primary-focused on mount (POLISH-274)
+  // so Enter fires it instantly. We read both the OS media query and
+  // the in-app pref because users sometimes bump the in-app flag
+  // without touching OS (e.g. a shared device). Gate is loose (OR)
+  // because either signal is enough to opt out.
+  // During SSR and the first paint, osReduced === null; treat that
+  // as "assume motion OK until we know otherwise" — otherwise the
+  // countdown would flicker on/off at hydration, which is exactly
+  // the kind of motion this flag is trying to avoid.
+  const osReduced = useReducedMotion();
+  const { reducedMotion: userReduced } = usePrefs();
+  const motionReduced = osReduced === true || userReduced === true;
   const canAutoRetry =
     typeof autoRetrySeconds === "number" &&
     autoRetrySeconds > 0 &&
-    typeof primary.onClick === "function";
+    typeof primary.onClick === "function" &&
+    !motionReduced;
   const [secondsLeft, setSecondsLeft] = useState<number | null>(
     canAutoRetry ? (autoRetrySeconds as number) : null,
   );
+  // If the OS or in-app pref flips *after* mount (user toggles
+  // reduce-motion in Settings mid-countdown, or OS setting changes
+  // live), cancel any in-flight retry. The flag was false at mount
+  // so the countdown started; now it's true so we should stop.
+  // We don't *re-arm* the opposite direction — once cancelled, a
+  // user can still Enter to retry manually.
+  useEffect(() => {
+    if (motionReduced && secondsLeft !== null) setSecondsLeft(null);
+  }, [motionReduced, secondsLeft]);
   // Per-mount jitter: ±500ms offset applied to the first tick
   // (and only the first). Prevents an error cold-start where many
   // tabs all arrive at the retry button on the same wall-clock
