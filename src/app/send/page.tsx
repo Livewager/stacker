@@ -290,6 +290,13 @@ export default function SendPage() {
               tone="violet"
               error={validation.amount}
               hint={`Fee: ${feeLwp.toFixed(4)} LWP (burned).`}
+              // Pass the same demo USD rate as /wallet + /withdraw so
+              // the "≈ $X.XX" estimate anchors a quick-fill chip tap
+              // to a familiar unit. Chips (25/50/75/Max) are already
+              // emitted by AmountField whenever balanceLwp is a
+              // positive number — they auto-subtract the transfer
+              // fee via the balanceLwp that's already fee-reduced.
+              rate={1}
               balanceLwp={
                 balance !== null
                   ? Number(balance > TRANSFER_FEE_BASE ? balance - TRANSFER_FEE_BASE : 0n) /
