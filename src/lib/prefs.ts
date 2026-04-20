@@ -112,6 +112,7 @@ export const PREF_KEYS = {
   stackerMode: "stackerMode", // "ranked" | "unranked"
   stackerLastPlayed: "stackerLastPlayed", // epoch ms | null
   pourLastPlayed: "pourLastPlayed", // epoch ms | null
+  leaderboardTab: "leaderboardTab", // "dunk" | "pour" | "stacker"
   hasSeenOnboarding: "hasSeenOnboarding", // boolean
 } as const;
 

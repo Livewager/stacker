@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
-import { usePrefs } from "@/lib/prefs";
+import { usePrefs, useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import AppHeader from "@/components/AppHeader";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { useCopyable } from "@/lib/clipboard";
@@ -175,7 +175,18 @@ function LiveHourPanel({
   stackerBoard: ScoreEntry[];
   myHandle: string;
 }) {
-  const [tab, setTab] = useState<"dunk" | "pour" | "stacker">("dunk");
+  // Persist the active tab so a user who only cares about one game
+  // lands there on return. Narrow through a guard — a hand-edited
+  // pref shouldn't crash the page.
+  const [rawTab, setRawTab] = useLocalPref<"dunk" | "pour" | "stacker">(
+    PREF_KEYS.leaderboardTab,
+    "dunk",
+  );
+  const tab: "dunk" | "pour" | "stacker" =
+    rawTab === "dunk" || rawTab === "pour" || rawTab === "stacker"
+      ? rawTab
+      : "dunk";
+  const setTab = (next: "dunk" | "pour" | "stacker") => setRawTab(next);
   const board =
     tab === "dunk" ? dunkBoard : tab === "pour" ? pourBoard : stackerBoard;
 
