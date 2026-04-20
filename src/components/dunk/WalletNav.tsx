@@ -27,6 +27,21 @@ export function WalletNav() {
   // amount) still trigger.
   const [flashId, setFlashId] = useState(0);
   const lastBalanceRef = useRef<bigint | null | undefined>(undefined);
+  // POLISH-318 — delta-aware balance announcement for AT users.
+  // Previous shape stuffed `Balance X LWP` into the aria-live span
+  // every render, which means:
+  //   - first mount announces the current balance (noise on route
+  //     load, triggers on every navigation)
+  //   - deltas announce the new total, not the change, forcing
+  //     mental math ("was 1.2345, is now 2.3456, so I got 1.1111?")
+  // Fix: track the announcement text in state, gate updates to the
+  // same conditions the flash effect uses (real bigint→bigint
+  // deltas only), and phrase the announcement as a delta with a
+  // running total for context: "Received 1.1111 LWP. New balance
+  // 2.3456 LWP." Pending-state announcements stay unchanged — those
+  // already add actionable context ("buying in progress") and
+  // don't need a delta.
+  const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
     const prev = lastBalanceRef.current;
     lastBalanceRef.current = balance;
@@ -38,6 +53,15 @@ export function WalletNav() {
     if (typeof prev !== "bigint" || typeof balance !== "bigint") return;
     if (prev === balance) return;
     setFlashId((i) => i + 1);
+    // Phrase as a delta. Received/sent framing + new-total tail
+    // means AT users hear the change as the primary information
+    // and the standing balance as context.
+    const delta = balance - prev;
+    const deltaAbs = delta < 0n ? -delta : delta;
+    const verb = delta > 0n ? "Received" : "Sent";
+    setAnnouncement(
+      `${verb} ${formatLWP(deltaAbs, 4)} LWP. New balance ${formatLWP(balance, 4)} LWP.`,
+    );
   }, [balance]);
 
   const isMobile =
@@ -189,12 +213,20 @@ export function WalletNav() {
           LWP
         </span>
       </div>
-      <span className="sr-only" aria-live="polite">
+      {/* POLISH-318 — polite live-region scoped to actionable
+          moments only. `announcement` is seeded empty on mount and
+          only populated by the delta effect above (first-mount
+          silent, sign-in/out transitions silent, genuine
+          mutations announced as "Received/Sent N LWP. New balance
+          M LWP."). Pending announcements render unconditionally
+          when pending — that's a user-initiated action, not
+          chatter. aria-atomic="true" so the full phrase is
+          re-announced on update rather than just the changed
+          delta-word. */}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
         {pending
-          ? `${status} in progress, balance ${balance !== null ? formatLWP(balance, 4) + " LWP" : "unavailable"}`
-          : balance !== null
-            ? `Balance ${formatLWP(balance, 4)} LWP`
-            : "Balance unavailable"}
+          ? `${status} in progress${balance !== null ? `, balance ${formatLWP(balance, 4)} LWP` : ""}`
+          : announcement}
       </span>
       {/* Deposit CTA — scrolls to the wallet card. */}
       <a
