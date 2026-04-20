@@ -142,7 +142,16 @@ export default function ActivityFeed({
       // Keep the full decoded window in state; the render layer
       // slices to `shown`. Lets "Show more" expand instantly
       // without another canister round-trip.
-      if (mounted.current) setEvents(decoded);
+      if (mounted.current) {
+        setEvents(decoded);
+        // POLISH-370 — clear a stale error banner once a fetch
+        // succeeds. Without this, a user who saw one transient
+        // canister failure continues to see the red "couldn't
+        // read the ledger" row even after a successful 8s poll
+        // silently refreshed `events`. The banner should follow
+        // the last outcome, not sticky-latch the worst.
+        setError(null);
+      }
     } catch (e) {
       if (mounted.current) setError((e as Error).message);
     }
@@ -244,8 +253,31 @@ export default function ActivityFeed({
       )}
 
       {error && (
-        <div className="px-4 py-3 text-xs text-red-300 bg-red-500/5 border-t border-red-500/20">
-          Couldn&apos;t read the ledger: {error}. Is the local replica running?
+        // POLISH-370 — surfaces an inline Retry next to the error copy
+        // so the user doesn't have to find the separate header refresh.
+        // Reuses manualRefresh so the spinner + min-duration UX matches
+        // the header button; clearing `error` on success (inside load)
+        // auto-dismisses this row when the retry lands. role="status"
+        // so screen readers announce the error without a second polite
+        // announcement layer (the red bar is visually the alert; the
+        // announcement follows from this container, not from an
+        // aria-live elsewhere).
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 px-4 py-3 text-xs text-red-300 bg-red-500/5 border-t border-red-500/20"
+        >
+          <span className="min-w-0">
+            Couldn&apos;t read the ledger: {error}. Is the local replica
+            running?
+          </span>
+          <button
+            type="button"
+            onClick={manualRefresh}
+            disabled={refreshing}
+            className="shrink-0 rounded-md border border-red-400/40 bg-red-500/10 px-2.5 py-1 text-[10px] uppercase tracking-widest text-red-100 hover:bg-red-500/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {refreshing ? "Retrying" : "Retry"}
+          </button>
         </div>
       )}
 
