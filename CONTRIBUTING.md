@@ -343,6 +343,14 @@ encode real tiers. Before "consolidating" one of these, check here:
        most.
   The broader test: ask "did the user choose to arrive here?"
   Yes → motion is a reward. No → motion is noise.
+  Corollary for documentation surfaces (audited POLISH-339):
+  even voluntary arrivals skip entrance motion on pages that are
+  *reference*, not *action*. /fair-play has 7 cards of prose +
+  schematics; cascading them in on every visit reads as marketing
+  affect and wears out after the first read. /wallet cards do use
+  lw-reveal because each is a transactional stage (compose /
+  review / queued) with a confirmation moment. Doc pages should
+  feel like they've been here.
 - **Hover-bg opacity contract** (audited POLISH-319). The
   implicit rule across the app: hover adds **+2 to +5 percentage
   points** to whatever the base bg opacity is, not a fixed tier.
