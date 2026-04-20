@@ -6,6 +6,35 @@ import { getHourBoard, getPlayerHandle, postScore } from "./scoreboard";
 import { createCollector, type AntiCheatReport } from "./anticheat";
 import { addCredits, chargeForRound, ENTRY_USD, useWallet } from "./wallet";
 import { useCopyable } from "@/lib/clipboard";
+import { writeRaw, PREF_KEYS } from "@/lib/prefs";
+
+/**
+ * Persisted tilt calibration payload. Shape is deliberately small so
+ * the JSON write stays cheap. Null fields mean "not captured" (some
+ * devices only report one axis). Timestamp is used to expire stale
+ * calibrations — phones get picked up differently hour to hour, so
+ * anything older than a day starts fresh.
+ */
+interface StoredTiltCalibration {
+  gamma: number | null;
+  beta: number | null;
+  at: number; // epoch ms
+}
+const TILT_CAL_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+function readStoredTiltCalibration(): StoredTiltCalibration | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem("livewager-pref:" + PREF_KEYS.tiltCalibration);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredTiltCalibration;
+    if (!parsed || typeof parsed.at !== "number") return null;
+    if (Date.now() - parsed.at > TILT_CAL_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 const CYAN = "#22d3ee";
 const HS_KEY = "livewager-dunk-pour-high-score";
@@ -627,6 +656,22 @@ export const SteadyPour = () => {
     if (savedSound !== null) setSoundOn(savedSound === "1");
     const savedHap = localStorage.getItem(HAPTICS_KEY);
     if (savedHap !== null) setHapticsOn(savedHap === "1");
+    // Seed the calibration sample buffers from a recent stored
+    // calibration. Round-start wipes the *neutral* refs (so fresh
+    // samples take priority if the phone is held differently now),
+    // but the sample buffers survive — the stored median counts as
+    // prior weight in the pre-warm path, shortcutting the 1.8s
+    // calibration to the 600ms fast path when the user's pose
+    // hasn't changed.
+    const storedCal = readStoredTiltCalibration();
+    if (storedCal) {
+      if (storedCal.gamma !== null) {
+        calibrationSamplesRef.current = Array(30).fill(storedCal.gamma);
+      }
+      if (storedCal.beta !== null) {
+        betaCalibrationSamplesRef.current = Array(30).fill(storedCal.beta);
+      }
+    }
     setHapticsSupported(typeof navigator !== "undefined" && typeof navigator.vibrate === "function");
     const anyDOE = (
       window as unknown as {
@@ -1228,6 +1273,14 @@ export const SteadyPour = () => {
         } else {
           betaNeutralRef.current = 60;
         }
+        // Persist the neutral so the next round can skip the 1.8s wait.
+        // 24h TTL lives inside the read path — stale calibrations (phone
+        // was set down differently yesterday) expire automatically.
+        writeRaw<StoredTiltCalibration>(PREF_KEYS.tiltCalibration, {
+          gamma: gammaNeutralRef.current,
+          beta: betaNeutralRef.current,
+          at: Date.now(),
+        });
         setStatus("ready");
         return;
       }

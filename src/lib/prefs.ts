@@ -127,6 +127,11 @@ export const PREF_KEYS = {
 
   // Discovery nudges
   hasOpenedPalette: "hasOpenedPalette", // boolean — once true, ⌘K hint hides
+
+  // Tilt calibration (Tilt Pour). Persisted so repeat players don't
+  // wait 1.8s of blocking calibration on every round. Null until the
+  // first calibration settles. { gamma, beta } — both in degrees.
+  tiltCalibration: "tiltCalibration",
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];
