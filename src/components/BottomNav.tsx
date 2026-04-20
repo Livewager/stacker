@@ -47,7 +47,7 @@ const ITEMS: Item[] = [
     href: ROUTES.play,
     label: "Play",
     icon: (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-5 w-5">
         <path d="M6.3 3.7a1 1 0 0 1 1.5-.87l8 5.3a1 1 0 0 1 0 1.74l-8 5.3A1 1 0 0 1 6.3 14.3v-10.6Z" />
       </svg>
     ),
@@ -56,7 +56,7 @@ const ITEMS: Item[] = [
     href: ROUTES.wallet,
     label: "Wallet",
     icon: (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-5 w-5">
         <path d="M3 6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H5a3 3 0 0 0-2 .78V6Zm0 4a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4Zm10 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" />
       </svg>
     ),
@@ -66,7 +66,7 @@ const ITEMS: Item[] = [
     label: "Deposit",
     emphasize: true,
     icon: (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-6 w-6">
         <path d="M10 2a1 1 0 0 1 1 1v8.59l2.3-2.3a1 1 0 0 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.42l2.3 2.3V3a1 1 0 0 1 1-1Zm-6 14a1 1 0 1 1 0-2h12a1 1 0 1 1 0 2H4Z" />
       </svg>
     ),
@@ -75,7 +75,7 @@ const ITEMS: Item[] = [
     href: ROUTES.account,
     label: "Account",
     icon: (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-5 w-5">
         <path d="M10 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm-7 7a7 7 0 0 1 14 0 1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" />
       </svg>
     ),
@@ -84,7 +84,7 @@ const ITEMS: Item[] = [
     href: ROUTES.stacker,
     label: "Stacker",
     icon: (
-      <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+      <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden className="h-5 w-5">
         <path d="M4 14h12v2H4v-2Zm1-4h10v2H5v-2Zm2-4h6v2H7V6Z" />
       </svg>
     ),
@@ -148,13 +148,19 @@ export function BottomNav() {
         style={{ height: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
       />
 
+      {/* aria-label disambiguates this from AppHeader's <nav aria-
+          label="Primary">. Two nav landmarks sharing a name is a
+          common SR pain point — screen-reader rotor lists both as
+          "Primary navigation" and the user can't tell them apart.
+          "Primary mobile" keeps the semantic weight (still the app's
+          main nav) while distinguishing it as the bottom-tab form. */}
       <nav
-        aria-label="Primary"
+        aria-label="Primary mobile"
         data-kb-open={kbOpen ? "true" : undefined}
         className="lw-bottom-nav md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-background/90 backdrop-blur-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <ul className="flex items-stretch justify-around">
+        <ul role="list" className="flex items-stretch justify-around">
           {ITEMS.map((it) => {
             const active =
               pathname === it.href ||
