@@ -8,7 +8,7 @@
  *                 that smooth-scrolls to the Buy/Deposit card.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatLWP } from "@/lib/icp";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +18,27 @@ import { useWalletState } from "./WalletContext";
 export function WalletNav() {
   const { identity, balance, status, login } = useWalletState();
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Balance-changed flash. bumps on every real change — first non-null
+  // read (initial load) doesn't animate, subsequent changes do. Each
+  // bump becomes the React key on the pill, which remounts the node
+  // and restarts the CSS animation. Plain integer so successive
+  // identical changes (e.g., burn to 0 then mint back to the same
+  // amount) still trigger.
+  const [flashId, setFlashId] = useState(0);
+  const lastBalanceRef = useRef<bigint | null | undefined>(undefined);
+  useEffect(() => {
+    const prev = lastBalanceRef.current;
+    lastBalanceRef.current = balance;
+    // Skip the very first observation (prev=undefined → initial load).
+    if (prev === undefined) return;
+    // Only animate on a genuine bigint delta. null→value and
+    // value→null are session transitions (sign-in / sign-out) that
+    // would look like spurious flashes on page reload.
+    if (typeof prev !== "bigint" || typeof balance !== "bigint") return;
+    if (prev === balance) return;
+    setFlashId((i) => i + 1);
+  }, [balance]);
 
   const isMobile =
     typeof window !== "undefined" &&
@@ -111,7 +132,10 @@ export function WalletNav() {
           phrased announcement so a screen reader never gets a stray
           "◎" or responsive-swap double-read. */}
       <div
+        key={flashId}
         className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-full border text-xs md:text-sm font-mono tabular-nums min-w-0 transition-colors ${
+          flashId > 0 ? "lw-balance-flash" : ""
+        } ${
           pending
             ? "border-amber-400/50 bg-amber-400/[0.08]"
             : "border-cyan-300/40 bg-cyan-300/[0.08]"

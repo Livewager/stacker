@@ -164,6 +164,23 @@
     pointer-events: none;
   }
 
+  /* Single-fire balance-changed pulse for the top-nav wallet pill.
+     Brightens the cyan ring + nudges the tabular-nums figure by
+     ~1px, no layout thrash (box-shadow + filter only). Applied via
+     a key-remount in WalletNav so each balance change restarts the
+     animation cleanly. The global prefers-reduced-motion clamp
+     above flattens the duration to ~0ms on users who asked for
+     still UI — no local guard needed. */
+  @keyframes lw-balance-flash {
+    0%   { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.00); filter: brightness(1);   }
+    18%  { box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.22); filter: brightness(1.35); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.00); filter: brightness(1);   }
+  }
+  .lw-balance-flash {
+    animation: lw-balance-flash 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    will-change: box-shadow, filter;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
