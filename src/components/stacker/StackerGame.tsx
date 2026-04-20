@@ -917,7 +917,7 @@ export default function StackerGame({
           surface resumes (handleTap's paused branch). */}
       {paused && hudState.phase === "playing" && (
         <div className="absolute inset-0 grid place-items-center bg-black/55 backdrop-blur-[2px] p-6 text-center pointer-events-none">
-          <div>
+          <div className="lw-reveal">
             <div className="text-[10px] uppercase tracking-widest text-orange-300 mb-2">
               Paused
             </div>
@@ -935,7 +935,21 @@ export default function StackerGame({
       {/* Status overlay */}
       {(hudState.phase === "idle" || hudState.phase === "won" || hudState.phase === "over") && (
         <div className="absolute inset-0 grid place-items-center bg-black/45 backdrop-blur-[2px] p-6 text-center pointer-events-none">
-          <div>
+          {/* Inner card animates in on won/over so the end-of-round
+              has a deliberate punch instead of appearing abruptly.
+              Uses lw-reveal-pop (transform + opacity only) so the
+              browser composites on the GPU — no layout thrash on
+              low-end mobile. key= forces a fresh mount on phase
+              change so the animation replays. Idle skips the pop
+              so the initial state feels quiet. */}
+          <div
+            key={hudState.phase}
+            className={
+              hudState.phase === "idle"
+                ? undefined
+                : "lw-reveal-pop"
+            }
+          >
             <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">Stacker</div>
             <h2 className="text-3xl md:text-4xl font-black text-white mb-2">{statusCopy.title}</h2>
             <p className="text-sm text-gray-300 max-w-xs mx-auto mb-5 leading-snug">
