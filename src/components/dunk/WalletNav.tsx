@@ -115,14 +115,31 @@ export function WalletNav() {
   }
 
   // Mid-flight transitions shift the pill tone to amber + swap the
-  // glyph for a pulsing dot. Matches the pending chip on /wallet so
-  // the "balance is about to change" cue lives in the header too —
-  // important because users might be on any route when a tx lands.
-  const pending =
+  // glyph for a slow spinning ring. Matches the pending chip on
+  // /wallet so the "balance is about to change" cue lives in the
+  // header too — important because users might be on any route when
+  // a tx lands.
+  //
+  // Debounce the trailing edge: a transaction that resolves quickly
+  // (optimistic "buying" → "idle" in <120ms) would flash the ring
+  // on and straight back off, reading as a UI glitch. We hold the
+  // pending state true for 180ms after the raw status clears. The
+  // leading edge is immediate (no debounce) so users still see
+  // feedback on the first tap.
+  const rawPending =
     status === "buying" ||
     status === "depositing" ||
     status === "sending" ||
     status === "withdrawing";
+  const [pending, setPending] = useState(rawPending);
+  useEffect(() => {
+    if (rawPending) {
+      setPending(true);
+      return;
+    }
+    const t = setTimeout(() => setPending(false), 180);
+    return () => clearTimeout(t);
+  }, [rawPending]);
 
   return (
     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
@@ -143,12 +160,19 @@ export function WalletNav() {
         aria-hidden
       >
         {pending ? (
-          // Decorative — the sr-only sibling below carries the
-          // accessible announcement. No title attr: container is
-          // aria-hidden so titles wouldn't reach SR anyway, and
-          // keyboard users don't hover.
+          // Decorative spinner — an open-arc amber ring rotating at
+          // animate-spin's default 1s cadence. Reads as "something
+          // is in flight" at a glance and is louder than the old
+          // pulsing dot without being distracting. The sr-only
+          // sibling below carries the accessible announcement;
+          // no title attr because the container is aria-hidden and
+          // keyboard users don't hover an info-only glyph.
+          // Reduced-motion: the global CSS clamp collapses the
+          // rotation to 0.001ms → renders as a static partial ring,
+          // which still reads as "in progress" via the color change.
           <span
-            className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse"
+            aria-hidden
+            className="inline-block h-3 w-3 rounded-full border-[1.5px] border-amber-300/30 border-t-amber-300 animate-spin"
           />
         ) : (
           <span className="text-cyan-300">◎</span>
