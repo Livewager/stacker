@@ -150,6 +150,95 @@ function mapLtcDepositError(raw: string): { title: string; description: string }
   return { title: "Deposit failed", description: raw };
 }
 
+/**
+ * POLISH-262 — same contract as mapLtcDepositError, for the withdraw
+ * pipeline. Withdraw has two failure layers deposit doesn't: the
+ * canister burn (which can reject with an ICRC-1 variant like
+ * BadFee or InsufficientFunds) and the off-chain "broadcast" step
+ * hit via /api/dunk/ltc-withdraw. Each gets a distinct toast so the
+ * user knows what to retry (resubmit vs. top up vs. wait for the
+ * oracle) instead of "Withdraw failed" across the board.
+ *
+ * Loose substring matches — the API error text could tweak wording
+ * and a too-narrow prefix check would silently fall through.
+ */
+function mapLtcWithdrawError(raw: string): { title: string; description: string } {
+  const e = raw.toLowerCase();
+  if (e.includes("sign in first")) {
+    return {
+      title: "Sign in first",
+      description: "Withdraw requires an Internet Identity session. Connect to continue.",
+    };
+  }
+  if (e.includes("address looks wrong") || e.includes("address doesn't look valid")) {
+    return {
+      title: "LTC address rejected",
+      description:
+        "The destination address failed format checks. Double-check the paste — legacy L/M addresses, P2SH 3 addresses, and bech32 ltc1… are all supported.",
+    };
+  }
+  if (e.includes("burn rejected")) {
+    // ICRC-1 Err variant (InsufficientFunds, BadFee, TooOld, GenericError).
+    // Surface the canonical name so power users can debug without
+    // reading raw Candid. Your LWP hasn't moved when burn rejects —
+    // important to state, since users expect "it failed → funds are
+    // stuck" from other chains.
+    const variant = raw.match(/burn rejected:\s*(\w+)/i)?.[1];
+    return {
+      title: "Ledger rejected the burn",
+      description: variant
+        ? `The points ledger returned "${variant}". Your LWP is untouched; fix the condition and retry.`
+        : "The points ledger rejected the burn call. Your LWP is untouched; retry when the condition is resolved.",
+    };
+  }
+  if (e.includes("replica") || e.includes("dfx")) {
+    return {
+      title: "Replica not reachable",
+      description:
+        "The local IC replica isn't responding. Start it with `dfx start --background`, redeploy the ledger, and try again.",
+    };
+  }
+  if (e.includes("invalid principal")) {
+    return {
+      title: "Invalid principal",
+      description: "The signed-in II principal didn't parse. Try signing out and back in.",
+    };
+  }
+  if (e.includes("demo cap")) {
+    return {
+      title: "Demo cap reached",
+      description:
+        "The demo caps each withdrawal so a typo can't drain unbounded LWP. Lower the amount and try again.",
+    };
+  }
+  if (e.includes("amount must be")) {
+    return {
+      title: "Invalid amount",
+      description: "Amount must be a positive whole LWP value.",
+    };
+  }
+  if (e.includes("payout queue failed") || e.includes("broadcast")) {
+    // This is the real "the burn worked but the oracle couldn't send
+    // your LTC" branch. Call it out explicitly — user needs to know
+    // support can trace the payoutId, their LWP did burn, and no
+    // retry on /withdraw will get the LTC back (that's an oracle-
+    // side reconcile). The copy walks the user to the right action.
+    return {
+      title: "Oracle couldn't queue the payout",
+      description:
+        "Your burn succeeded but the off-chain oracle couldn't queue the LTC send. Your LWP is already debited — contact support with the burn tx id (see /account activity) to reconcile.",
+    };
+  }
+  if (e.includes("failed to fetch") || e.includes("networkerror") || e.includes("load failed")) {
+    return {
+      title: "Network unreachable",
+      description:
+        "Couldn't reach the withdraw endpoint. Check your connection and retry — your LWP only moves on a confirmed burn.",
+    };
+  }
+  return { title: "Withdraw failed", description: raw };
+}
+
 const Ctx = createContext<WalletState | null>(null);
 
 export function useWalletState(): WalletState {
@@ -486,7 +575,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         const msg = (e as Error).message;
         setError(msg);
-        toast.push({ kind: "error", title: "Withdraw failed", description: msg });
+        // Cause-specific copy (POLISH-262). Raw message still hits
+        // setError above so LedgerErrorCard on /withdraw can render
+        // its detail banner with the full text for debugging.
+        const { title, description } = mapLtcWithdrawError(msg);
+        toast.push({ kind: "error", title, description });
         throw e;
       } finally {
         setStatus("idle");
