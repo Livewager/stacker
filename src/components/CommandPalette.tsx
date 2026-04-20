@@ -24,6 +24,7 @@ import { writeRaw, PREF_KEYS, clearSessionState } from "@/lib/prefs";
 import { useCopyable } from "@/lib/clipboard";
 import { useToast } from "@/components/dunk/Toast";
 import { formatLWP } from "@/lib/icp";
+import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 
 /**
  * Global event name other components can dispatch to open the palette
@@ -31,6 +32,21 @@ import { formatLWP } from "@/lib/icp";
  * Example: window.dispatchEvent(new Event(OPEN_PALETTE_EVENT)).
  */
 export const OPEN_PALETTE_EVENT = "lw:open-palette";
+
+/**
+ * Rotating placeholder hints surfaced in the search input while the
+ * palette is open + empty + unfocused. First entry is the canonical
+ * prompt — it's also the only string shown to reduced-motion users
+ * and to users who focused the input immediately. Subsequent entries
+ * teach the palette's affordances (fuzzy match, Esc) without
+ * requiring docs.
+ */
+const PALETTE_HINTS = [
+  "Go to…",
+  "Try: “wallet” or “leaderboard”",
+  "Type to fuzzy-match",
+  "Esc to close · ↵ to run",
+] as const;
 
 /**
  * Character-subsequence fuzzy match with a simple score. Returns
@@ -104,6 +120,14 @@ export default function CommandPalette() {
   // Track login/logout in-flight so the palette can show "…" and
   // prevent double-fire if the user hammers Enter.
   const [authBusy, setAuthBusy] = useState(false);
+  // Rotating placeholder hints — cycles every 4s when the palette
+  // is open and the input is empty + unfocused. First-time users
+  // discover fuzzy matching + Esc without needing to read the help
+  // strip below. Reduced-motion + focused users see the first
+  // hint only; no movement beyond that.
+  const reducedMotion = useReducedMotion();
+  const [hintIndex, setHintIndex] = useState(0);
+  const [inputFocused, setInputFocused] = useState(false);
 
   // Track in-session route history: every pathname change bumps the
   // current route to the head of the recent list, deduped, capped at 3.
@@ -366,6 +390,28 @@ export default function CommandPalette() {
     if (!open) setQ("");
   }, [open]);
 
+  // Rotating placeholder hint scheduler. Runs only when the palette
+  // is open, the input is empty, the input isn't focused, and the
+  // user hasn't opted out of motion. `reducedMotion === null` during
+  // the first render (pre-hydrate); treat that as "don't rotate yet"
+  // to keep SSR + hydrate identical.
+  useEffect(() => {
+    if (!open) return;
+    if (q.trim() !== "") return;
+    if (inputFocused) return;
+    if (reducedMotion !== false) return;
+    const id = window.setInterval(() => {
+      setHintIndex((i) => (i + 1) % PALETTE_HINTS.length);
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [open, q, inputFocused, reducedMotion]);
+
+  // Reset to hint 0 whenever the palette closes so a returning user
+  // always sees the canonical prompt first.
+  useEffect(() => {
+    if (!open) setHintIndex(0);
+  }, [open]);
+
   return (
     <BottomSheet
       open={open}
@@ -384,7 +430,12 @@ export default function CommandPalette() {
             filtered[0].run();
           }
         }}
-        placeholder="Go to…"
+        onFocus={() => setInputFocused(true)}
+        onBlur={() => setInputFocused(false)}
+        // Rotating hint when empty + unfocused + motion allowed.
+        // reducedMotion === null (pre-hydrate) falls through to the
+        // canonical first hint so SSR + first paint match.
+        placeholder={PALETTE_HINTS[hintIndex] ?? PALETTE_HINTS[0]}
         className="w-full rounded-lg border border-white/10 bg-black/40 px-3 h-11 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-300/60"
         aria-label="Search commands"
       />
