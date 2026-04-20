@@ -107,7 +107,7 @@ export default function SettingsPage() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
+      <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-8">
           <div className="text-xs uppercase tracking-widest text-cyan-300 mb-2">
             Settings
@@ -309,7 +309,7 @@ export default function SettingsPage() {
             </div>
           </Section>
         </div>
-      </main>
+      </div>
 
       <BottomSheet
         open={signOutOpen}

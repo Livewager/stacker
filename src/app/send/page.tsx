@@ -123,7 +123,7 @@ export default function SendPage() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
+      <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-6">
           <div className="text-xs uppercase tracking-widest text-violet-300 mb-2">Send</div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">Send LWP</h1>
@@ -239,7 +239,7 @@ export default function SendPage() {
         ) : (
           <ResultCard txId={txId!} to={to.trim()} amountLwp={Number(amount)} onAgain={reset} />
         )}
-      </main>
+      </div>
     </>
   );
 }

@@ -1140,7 +1140,10 @@ export default function DunkPage() {
         />
       </div>
 
-      <nav className="relative z-20 max-w-7xl mx-auto px-4 sm:px-5 md:px-8 py-4 sm:py-5 flex items-center justify-between gap-3">
+      <nav
+        aria-label="Site"
+        className="relative z-20 max-w-7xl mx-auto px-4 sm:px-5 md:px-8 py-4 sm:py-5 flex items-center justify-between gap-3"
+      >
         <a href="#top" className="flex items-center" aria-label="Livewager Dunk home">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

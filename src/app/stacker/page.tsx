@@ -25,8 +25,11 @@ export default function StackerPage() {
   const wagerDisabled = phase === "playing";
 
   return (
-    <main className="min-h-screen bg-background text-white">
-      <nav className="relative z-20 max-w-7xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-3">
+    <div className="min-h-screen bg-background text-white">
+      <nav
+        aria-label="Site"
+        className="relative z-20 max-w-7xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-3"
+      >
         <Link href="/dunk" className="flex items-center" aria-label="Livewager Dunk home">
           <Image
             src="/assets/logo43.png"
@@ -90,7 +93,7 @@ export default function StackerPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 

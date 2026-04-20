@@ -55,7 +55,7 @@ export default function AccountPage() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-5xl px-4 md:px-8 py-8 md:py-12">
+      <div className="mx-auto max-w-5xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-8">
           <div className="text-xs uppercase tracking-widest text-cyan-300 mb-2">Account</div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">Your profile</h1>
@@ -177,7 +177,7 @@ export default function AccountPage() {
             <ActivityFeed principal={principal} limit={20} />
           </div>
         )}
-      </main>
+      </div>
     </>
   );
 }

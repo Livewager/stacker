@@ -112,7 +112,7 @@ export default function WithdrawPage() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
+      <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-6">
           <div className="text-xs uppercase tracking-widest text-rose-300 mb-2">
             Withdraw
@@ -249,7 +249,7 @@ export default function WithdrawPage() {
             body="Every withdrawal leaves an ICRC-3 burn block with the destination in the memo — reconcilable from /account."
           />
         </div>
-      </main>
+      </div>
     </>
   );
 }

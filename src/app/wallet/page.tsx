@@ -62,7 +62,7 @@ export default function WalletPage() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-6xl px-4 md:px-8 py-8 md:py-12">
+      <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-widest text-cyan-300 mb-2">
@@ -290,7 +290,7 @@ export default function WalletPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </>
   );
 }

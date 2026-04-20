@@ -26,7 +26,7 @@ function DepositInner() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-5xl px-4 md:px-8 py-8 md:py-12">
+      <div className="mx-auto max-w-5xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-6">
           <div className="text-xs uppercase tracking-widest text-orange-300 mb-2">
             Deposit
@@ -118,7 +118,7 @@ function DepositInner() {
           <InfoTile title="ICRC-3 audit trail" body="Every mint emits a signed block. You can read the full log from /account." />
           <InfoTile title="Demo guardrails" body="Real LTC isn't moved here. The production oracle waits for 2 confirmations." />
         </div>
-      </main>
+      </div>
     </>
   );
 }
@@ -233,12 +233,12 @@ function DepositSkeleton() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-5xl px-4 md:px-8 py-12">
+      <div className="mx-auto max-w-5xl px-4 md:px-8 py-12">
         <div className="h-6 w-32 rounded bg-white/5 animate-pulse mb-3" />
         <div className="h-10 w-2/3 rounded bg-white/5 animate-pulse mb-8" />
         <div className="h-12 w-full rounded bg-white/5 animate-pulse mb-5" />
         <div className="h-[420px] w-full rounded-2xl bg-white/5 animate-pulse" />
-      </main>
+      </div>
     </>
   );
 }

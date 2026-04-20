@@ -55,7 +55,7 @@ export default function LeaderboardPage() {
   return (
     <>
       <AppHeader />
-      <main className="mx-auto max-w-6xl px-4 md:px-8 py-8 md:py-12">
+      <div className="mx-auto max-w-6xl px-4 md:px-8 py-8 md:py-12">
         <HeroHeader msToReset={msToReset} myRank={myDunkRank} myHandle={myHandle} />
 
         <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
@@ -65,7 +65,7 @@ export default function LeaderboardPage() {
             <BestsPanel stackerBest={stackerBoard.localBest} />
           </div>
         </div>
-      </main>
+      </div>
     </>
   );
 }
