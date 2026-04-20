@@ -27,6 +27,7 @@ const TABS: Tab[] = [
   { href: "/withdraw", label: "Withdraw" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/account", label: "Account" },
+  { href: "/settings", label: "Settings" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
