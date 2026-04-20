@@ -862,6 +862,31 @@ function ReviewCard({
     });
     return () => cancelAnimationFrame(id);
   }, []);
+  // POLISH-374 — the original ticket framed /send review as a
+  // soft-keyboard concern, but review is read-only (no <input>, no
+  // <textarea>), so no keyboard opens here. The real mobile gap
+  // surfaces when a ledger reject lands: the error block expands
+  // between the totals list and the button row, pushing Confirm
+  // below the fold on short viewports (iPhone SE portrait can hit
+  // ~568px usable). The user sees the error but the next-action
+  // disappears without a second scroll.
+  //
+  // Fix: when `error` transitions to non-null, scroll the Confirm
+  // button back into view. block: "end" keeps it at the bottom of
+  // the viewport (not re-centered — that would hide the error
+  // copy); behavior: "smooth" respects the OS reduced-motion
+  // auto-downgrade per the MDN contract (Safari + Firefox honor
+  // prefers-reduced-motion automatically for scrollIntoView).
+  const prevErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    const was = prevErrorRef.current;
+    prevErrorRef.current = error;
+    if (!error || was === error) return;
+    const id = requestAnimationFrame(() => {
+      confirmRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [error]);
   return (
     <div className="lw-reveal rounded-2xl border border-violet-300/30 bg-violet-300/[0.04] p-5 md:p-7 space-y-5">
       <div>
