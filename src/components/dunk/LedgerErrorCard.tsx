@@ -11,7 +11,7 @@
  */
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "./Toast";
 import { useCopyable } from "@/lib/clipboard";
 
@@ -23,10 +23,77 @@ type Props = {
   scope?: string;
 };
 
+/**
+ * Shape the user-facing copy to the likely cause. Three cases:
+ *
+ *   - browser offline — navigator.onLine is false. The replica is
+ *     irrelevant; nothing works until the device reconnects.
+ *   - network / fetch-class error — the message looks like the
+ *     agent-js fetch path failed (TypeError: Failed to fetch, NetworkError,
+ *     ERR_NETWORK, etc). Most likely the dfx replica stopped or the
+ *     host env var points somewhere unreachable.
+ *   - anything else — likely a canister-side error (Reject,
+ *     CertificateVerificationFailed, a typed ICRC reject). Keep
+ *     the copy generic; the technical detail section has the specifics.
+ *
+ * The match is intentionally substring-based and case-insensitive
+ * — agent-js surfaces these strings slightly differently across
+ * versions and we don't want to over-narrow.
+ */
+type Cause = "browser-offline" | "network" | "canister";
+
+function classify(error: string, browserOffline: boolean): Cause {
+  if (browserOffline) return "browser-offline";
+  const e = error.toLowerCase();
+  if (
+    e.includes("failed to fetch") ||
+    e.includes("networkerror") ||
+    e.includes("err_network") ||
+    e.includes("err_connection") ||
+    e.includes("fetch failed")
+  ) {
+    return "network";
+  }
+  return "canister";
+}
+
+const COPY: Record<Cause, { title: string; body: string }> = {
+  "browser-offline": {
+    title: "You're offline.",
+    body: "Your device reports no internet connection. Balance + activity are cached locally from the last successful read. Reconnect and retry — nothing has been lost.",
+  },
+  network: {
+    title: "Can't reach the ledger right now.",
+    body: "Your balance is cached locally and may be out of date. The most common cause in demo mode is that the local dfx replica stopped — restart it and retry. On prod, this usually clears itself within a few seconds.",
+  },
+  canister: {
+    title: "The ledger rejected a call.",
+    body: "Your device reached the canister but the call came back with an error. This is less common than a network drop — the Technical detail below has the exact reject string. Retry often works; if it doesn't, Copy error and share it in a bug report.",
+  },
+};
+
 export function LedgerErrorCard({ error, onRetry, scope = "Ledger" }: Props) {
   const toast = useToast();
   const copy = useCopyable();
   const [retrying, setRetrying] = useState(false);
+  // Track navigator.onLine so the user's browser being offline gets
+  // its own copy, distinct from a replica-down read. `online` and
+  // `offline` events cover the transitions; the initial value reads
+  // directly on mount to avoid a flash of the wrong copy.
+  const [browserOffline, setBrowserOffline] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const update = () => setBrowserOffline(!navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+  const cause = classify(error, browserOffline);
+  const { title, body } = COPY[cause];
 
   const handleRetry = async () => {
     setRetrying(true);
@@ -64,18 +131,16 @@ export function LedgerErrorCard({ error, onRetry, scope = "Ledger" }: Props) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <div className="text-[10px] uppercase tracking-widest text-red-300">
-              {scope} · offline
+              {scope} ·{" "}
+              {cause === "browser-offline"
+                ? "no connection"
+                : cause === "network"
+                  ? "offline"
+                  : "rejected"}
             </div>
           </div>
-          <div className="text-sm font-semibold text-white mb-1">
-            Can&apos;t reach the ledger right now.
-          </div>
-          <div className="text-xs text-gray-300 leading-snug mb-3">
-            Your balance is cached locally and may be out of date. The most
-            common cause in demo mode is that the local dfx replica stopped —
-            restart it and retry. On prod, this usually clears itself within a
-            few seconds.
-          </div>
+          <div className="text-sm font-semibold text-white mb-1">{title}</div>
+          <div className="text-xs text-gray-300 leading-snug mb-3">{body}</div>
           <details className="mb-4 rounded-md bg-black/30 border border-white/10 text-[11px] font-mono text-red-200 open:pb-2">
             <summary className="cursor-pointer px-3 py-2 select-none text-gray-300 hover:text-white transition">
               Technical detail
