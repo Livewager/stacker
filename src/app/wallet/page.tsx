@@ -499,8 +499,8 @@ function WelcomeBanner({ balance }: { balance: bigint | null }) {
       </h2>
       <p className="text-xs md:text-sm text-gray-300 leading-snug max-w-md mb-4">
         No real money moves — the ledger is a local ICRC-1 demo. Either
-        fund from LTC to see the deposit flow, or try a game first and
-        let it mint you a starter balance.
+        fund from LTC to see the deposit flow, or play a Stacker round
+        and let it mint you a starter balance.
       </p>
       <div className="flex flex-wrap gap-2">
         <Link href="/deposit">
@@ -508,9 +508,9 @@ function WelcomeBanner({ balance }: { balance: bigint | null }) {
             Deposit LTC (demo)
           </Button>
         </Link>
-        <Link href="/play">
+        <Link href="/stacker">
           <Button variant="outline" size="sm">
-            Play a game
+            Play Stacker
           </Button>
         </Link>
       </div>
