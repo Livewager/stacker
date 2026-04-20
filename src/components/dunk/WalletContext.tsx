@@ -356,6 +356,101 @@ function mapTransferError(raw: string): { title: string; description: string } {
   return { title: "Send failed", description: raw };
 }
 
+/**
+ * POLISH-298 — fourth in the error-mapper set (deposit / withdraw /
+ * send / buy). Buy mints LWP demo-credits directly to the signed-in
+ * principal via /api/dunk/buy. Unlike deposit, there's no LTC rail
+ * involved — the reassurance framing is "no LTC was ever at risk"
+ * rather than "your LTC hasn't moved." Unlike send, the failure
+ * scope is the minter canister, not ICRC-1 transfer semantics.
+ *
+ * See CONTRIBUTING's scope-cuts section (POLISH-294 rule-of-four):
+ * each mapper carries route-specific copy that a shared primitive
+ * wouldn't compress without diluting the recovery guidance.
+ * Explicit is better than abstract here — four mappers in three
+ * files, each ~80 lines of pattern-match-and-return.
+ */
+function mapBuyError(raw: string): { title: string; description: string } {
+  const e = raw.toLowerCase();
+  if (e.includes("sign in first")) {
+    return {
+      title: "Sign in first",
+      description: "Buy requires an Internet Identity session. Connect to continue.",
+    };
+  }
+  if (e.includes("enter a positive number") || e.includes("amount must be > 0")) {
+    return {
+      title: "Enter an amount",
+      description: "Buy amount must be a positive whole LWP value.",
+    };
+  }
+  if (e.includes("amount must be an integer")) {
+    return {
+      title: "Amount must be whole LWP",
+      description:
+        "Demo buy takes integer LWP (no fractional digits). Round to the nearest whole number.",
+    };
+  }
+  if (e.includes("exceeds demo cap")) {
+    return {
+      title: "Demo cap reached",
+      description:
+        "The demo caps each buy so a typo can't mint unbounded LWP. Lower the amount and try again.",
+    };
+  }
+  if (e.includes("points ledger canister not configured")) {
+    return {
+      title: "Ledger not configured",
+      description:
+        "NEXT_PUBLIC_POINTS_LEDGER_CANISTER_ID isn't set in this environment. Deploy the ledger and set the env var before retrying.",
+    };
+  }
+  if (e.includes("invalid principal")) {
+    return {
+      title: "Invalid principal",
+      description: "The signed-in II principal didn't parse. Try signing out and back in.",
+    };
+  }
+  if (e.includes("mint rejected")) {
+    // ICRC-1 Err variant from the canister — the API surfaces it as
+    // "mint rejected: <Variant>". Extract + surface the variant so
+    // power users can look it up without digging through logs.
+    const variant = raw.match(/mint rejected:\s*(\w+)/i)?.[1];
+    return {
+      title: "Ledger rejected the mint",
+      description: variant
+        ? `The points ledger returned "${variant}". The mint never happened; no LWP was credited and nothing was charged.`
+        : "The points ledger rejected the mint call. The mint never happened; no LWP was credited.",
+    };
+  }
+  if (e.includes("mint call failed") || e.includes("replica") || e.includes("dfx")) {
+    return {
+      title: "Replica not reachable",
+      description:
+        "The local IC replica isn't responding. Start it with `dfx start --background`, redeploy the ledger, and retry. The API's detail field has the raw error if you need it.",
+    };
+  }
+  if (e.includes("body must be json")) {
+    // Defensive — a malformed client request shouldn't reach here in
+    // practice (we build the body via JSON.stringify above), but if
+    // a future refactor breaks that, surface the condition cleanly
+    // instead of falling into the generic branch.
+    return {
+      title: "Buy request didn't parse",
+      description:
+        "The client sent a malformed request body. This is almost certainly a bug — please report it with the build SHA from /settings.",
+    };
+  }
+  if (e.includes("failed to fetch") || e.includes("networkerror") || e.includes("load failed")) {
+    return {
+      title: "Network unreachable",
+      description:
+        "Couldn't reach the buy endpoint. Check your connection and retry — the mint only credits on a confirmed response.",
+    };
+  }
+  return { title: "Buy failed", description: raw };
+}
+
 const Ctx = createContext<WalletState | null>(null);
 
 export function useWalletState(): WalletState {
@@ -492,7 +587,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         const msg = (e as Error).message;
         setError(msg);
-        toast.push({ kind: "error", title: "Buy failed", description: msg });
+        // Cause-specific copy (POLISH-298). Raw message still hits
+        // setError above so /wallet's LedgerErrorCard can render
+        // the full text for debugging — the toast carries the
+        // user-facing recovery guidance.
+        const { title, description } = mapBuyError(msg);
+        toast.push({ kind: "error", title, description });
         throw e;
       } finally {
         setStatus("idle");
