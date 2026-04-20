@@ -328,6 +328,14 @@ encode real tiers. Before "consolidating" one of these, check here:
   new stops (0.025, 0.045) — the 5-rung spread is enough
   elevation resolution for dark-mode contrast and adding between
   rungs makes the ladder read as arbitrary, not intentional.
+  Power-user drawer panels (WalletAdvanced, /deposit watch-
+  address card) both land on `/02` — they're card-rest, not
+  elevated, because the collapsible-drawer role is "show raw
+  values on demand", not "pop this card." Audited POLISH-385:
+  both shapes already match the ladder, and the disclaimer chip
+  below the LTC panel uses `rounded-lg border border-white/5 /02`
+  — lighter border is the correct inline-disclaimer variant, not
+  a surface-tier change.
 - **Route-accent eyebrow colors** — each primary route has a
   canonical accent (audited POLISH-301, all 10 routes clean):
   - /wallet, /leaderboard, /account, /stacker, /settings →
