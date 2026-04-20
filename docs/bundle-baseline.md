@@ -73,6 +73,16 @@ split-point in `src/lib/icp/*`.
 - **POLISH-204 convention**: bump this doc when median drift exceeds
   +10 kB, or when any single route jumps more than +20 kB, whichever
   comes first.
+- **Livestream POOL is route-scoped** (audited POLISH-383). The
+  12-message chat pool in `src/components/stacker/Livestream.tsx`
+  is a module-level const. Only `/stacker` imports Livestream, so
+  webpack dedupes POOL into the /stacker route chunk and it never
+  lands on other routes. If the Livestream ever ships on /play or
+  /dunk, lift POOL into `src/lib/livestream-pool.ts` so both
+  routes hit the same chunk rather than duplicating bytes. Today:
+  11.1 kB /stacker route (under the 13.2 kB POLISH-204 baseline),
+  267 kB first-load unchanged — the chat-row entrance keyframe +
+  breakpoint tweaks came in under budget.
 - **useSearchParams does NOT force dynamic rendering** (audited
   POLISH-376). Adding `useSearchParams()` to `/send` in POLISH-371
   kept the route at `○` (static) in the build output — the page
