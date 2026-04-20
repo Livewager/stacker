@@ -494,11 +494,33 @@ function ReviewCard({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3">
-        <Button onClick={onBack} disabled={busy} variant="ghost" size="sm">
+      {/* Stacked on mobile with Confirm on top (primary-action-first
+          per the iOS/Android "positive action at top" convention),
+          flex row on sm+. POLISH-284 audit: "Burning & queuing…"
+          + "← Edit" + 12px gap was cramping the 248px content box
+          on 320px viewports (worst case ~262px). Stack avoids the
+          overflow and reads more deliberately — Confirm is the
+          destructive/real action, so it belongs at eye level
+          first; Edit is the escape hatch beneath. fullWidth on
+          both so thumb-target is maximized. Desktop layout is
+          unchanged (sm:flex-row + sm:justify-between). */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+        <Button
+          onClick={onBack}
+          disabled={busy}
+          variant="ghost"
+          size="sm"
+          className="sm:w-auto w-full"
+        >
           ← Edit
         </Button>
-        <Button ref={confirmRef} onClick={onConfirm} loading={busy} tone="rose">
+        <Button
+          ref={confirmRef}
+          onClick={onConfirm}
+          loading={busy}
+          tone="rose"
+          className="sm:w-auto w-full"
+        >
           {busy ? "Burning & queuing…" : "Burn & withdraw"}
         </Button>
       </div>
