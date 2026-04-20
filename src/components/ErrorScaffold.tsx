@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -45,6 +45,16 @@ export function ErrorScaffold({
   const [secondsLeft, setSecondsLeft] = useState<number | null>(
     canAutoRetry ? (autoRetrySeconds as number) : null,
   );
+  // Per-mount jitter: ±500ms offset applied to the first tick
+  // (and only the first). Prevents an error cold-start where many
+  // tabs all arrive at the retry button on the same wall-clock
+  // second from stampeding the upstream — instead they spread
+  // across a 1s window. Subsequent ticks run on the plain 1000ms
+  // cadence so the countdown still feels crisp.
+  // Computed once per ErrorScaffold mount; a retry restarts the
+  // component via reset() which remounts, which redraws jitter.
+  const firstTickJitterMs = useRef(Math.floor((Math.random() - 0.5) * 1000));
+  const firstTickAppliedRef = useRef(false);
   useEffect(() => {
     if (secondsLeft === null) return;
     if (secondsLeft <= 0) {
@@ -52,9 +62,11 @@ export function ErrorScaffold({
       const h = setTimeout(() => primary.onClick?.(), 0);
       return () => clearTimeout(h);
     }
+    const jitter = firstTickAppliedRef.current ? 0 : firstTickJitterMs.current;
+    firstTickAppliedRef.current = true;
     const id = window.setTimeout(() => {
       setSecondsLeft((s) => (s === null ? null : s - 1));
-    }, 1000);
+    }, 1000 + jitter);
     return () => window.clearTimeout(id);
   }, [secondsLeft, primary]);
   const cancelAutoRetry = () => {
