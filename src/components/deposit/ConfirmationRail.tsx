@@ -27,9 +27,29 @@ const LABELS: Record<ConfirmationStep, { title: string; detail: string }> = {
 
 export function ConfirmationRail({ step }: { step: ConfirmationStep }) {
   const activeIdx = step === "idle" ? -1 : ORDER.indexOf(step);
+  // Human-readable "Step N of 4" phrasing for the live region. When
+  // idle we don't emit a stage announcement — the rail hasn't started.
+  const stepNumber = activeIdx + 1;
+  const totalSteps = ORDER.length;
+  const phrased =
+    step === "idle"
+      ? "Deposit ready. Enter an amount to begin."
+      : `Step ${stepNumber} of ${totalSteps}: ${LABELS[step].title}. ${LABELS[step].detail}`;
+
   return (
-    <div className="rounded-xl border border-white/10 bg-black/30 p-4">
-      <div className="flex items-center justify-between">
+    <div
+      role="group"
+      aria-label="Deposit progress"
+      className="rounded-xl border border-white/10 bg-black/30 p-4"
+    >
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={totalSteps}
+        aria-valuenow={Math.max(0, stepNumber)}
+        aria-valuetext={phrased}
+        className="flex items-center justify-between"
+      >
         {ORDER.map((s, i) => {
           const done = activeIdx > i;
           const active = activeIdx === i;
@@ -57,6 +77,11 @@ export function ConfirmationRail({ step }: { step: ConfirmationStep }) {
       </div>
       <div className="mt-3 text-sm text-white font-semibold">{LABELS[step].title}</div>
       <div className="text-xs text-gray-400 leading-snug">{LABELS[step].detail}</div>
+      {/* Phrased live update — aria-atomic so the SR reads the full
+          sentence on each transition instead of diffing labels. */}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {phrased}
+      </span>
     </div>
   );
 }
