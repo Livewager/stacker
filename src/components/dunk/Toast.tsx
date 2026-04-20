@@ -390,8 +390,8 @@ export function ToastHost({ children }: { children: ReactNode }) {
           // doesn't vanish. Newest-first visual order: reverse-index
           // from the end of the array.
           //
-          // Reflow motion (POLISH-285 audit). When a middle toast
-          // dismisses, the flex-col + gap-2 closes the hole
+          // Reflow motion (POLISH-285 + POLISH-387 audit). When a
+          // middle toast dismisses, the flex-col + gap-2 closes the hole
           // instantly — the layout jump isn't animated because CSS
           // transitions can't smooth layout-driven position
           // changes. A FLIP-style technique (capture positions in a
