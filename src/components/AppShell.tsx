@@ -13,11 +13,15 @@
 import type { ReactNode } from "react";
 import { ToastHost } from "@/components/dunk/Toast";
 import { WalletProvider } from "@/components/dunk/WalletContext";
+import { BottomNav } from "@/components/BottomNav";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <ToastHost>
-      <WalletProvider>{children}</WalletProvider>
+      <WalletProvider>
+        {children}
+        <BottomNav />
+      </WalletProvider>
     </ToastHost>
   );
 }
