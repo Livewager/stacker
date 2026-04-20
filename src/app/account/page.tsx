@@ -235,8 +235,14 @@ export default function AccountPage() {
               <CandidUiLink />
             </div>
 
-            {/* Right: quick tip chips + activity feed */}
-            <div className="space-y-4">
+            {/* Right: quick tip chips + activity feed.
+                POLISH-356 — space-y-5 matches the left column so the
+                two columns share a vertical rhythm at md+ and the
+                mobile single-column stack doesn't compress from 20px
+                to 16px gutters at the column boundary. Outer grid
+                gap-6 (24px) is still the seam between what *was*
+                two columns on desktop. */}
+            <div className="space-y-5">
               <RecentTipChips />
               <ActivityFeed principal={principal} limit={20} />
             </div>
