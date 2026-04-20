@@ -10,8 +10,13 @@
  * anything real. The QR itself is functional; the address is not.
  *
  * Uses the already-installed `qrcode` package (same dep as
- * PrincipalQR). Light-on-dark to match the app theme; QR scanners
- * handle inverted color schemes fine.
+ * PrincipalQR). Canonical dark-on-white fill: while scanners
+ * nominally handle inverted schemes, outdoor phone-camera auto-
+ * exposure on a shiny screen + the canonical calibration of iOS
+ * Camera / LTC wallet scanners means dark-on-light lands a scan
+ * first-try more reliably. The parent card provides the dark
+ * frame around it (p-3 + bg-white/[0.02]) so the page theme
+ * integrity holds.
  */
 
 import { useEffect, useState } from "react";
@@ -39,8 +44,13 @@ export function WatchAddressQR({ address, size = 224, className = "" }: Props) {
       margin: 1,
       width: size * 2, // render at 2x for crisp retina; <img> scales down
       color: {
-        dark: "#e6f6fb",
-        light: "#020b18",
+        // Canonical dark-on-light: matches what every LTC wallet +
+        // iOS Camera is calibrated against, scans robustly under
+        // sunlight / high ambient light. #0a0a0a instead of pure
+        // #000000 keeps the black from reading as a punch-out
+        // rectangle against a bright white field.
+        dark: "#0a0a0a",
+        light: "#ffffff",
       },
     })
       .then((url: string) => {
