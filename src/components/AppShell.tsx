@@ -8,6 +8,18 @@
  * Living in its own client component keeps the root layout a server
  * component, which keeps the HTML shell cacheable and lets us export
  * Metadata from route layouts without "use client" poisoning them.
+ *
+ * Tab-order invariant
+ * -------------------
+ * The skip-link MUST be the first focusable element on every route
+ * so a keyboard user's first Tab lands on it. DOM order here keeps
+ * that guarantee: no other focusable renders before it inside
+ * <WalletProvider>, and the <main> target carries tabIndex={-1} so
+ * it accepts programmatic focus from the link but never from Tab.
+ *
+ * BottomNav + AppFooter + CommandPalette sit AFTER {children} and
+ * therefore never intercept the first Tab stop — verified on every
+ * route during POLISH-54.
  */
 
 import type { ReactNode } from "react";
