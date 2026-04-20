@@ -313,33 +313,56 @@ function LiveHourPanel({
         </div>
       </header>
 
-      {myCallout && (
-        <div
-          className="flex items-center justify-between gap-3 border-b border-white/5 bg-cyan-300/[0.03] px-4 py-2.5 text-xs"
-          aria-live="polite"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex items-center rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-cyan-200">
-              rank #{myCallout.rank}
-            </span>
-            <span className="text-gray-300 truncate">
-              <span className="text-white font-semibold">@{myHandle}</span>
-              {" · "}
-              <span className="font-mono tabular-nums text-cyan-200">{myCallout.score}</span>
-            </span>
-          </div>
-          <div className="shrink-0 text-gray-400 font-mono tabular-nums text-[11px]">
-            {myCallout.rank === 1 ? (
-              <span className="text-yellow-300">holding #1</span>
-            ) : myCallout.delta !== null ? (
-              <>
-                +<span className="text-white">{myCallout.delta}</span> to pass{" "}
-                <span className="text-gray-300">@{myCallout.nextHandle}</span>
-              </>
-            ) : null}
-          </div>
-        </div>
-      )}
+      {/* POLISH-300 live-region audit. Previously the outer div only
+          mounted when `myCallout` was truthy, which meant the
+          aria-live="polite" region was born with content already in
+          it. Screen readers don't fire polite announcements for
+          initial mounts — they fire when content inside an already-
+          live region changes. So a user who landed mid-page with no
+          callout, then scored into rank, got zero SR feedback when
+          the chip appeared.
+          Fix: render the container unconditionally + keep the inner
+          content conditional. The live-region is always present;
+          when myCallout flips null → value, the SR announces the
+          freshly-inserted text. Added role="status" as a redundant
+          pair with aria-live="polite" — some older SR pipelines
+          honor role-implicit aria-live more reliably than the bare
+          attribute (polite mode is implicit in role=status, but
+          specifying both is defensive). */}
+      <div
+        role="status"
+        aria-live="polite"
+        className={
+          myCallout
+            ? "flex items-center justify-between gap-3 border-b border-white/5 bg-cyan-300/[0.03] px-4 py-2.5 text-xs"
+            : "sr-only"
+        }
+      >
+        {myCallout && (
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex items-center rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-cyan-200">
+                rank #{myCallout.rank}
+              </span>
+              <span className="text-gray-300 truncate">
+                <span className="text-white font-semibold">@{myHandle}</span>
+                {" · "}
+                <span className="font-mono tabular-nums text-cyan-200">{myCallout.score}</span>
+              </span>
+            </div>
+            <div className="shrink-0 text-gray-400 font-mono tabular-nums text-[11px]">
+              {myCallout.rank === 1 ? (
+                <span className="text-yellow-300">holding #1</span>
+              ) : myCallout.delta !== null ? (
+                <>
+                  +<span className="text-white">{myCallout.delta}</span> to pass{" "}
+                  <span className="text-gray-300">@{myCallout.nextHandle}</span>
+                </>
+              ) : null}
+            </div>
+          </>
+        )}
+      </div>
       {board.length === 0 ? (
         <EmptyBoard tab={tab} />
       ) : (
