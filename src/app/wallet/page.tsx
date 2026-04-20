@@ -317,8 +317,20 @@ export default function WalletPage() {
                 </div>
               </section>
 
-              {/* Action tab panel */}
-              <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-6">
+              {/* Action tab panel. role="tabpanel" + matching id +
+                  aria-labelledby closes the W3C tabs loop so a
+                  screen reader lands on the panel after activating
+                  its tab and announces it with the tab's label.
+                  The id is derived from `tab` so it stays in sync
+                  with whichever ActionTile is currently aria-
+                  selected (same slug convention used there). */}
+              <section
+                role="tabpanel"
+                id={`wallet-action-panel-${tab}`}
+                aria-labelledby={`wallet-action-tab-${tab}`}
+                tabIndex={0}
+                className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-6 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/40"
+              >
                 {tab === "buy" && (
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -538,6 +550,13 @@ function ActionTile({
   icon: React.ReactNode;
   tone: "cyan" | "orange" | "violet" | "rose";
 }) {
+  // Stable, deterministic IDs so the tab ↔ panel wiring holds up to
+  // re-renders. Label is always one short ASCII word here (Buy /
+  // Deposit / Send / Withdraw), so a plain lowercase swap is the
+  // right amount of cleverness.
+  const slug = label.toLowerCase();
+  const tabId = `wallet-action-tab-${slug}`;
+  const panelId = `wallet-action-panel-${slug}`;
   const base =
     tone === "cyan"
       ? "hover:border-cyan-300/50"
@@ -566,6 +585,8 @@ function ActionTile({
     <button
       type="button"
       role="tab"
+      id={tabId}
+      aria-controls={panelId}
       aria-selected={active}
       // Roving tabindex: only the active tile is reachable via Tab.
       // Arrow keys move between tiles via the container-level handler.
