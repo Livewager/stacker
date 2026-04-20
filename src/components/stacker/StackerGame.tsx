@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sfx, unlockAudio } from "@/lib/audio";
 import { haptics } from "@/lib/haptics";
 import { createRound, type Round, type RoundTranscript } from "@/lib/anticheat/tapEntropy";
+import { createRng, randomSeed, type SeededRng } from "@/lib/anticheat/rng";
 
 // ------------------------------------------------------------------
 // Configuration
@@ -176,7 +177,9 @@ export default function StackerGame({
   // Anti-cheat groundwork: local tap-entropy buffer per round. No
   // network calls — finalize result is logged to console in dev only.
   const roundRef = useRef<Round | null>(null);
+  const rngRef = useRef<SeededRng | null>(null);
   const [lastTranscript, setLastTranscript] = useState<RoundTranscript | null>(null);
+  const [lastSeed, setLastSeed] = useState<number | null>(null);
 
   // Restore best score once on mount.
   useEffect(() => {
@@ -216,6 +219,9 @@ export default function StackerGame({
     flareRow.current = -1;
     setFlare(null);
     roundRef.current = createRound();
+    const seed = randomSeed();
+    rngRef.current = createRng(seed);
+    setLastSeed(seed);
     setLastTranscript(null);
     setHudState((h) => ({
       ...h,
@@ -374,7 +380,12 @@ export default function StackerGame({
     // on muscle memory. Width = the new locked width.
     const nextRow = cur.row + 1;
     const randomize = nextRow >= RANDOM_DIR_ROW;
-    const fromRight = randomize && Math.random() < 0.5;
+    // Seeded RNG so the whole round is replayable given (seed,
+    // transcript). Falls back to Math.random only if something
+    // exploded during startRound — belt and suspenders.
+    const fromRight =
+      randomize &&
+      (rngRef.current?.coin() ?? Math.random() < 0.5);
     const startX = fromRight ? GRID_COLS - newWidth : 0;
     const dir: 1 | -1 = fromRight ? -1 : 1;
     s.current = {
@@ -808,12 +819,18 @@ export default function StackerGame({
                 local only until ANTICHEAT-T1 ships. */}
             {lastTranscript &&
               (hudState.phase === "won" || hudState.phase === "over") && (
-                <div className="mt-4 text-[10px] font-mono text-gray-500 uppercase tracking-widest">
-                  Captured {lastTranscript.stats.count} taps ·
-                  {" "}
-                  {lastTranscript.stats.meanDt > 0
-                    ? `μ Δt ${Math.round(lastTranscript.stats.meanDt)}ms`
-                    : "—"}
+                <div className="mt-4 space-y-1">
+                  <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">
+                    Captured {lastTranscript.stats.count} taps ·{" "}
+                    {lastTranscript.stats.meanDt > 0
+                      ? `μ Δt ${Math.round(lastTranscript.stats.meanDt)}ms`
+                      : "—"}
+                  </div>
+                  {lastSeed !== null && (
+                    <div className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">
+                      Seed · {lastSeed.toString(16).padStart(8, "0")}
+                    </div>
+                  )}
                 </div>
               )}
           </div>
