@@ -159,10 +159,20 @@ export function StackerWager({ onStart, disabled }: Props) {
       </div>
 
       {mode === "ranked" && (
+        // On narrow mobile viewports (≤ 320 CSS px, iPhone SE 1st-gen
+        // class) the 4-column grid squeezed "100 LWP" + the orange
+        // ! insufficiency badge into clipping territory. POLISH-260
+        // mirrors the POLISH-223 pattern: horizontal scroll with
+        // snap-x on mobile so each chip gets its natural width, and
+        // sm:grid-cols-4 restores the even-columns layout from the
+        // 640px breakpoint up. shrink-0 on each chip below prevents
+        // the row from compressing any single chip to fit.
+        // no-scrollbar keeps the gutter visually calm — the snap
+        // behavior is the real affordance, not a visible track.
         <div
           role="radiogroup"
           aria-label="Stacker entry fee"
-          className="grid grid-cols-4 gap-2 mb-4"
+          className="flex gap-2 overflow-x-auto snap-x snap-mandatory no-scrollbar -mx-1 px-1 mb-4 sm:grid sm:grid-cols-4 sm:overflow-visible sm:mx-0 sm:px-0"
           onKeyDown={(e) => {
             if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
             e.preventDefault();
@@ -209,6 +219,11 @@ export function StackerWager({ onStart, disabled }: Props) {
                     : undefined
                 }
                 className={[
+                  // shrink-0 + snap-start participate in the mobile
+                  // overflow-x-auto row (POLISH-260). min-w keeps the
+                  // "100 LWP" chip from collapsing narrower than its
+                  // text. sm: returns it to the shared grid geometry.
+                  "shrink-0 snap-start min-w-[5.5rem] sm:min-w-0",
                   "rounded-xl border px-2 py-3 text-sm font-bold transition relative",
                   active
                     ? chipShort
