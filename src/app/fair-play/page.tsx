@@ -248,6 +248,20 @@ function Tier({
         </div>
         <p className="mt-3 text-sm text-gray-400 max-w-2xl">{subtitle}</p>
       </div>
+      {/* POLISH-338 audit: md:grid-cols-3 collapses to 1 column at
+          <768px. Mobile math at 320px:
+            320 vp − 32 px outer (px-4 ×2) − 40 px card (p-5 ×2)
+            = 248 px content box.
+          Longest tokens checked:
+            - h3 title "Server-authoritative rounds" ≈ 220 px → fits
+            - DiagramRow tag "ON-DEVICE · NO UPLOAD" ≈ 90 px → fits
+            - Tier eyebrow "T1 · Authoritative truth" ≈ 85 px → fits
+            - Transcript row "tap #01 row 0 t=312ms" ≈ 140 px → fits
+          DiagramRow has `flex-wrap` already, so wide tag combos
+          break to a new line cleanly. Hero h1 wraps at word
+          boundaries (no CJK / no long unbroken tokens). Prose
+          paragraphs use `leading-snug` with natural wrapping.
+          No overflow at 320px; no horizontal scroll bar. */}
       <div className="grid gap-4 md:grid-cols-3">{children}</div>
     </section>
   );
