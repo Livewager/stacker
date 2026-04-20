@@ -78,6 +78,17 @@
     display: none;
   }
 
+  /* Soft-keyboard overlap guard. BottomNav sets data-kb-open="true"
+     on both its spacer + nav when visualViewport reports the
+     keyboard covering ≥ 150px. Hide the bar entirely while the
+     keyboard is up so iOS Safari doesn't double-stack it above the
+     toolbar, and collapse the spacer so the form regains the space.
+     Desktop (>=md) already hides the bar via md:hidden; these rules
+     only affect the mobile breakpoint. */
+  .lw-bottom-nav[data-kb-open="true"] {
+    display: none !important;
+  }
+
   /* Smooth anchor scrolling + comfortable landing offset. On mobile,
      page-level scroll-snap proximity helps long landings like /stacker
      feel less lurchy without forcing hard snaps that fight free

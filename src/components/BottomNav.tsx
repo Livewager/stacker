@@ -13,11 +13,20 @@
  * Lives under AppShell so every route gets it automatically. Pages that
  * don't want it (the game canvas itself, for example) can opt out via
  * the `NO_BOTTOM_NAV_PATHS` list below.
+ *
+ * Soft-keyboard handling
+ * ----------------------
+ * On iOS Safari, the soft keyboard sits above any position:fixed bar
+ * and can double-stack with focused inputs on /send + /withdraw. We
+ * listen to visualViewport resize events and toggle the
+ * `data-kb-open` attribute on ourselves when the keyboard overlays
+ * the bar. The CSS in style.css hides the nav + its spacer while
+ * that attribute is true. No per-route opt-in needed.
  */
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ROUTES } from "@/lib/routes";
 import { usePrefs } from "@/lib/prefs";
 
@@ -85,6 +94,29 @@ const ITEMS: Item[] = [
 export function BottomNav() {
   const pathname = usePathname() || "";
   const { haptics } = usePrefs();
+  // Soft-keyboard detection via visualViewport. When the keyboard
+  // covers ≥ 150px of the layout viewport, treat it as "open" and
+  // let CSS fade the nav + spacer out. Threshold tolerates on-screen
+  // toolbars / side panels that nibble the viewport by a few dozen
+  // pixels without triggering a hide.
+  const [kbOpen, setKbOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const KB_MIN_PX = 150;
+    const onResize = () => {
+      const covered = window.innerHeight - vv.height;
+      setKbOpen(covered >= KB_MIN_PX);
+    };
+    onResize();
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, []);
   if (NO_BOTTOM_NAV_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return null;
   }
@@ -107,15 +139,18 @@ export function BottomNav() {
     <>
       {/* Spacer keeps the last line of page content above the fixed bar
           on mobile so nothing's hidden behind it. Matches the bar height
-          (56px) + safe-area inset. */}
+          (56px) + safe-area inset. data-kb-open collapses it when the
+          soft keyboard is up so the form has full breathing room. */}
       <div
         aria-hidden
+        data-kb-open={kbOpen ? "true" : undefined}
         className="lw-bottom-nav md:hidden"
         style={{ height: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
       />
 
       <nav
         aria-label="Primary"
+        data-kb-open={kbOpen ? "true" : undefined}
         className="lw-bottom-nav md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-background/90 backdrop-blur-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
