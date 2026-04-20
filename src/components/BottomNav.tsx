@@ -19,6 +19,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ROUTES } from "@/lib/routes";
+import { usePrefs } from "@/lib/prefs";
 
 type Item = {
   href: string;
@@ -83,9 +84,24 @@ const ITEMS: Item[] = [
 
 export function BottomNav() {
   const pathname = usePathname() || "";
+  const { haptics } = usePrefs();
   if (NO_BOTTOM_NAV_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return null;
   }
+
+  // Short 6ms vibrate on any tab tap. Gated by the haptics pref so
+  // users who disabled vibration in Settings stay quiet. Also skipped
+  // when the tap lands on the already-active tab — no "ping" for a
+  // no-op navigation. Tolerates missing Vibration API silently.
+  const tapFeedback = (active: boolean) => {
+    if (active) return;
+    if (!haptics) return;
+    try {
+      navigator.vibrate?.(6);
+    } catch {
+      /* Safari + iOS don't expose the Vibration API; that's fine. */
+    }
+  };
 
   return (
     <>
@@ -114,6 +130,7 @@ export function BottomNav() {
                 <Link
                   href={it.href}
                   aria-current={active ? "page" : undefined}
+                  onClick={() => tapFeedback(active)}
                   className={[
                     "flex flex-col items-center justify-center gap-0.5 h-14 text-[10px] uppercase tracking-widest transition",
                     active ? "text-cyan-300" : "text-gray-400 hover:text-white",
@@ -122,7 +139,7 @@ export function BottomNav() {
                 >
                   {it.emphasize ? (
                     <span
-                      className={`absolute -top-4 grid h-11 w-11 place-items-center rounded-2xl border shadow-lg transition-transform ${
+                      className={`absolute -top-4 grid h-11 w-11 place-items-center rounded-2xl border shadow-lg transition-transform duration-150 active:scale-95 ${
                         active
                           ? "bg-orange-500 border-orange-400 scale-105"
                           : "bg-orange-500/85 border-orange-400/80"
@@ -136,7 +153,11 @@ export function BottomNav() {
                       <span className="text-black">{it.icon}</span>
                     </span>
                   ) : (
-                    <span className={active ? "" : ""}>{it.icon}</span>
+                    // 120ms scale pop on tap. Uses CSS :active so there's
+                    // no extra state to track, and the GPU composites it.
+                    <span className="transition-transform duration-150 active:scale-90">
+                      {it.icon}
+                    </span>
                   )}
                   <span className={it.emphasize ? "mt-4" : ""}>{it.label}</span>
                 </Link>
