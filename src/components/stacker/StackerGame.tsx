@@ -33,13 +33,38 @@ const GRID_ROWS = 15;
 const TOP_ROW = GRID_ROWS - 1;
 /**
  * Speed ramp: cells per second the slider moves at each row. Starts
- * gentle, climbs fast in the upper tiers to keep the tension honest.
+ * gentle, climbs hard in the upper tiers so the top floors really
+ * punish late taps.
+ *
+ *   row 0:  ~3.6 cells/sec  (easy warm-up)
+ *   row 5:  ~5.7
+ *   row 10: ~9.7
+ *   row 14: ~13.5 + jitter  (approaching unplayable without rhythm)
+ *
+ * Cubic ease past the midpoint plus a base that's a bit quicker than
+ * the old 3.2 baseline to keep early rows interesting.
  */
 const SPEED_BY_ROW = (row: number): number => {
-  // Monotonic piecewise: 3.2 → 8.0 across rows 0..TOP_ROW.
   const t = row / Math.max(1, TOP_ROW);
-  return 3.2 + t * t * 4.8;
+  // 3.6 base + cubic ramp to ~13.5 by the top row.
+  return 3.6 + t * t * t * 9.9;
 };
+
+/**
+ * Per-frame speed jitter amplitude (fraction of SPEED_BY_ROW). Kicks
+ * in from row JITTER_ROW so early rows stay learnable — only the
+ * later levels get the rhythm-breaking variance.
+ */
+const JITTER_ROW = 8;
+const JITTER_AMP = 0.18; // ±18% at full strength
+
+/**
+ * From this row, spawn direction is randomized instead of always
+ * starting left-to-right. Breaks the habit of "it always appears at
+ * position 0 moving right", so the upper floors demand real tracking.
+ */
+const RANDOM_DIR_ROW = 6;
+
 /** Starting block width. Narrower = harder. */
 const START_WIDTH = 3;
 
@@ -314,14 +339,20 @@ export default function StackerGame({
       return;
     }
 
-    // Spawn next slider at the top-left, width = new locked width.
+    // Spawn next slider. Early rows: predictable left-to-right start
+    // at x=0. From RANDOM_DIR_ROW up: flip a coin for starting side +
+    // direction so the player has to actually track instead of relying
+    // on muscle memory. Width = the new locked width.
     const nextRow = cur.row + 1;
-    const startX = 0;
+    const randomize = nextRow >= RANDOM_DIR_ROW;
+    const fromRight = randomize && Math.random() < 0.5;
+    const startX = fromRight ? GRID_COLS - newWidth : 0;
+    const dir: 1 | -1 = fromRight ? -1 : 1;
     s.current = {
       row: nextRow,
       x: startX,
       width: newWidth,
-      dir: 1,
+      dir,
       spawnedAt: performance.now(),
     };
 
@@ -396,7 +427,22 @@ export default function StackerGame({
 
       // ---- simulate ----
       if (s.phase === "playing" && s.current) {
-        const speed = SPEED_BY_ROW(s.current.row);
+        const baseSpeed = SPEED_BY_ROW(s.current.row);
+        // Rhythm-breaking jitter kicks in on upper rows. Uses a sine of
+        // wall-clock time at a deliberately-odd frequency so it doesn't
+        // land on any predictable beat. Scales from 0 at JITTER_ROW to
+        // full amplitude at TOP_ROW.
+        let speed = baseSpeed;
+        if (s.current.row >= JITTER_ROW) {
+          const ramp = Math.min(
+            1,
+            (s.current.row - JITTER_ROW) / Math.max(1, TOP_ROW - JITTER_ROW),
+          );
+          const wobble =
+            Math.sin(t * 0.017) * JITTER_AMP * ramp * baseSpeed +
+            Math.sin(t * 0.0063 + 1.3) * (JITTER_AMP / 2) * ramp * baseSpeed;
+          speed = Math.max(baseSpeed * 0.5, baseSpeed + wobble);
+        }
         s.current.x += s.current.dir * speed * dt;
         const maxX = GRID_COLS - s.current.width;
         if (s.current.x > maxX) {
