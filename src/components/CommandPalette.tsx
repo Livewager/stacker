@@ -16,9 +16,36 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ROUTES } from "@/lib/routes";
+
+/**
+ * Character-subsequence fuzzy match with a simple score. Returns
+ * null if any needle char is missing. Lower score = better match
+ * (fewer gaps, earlier first hit). Not a full Smith-Waterman — this
+ * is a command palette, exactness isn't the point.
+ */
+function fuzzyScore(haystack: string, needle: string): number | null {
+  if (!needle) return 0;
+  const h = haystack.toLowerCase();
+  const n = needle.toLowerCase();
+  let hi = 0;
+  let ni = 0;
+  let gapPenalty = 0;
+  let firstHit = -1;
+  while (ni < n.length && hi < h.length) {
+    if (h[hi] === n[ni]) {
+      if (firstHit === -1) firstHit = hi;
+      ni++;
+    } else if (ni > 0) {
+      gapPenalty++;
+    }
+    hi++;
+  }
+  if (ni < n.length) return null;
+  return firstHit + gapPenalty;
+}
 
 type Command = {
   id: string;
@@ -47,8 +74,20 @@ const GAME_SHORTCUTS: Shortcut[] = [
 
 export default function CommandPalette() {
   const router = useRouter();
+  const pathname = usePathname() || "";
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [recent, setRecent] = useState<string[]>([]);
+
+  // Track in-session route history: every pathname change bumps the
+  // current route to the head of the recent list, deduped, capped at 3.
+  useEffect(() => {
+    if (!pathname) return;
+    setRecent((prev) => {
+      const next = [pathname, ...prev.filter((p) => p !== pathname)];
+      return next.slice(0, 3);
+    });
+  }, [pathname]);
 
   // -------- hotkeys --------
   useEffect(() => {
@@ -97,14 +136,37 @@ export default function CommandPalette() {
   );
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return commands;
-    return commands.filter(
-      (c) =>
-        c.label.toLowerCase().includes(needle) ||
-        (c.hint?.toLowerCase().includes(needle) ?? false),
-    );
-  }, [q, commands]);
+    const needle = q.trim();
+    if (!needle) {
+      // Empty query: surface the most-recently-visited routes at the
+      // top, then the rest in declaration order. Current pathname
+      // filtered out — no "jump to where I already am".
+      const recentCommands = recent
+        .map((p) => commands.find((c) => c.hint === p && p !== pathname))
+        .filter((c): c is Command => Boolean(c));
+      const recentIds = new Set(recentCommands.map((c) => c.id));
+      return [
+        ...recentCommands,
+        ...commands.filter((c) => !recentIds.has(c.id) && c.hint !== pathname),
+      ];
+    }
+    // Fuzzy score both label and hint, take the minimum (best) score.
+    // Drop anything that failed to match either.
+    const scored = commands
+      .map((c) => {
+        const labelScore = fuzzyScore(c.label, needle);
+        const hintScore = c.hint ? fuzzyScore(c.hint, needle) : null;
+        let score: number | null = null;
+        if (labelScore !== null) score = labelScore;
+        if (hintScore !== null && (score === null || hintScore < score)) {
+          score = hintScore;
+        }
+        return { c, score };
+      })
+      .filter((x) => x.score !== null)
+      .sort((a, b) => (a.score as number) - (b.score as number));
+    return scored.map((x) => x.c);
+  }, [q, commands, recent, pathname]);
 
   // Close resets the search.
   useEffect(() => {
@@ -134,7 +196,12 @@ export default function CommandPalette() {
         aria-label="Search commands"
       />
 
-      <ul className="mt-3 max-h-60 overflow-y-auto divide-y divide-white/5 rounded-lg border border-white/10 bg-black/20">
+      {q.trim() === "" && recent.filter((p) => p !== pathname).length > 0 && (
+        <div className="mt-3 text-[10px] uppercase tracking-widest text-cyan-300">
+          Recent · this session
+        </div>
+      )}
+      <ul className="mt-2 max-h-60 overflow-y-auto divide-y divide-white/5 rounded-lg border border-white/10 bg-black/20">
         {filtered.length === 0 ? (
           <li className="px-3 py-3 text-xs text-gray-500">No matches.</li>
         ) : (
