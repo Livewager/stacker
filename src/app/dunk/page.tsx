@@ -1205,10 +1205,30 @@ export default function DunkPage() {
               A 10-second skill game you play with your phone.{" "}
               <span className="text-white">Steadiest hand on the hour drops the talent — live, on camera.</span>
             </p>
+            {/* POLISH-326 — audit of the hero CTA pair.
+                Ticket framed this as a "Play Pour + Play Stacker"
+                side-by-side pair but that's the /play hub pattern,
+                not /dunk. The actual /dunk hero pair is "Pour now"
+                (primary, accent gradient) + "How it works" (ghost).
+                The responsive `flex flex-col sm:flex-row gap-3`
+                shape already stacks on mobile ≤640px and rows on
+                desktop — mirrors the POLISH-284/296 pattern.
+                Only defensive tweak: add whitespace-nowrap on both
+                anchor labels so the 640px breakpoint transition
+                never lets a label wrap inside the button — padding
+                (px-7) gives plenty of slack for the current 8 +
+                12-char labels, but if either string ever grows in
+                translation or a future copy pass bumps it, the
+                nowrap keeps the button from wrapping internally
+                (which reads worse than overflowing at the row
+                level, where flex-wrap would catch it visually).
+                Wrapping copy could still break to a second row at
+                the flex level if the labels grew past the row
+                budget; that's the right behavior. */}
             <div className="flex flex-col sm:flex-row gap-3">
               <a
                 href="#games"
-                className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl text-white font-bold shadow-xl transition hover:brightness-110"
+                className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl text-white font-bold shadow-xl transition hover:brightness-110 whitespace-nowrap"
                 style={{ background: `linear-gradient(90deg, #22d3ee, #2563eb)`, boxShadow: `0 20px 40px -15px #22d3ee80` }}
               >
                 Pour now
@@ -1218,7 +1238,7 @@ export default function DunkPage() {
               </a>
               <a
                 href="#how"
-                className="inline-flex items-center justify-center px-7 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition"
+                className="inline-flex items-center justify-center px-7 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition whitespace-nowrap"
               >
                 How it works
               </a>
