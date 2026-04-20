@@ -9,6 +9,7 @@ import ActivityFeed from "@/components/dunk/ActivityFeed";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { useCopyable } from "@/lib/clipboard";
 import { PrincipalQR } from "@/components/account/PrincipalQR";
+import { BalanceSparkline } from "@/components/account/BalanceSparkline";
 
 function short(s: string, head = 10, tail = 10): string {
   if (s.length <= head + tail + 1) return s;
@@ -138,8 +139,11 @@ export default function AccountPage() {
               </section>
 
               <section className="rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.04] p-5 md:p-6">
-                <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
-                  Balance
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="text-[10px] uppercase tracking-widest text-cyan-300">
+                    Balance
+                  </div>
+                  <BalanceSparkline principal={principal} />
                 </div>
                 <div className="text-4xl md:text-5xl font-black tabular-nums leading-none">
                   {balance !== null ? formatLWP(balance, 4) : "—"}
