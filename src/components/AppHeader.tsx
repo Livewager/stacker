@@ -172,7 +172,7 @@ export default function AppHeader() {
             section they're on without a visible tab strip. */}
         {activeTab && (
           <div
-            className="md:hidden flex items-baseline gap-1.5 text-[11px] uppercase tracking-widest min-w-0 truncate"
+            className="lg:hidden flex items-baseline gap-1.5 text-[11px] uppercase tracking-widest min-w-0 truncate"
             aria-label="Current section"
           >
             <span aria-hidden className="text-gray-600">/</span>
@@ -185,10 +185,17 @@ export default function AppHeader() {
           </div>
         )}
 
+        {/* Tab strip is lg+ only. Nine tabs × ~88px avg = ~790px,
+            plus logo (~216), wallet pill (~140), and palette hint
+            (~95) — overflows the 768px md viewport (measured:
+            ~1267px min against a 704px content budget after
+            px-8 gutters). The breadcrumb carries "where am I"
+            for md viewports; the palette and ⌘K discovery covers
+            navigation for keyboard users at all widths. */}
         <nav
           ref={navRef}
           aria-label="Primary"
-          className="relative hidden md:flex items-stretch gap-1 ml-4 text-sm"
+          className="relative hidden lg:flex items-stretch gap-1 ml-4 text-sm"
         >
           {TABS.map((t) => {
             const active = isActive(pathname, t.href);
