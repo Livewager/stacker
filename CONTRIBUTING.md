@@ -480,6 +480,21 @@ encode real tiers. Before "consolidating" one of these, check here:
   if the pref flips back. Don't "be clever" and just multiply the
   countdown duration — the motion + chatter concerns don't scale
   away with a longer fuse.
+- **Heading landmark contract** (audited POLISH-342). Every route
+  has exactly one `<h1>`, nested `<h2>`/`<h3>` below it. Audited
+  via curl of `view-source` on all 11 routes. Nine returned the
+  expected heading tree in initial HTML. Two (`/deposit`,
+  `/stacker`) returned **false negatives** — their h1 is rendered
+  inside a `<Suspense>` boundary (DepositSkeleton fallback) or
+  triggers `BAILOUT_TO_CLIENT_SIDE_RENDERING`, so the server HTML
+  ships the fallback template, not the hydrated page. Source
+  inspection confirms both define h1s (deposit/page.tsx:52,
+  stacker/page.tsx:229). If a future audit script greps
+  server-rendered HTML for headings, it must either (a) hydrate
+  first, or (b) walk source files for `<h1`/`<motion.h1`. Don't
+  "fix" the false negatives by hoisting the h1 above the Suspense
+  boundary — the fallback is intentional and the lazy boundary
+  exists to keep initial JS small.
 
 ### The anti-patterns to watch for
 
