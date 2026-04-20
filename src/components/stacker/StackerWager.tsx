@@ -13,7 +13,7 @@
  * last chip choice persists across refreshes.
  */
 
-import { useLocalPref } from "@/lib/prefs";
+import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 
@@ -35,7 +35,7 @@ type Props = {
 };
 
 export function StackerWager({ onStart, disabled }: Props) {
-  const [stake, setStake] = useLocalPref<Chip>("stackerWager", 0);
+  const [stake, setStake] = useLocalPref<Chip>(PREF_KEYS.stackerWager, 0);
   const { identity, balance } = useWalletState();
   const balanceLwp =
     balance !== null ? Number(balance) / 1_00000000 : null; // 8 decimals

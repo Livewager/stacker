@@ -8,7 +8,7 @@ import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { useToast } from "@/components/dunk/Toast";
 import { useCopyable } from "@/lib/clipboard";
-import { useLocalPref } from "@/lib/prefs";
+import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
@@ -33,7 +33,7 @@ export default function WalletPage() {
   // Persist last-picked action so users who always deposit land on the
   // deposit tab on return. Narrowed to the valid QuickTab union so a
   // hand-edited prefs value can't crash the page.
-  const [rawTab, setRawTab] = useLocalPref<QuickTab>("walletQuickTab", "buy");
+  const [rawTab, setRawTab] = useLocalPref<QuickTab>(PREF_KEYS.walletQuickTab, "buy");
   const tab: QuickTab = isQuickTab(rawTab) ? rawTab : "buy";
   const setTab = (next: QuickTab) => setRawTab(next);
   const [buyAmount, setBuyAmount] = useState("1");

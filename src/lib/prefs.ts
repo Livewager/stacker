@@ -97,12 +97,22 @@ export function useLocalPref<T>(
 // --------------- keys + canonical defaults ------------------------
 
 export const PREF_KEYS = {
+  // Audio / motion
   sound: "sound",
   haptics: "haptics",
   reducedMotion: "reducedMotion",
-  sessionCapUsd: "sessionCapUsd", // number | null
   stackerSFX: "stackerSFX",
+
+  // Session guardrails
+  sessionCapUsd: "sessionCapUsd", // number | null
+
+  // Flow / UI state
+  walletQuickTab: "walletQuickTab", // "buy" | "deposit" | "send" | "withdraw"
+  stackerWager: "stackerWager", // 0 | 5 | 25 | 100 (LWP)
+  hasSeenOnboarding: "hasSeenOnboarding", // boolean
 } as const;
+
+export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];
 
 /**
  * Convenience facade: reads the most-used flags at once.
