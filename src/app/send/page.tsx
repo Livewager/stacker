@@ -6,6 +6,7 @@ import { Principal } from "@dfinity/principal";
 import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
+import { Button } from "@/components/ui/Button";
 
 // Must mirror canisters/points_ledger/src/lib.rs TRANSFER_FEE.
 const TRANSFER_FEE_BASE = 10_000n; // 0.0001 LWP at 8 decimals
@@ -225,14 +226,9 @@ export default function SendPage() {
               >
                 ← Back to wallet
               </Link>
-              <button
-                type="submit"
-                disabled={!formValid}
-                className="px-5 py-2.5 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: "linear-gradient(90deg,#c4b5fd,#8b5cf6)" }}
-              >
+              <Button type="submit" disabled={!formValid} tone="violet">
                 Review →
-              </button>
+              </Button>
             </div>
           </form>
         ) : stage === "review" ? (
@@ -297,14 +293,9 @@ function SignInGate({ onLogin, loading }: { onLogin: () => void; loading: boolea
         Transfers are signed by your Internet Identity. Nothing moves without your
         key — we can&apos;t sign for you.
       </p>
-      <button
-        onClick={onLogin}
-        disabled={loading}
-        className="px-6 py-3 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
-        style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
-      >
+      <Button onClick={onLogin} loading={loading} tone="cyan" size="lg">
         {loading ? "Connecting…" : "Connect Internet Identity"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -360,21 +351,12 @@ function ReviewCard({
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <button
-          onClick={onBack}
-          disabled={busy}
-          className="text-xs uppercase tracking-widest text-gray-300 hover:text-white transition disabled:opacity-50"
-        >
+        <Button onClick={onBack} disabled={busy} variant="ghost" size="sm">
           ← Edit
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={busy}
-          className="px-5 py-2.5 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ background: "linear-gradient(90deg,#c4b5fd,#8b5cf6)" }}
-        >
+        </Button>
+        <Button onClick={onConfirm} loading={busy} tone="violet">
           {busy ? "Signing…" : "Confirm & send"}
-        </button>
+        </Button>
       </div>
 
       <div className="text-[11px] text-gray-500 leading-snug">
@@ -448,13 +430,9 @@ function ResultCard({
         >
           View in activity
         </Link>
-        <button
-          onClick={onAgain}
-          className="px-4 py-2 rounded-lg font-bold text-black transition hover:brightness-110 text-sm"
-          style={{ background: "linear-gradient(90deg,#c4b5fd,#8b5cf6)" }}
-        >
+        <Button onClick={onAgain} tone="violet" size="sm">
           Send another
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
+import { Button } from "@/components/ui/Button";
 
 // Mirror the deposit side's fixed rate: 10M LWP per 1 LTC.
 const LWP_PER_LTC = 10_000_000;
@@ -209,14 +210,9 @@ export default function WithdrawPage() {
               >
                 ← Back to wallet
               </Link>
-              <button
-                type="submit"
-                disabled={!formValid}
-                className="px-5 py-2.5 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: "linear-gradient(90deg,#fda4af,#f43f5e)" }}
-              >
+              <Button type="submit" disabled={!formValid} tone="rose">
                 Review →
-              </button>
+              </Button>
             </div>
           </form>
         ) : stage === "review" ? (
@@ -302,14 +298,9 @@ function SignInGate({ onLogin, loading }: { onLogin: () => void; loading: boolea
         Withdrawals are signed by your Internet Identity. The burn is real — your key,
         your signature.
       </p>
-      <button
-        onClick={onLogin}
-        disabled={loading}
-        className="px-6 py-3 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
-        style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
-      >
+      <Button onClick={onLogin} loading={loading} tone="cyan" size="lg">
         {loading ? "Connecting…" : "Connect Internet Identity"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -359,21 +350,12 @@ function ReviewCard({
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <button
-          onClick={onBack}
-          disabled={busy}
-          className="text-xs uppercase tracking-widest text-gray-300 hover:text-white transition disabled:opacity-50"
-        >
+        <Button onClick={onBack} disabled={busy} variant="ghost" size="sm">
           ← Edit
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={busy}
-          className="px-5 py-2.5 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ background: "linear-gradient(90deg,#fda4af,#f43f5e)" }}
-        >
+        </Button>
+        <Button onClick={onConfirm} loading={busy} tone="rose">
           {busy ? "Burning & queuing…" : "Burn & withdraw"}
-        </button>
+        </Button>
       </div>
 
       <div className="text-[11px] text-rose-200/80 leading-snug">
@@ -472,13 +454,9 @@ function QueuedCard({
         >
           View burn in activity
         </Link>
-        <button
-          onClick={onAgain}
-          className="px-4 py-2 rounded-lg font-bold text-black transition hover:brightness-110 text-sm"
-          style={{ background: "linear-gradient(90deg,#fda4af,#f43f5e)" }}
-        >
+        <Button onClick={onAgain} tone="rose" size="sm">
           Withdraw more
-        </button>
+        </Button>
       </div>
       <div className="mt-4 text-[11px] text-amber-200/70 leading-snug">
         Demo payout — no real LTC transmitted. See docs/icp/ltc-oracle.md for the
