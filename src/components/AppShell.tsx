@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import { ToastHost } from "@/components/dunk/Toast";
 import { WalletProvider } from "@/components/dunk/WalletContext";
 import { BottomNav } from "@/components/BottomNav";
+import CommandPalette from "@/components/CommandPalette";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -26,6 +27,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
         <BottomNav />
+        <CommandPalette />
       </WalletProvider>
     </ToastHost>
   );
