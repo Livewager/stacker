@@ -292,6 +292,30 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Hover-bg opacity contract** (audited POLISH-319). The
+  implicit rule across the app: hover adds **+2 to +5 percentage
+  points** to whatever the base bg opacity is, not a fixed tier.
+  Observed (and correct) pairings:
+    transparent base → `hover:bg-white/[0.02]` … `hover:bg-white/5`
+    `bg-white/[0.02]` or `bg-white/[0.03]` → `hover:bg-white/[0.05]`
+    `bg-white/5` → `hover:bg-white/10`
+    `bg-white/10` → `hover:bg-white/15`
+  Two deliberate exceptions, NOT drift:
+    1. Small tap targets (leaderboard HoF dots at
+       `bg-white/15` → `hover:bg-white/25`, +10%) need more delta
+       to register hover because the hit area is tiny.
+    2. Clear-field buttons on busy inputs (/send, /withdraw × at
+       `hover:bg-white/[0.06]` on transparent) need a slightly
+       higher delta to read against typed content.
+  POLISH-309 exception: CommandPalette rows unify hover AND
+  focus-visible bg at 5% (both modes get the same "this is the
+  row" tint, keyboard adds an additive ring). That's a different
+  concern (mode parity, not opacity tier) and doesn't violate the
+  +2–5% rule here.
+  If a new surface wants a hover bg: measure the base and step up
+  within that range. Don't invent new values like `hover:bg-white/8`
+  or cargo-cult `hover:bg-white/5` onto a `bg-white/[0.02]`
+  surface (delta would be too small to read).
 - **Motion curves: single-stage vs two-stage** (audited POLISH-315).
   The POLISH-261 two-stage shape applied to `lw-press-pulse`
   (ripple: ring expansion + opacity fall, two independent axes
