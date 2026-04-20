@@ -229,6 +229,9 @@ const KIND_STYLES: Record<
   },
 };
 
+const DRAG_DISMISS_PX = 120;
+const DRAG_VELOCITY_THRESHOLD = 0.8; // px/ms
+
 function ToastCard({
   t,
   onDismiss,
@@ -241,6 +244,43 @@ function ToastCard({
   onResume: () => void;
 }) {
   const s = KIND_STYLES[t.kind];
+  const dragStart = useRef<{ x: number; t: number } | null>(null);
+  const [dragX, setDragX] = useState(0);
+
+  // Touch-only swipe-to-dismiss so desktop mouse hover keeps
+  // pause/resume intact.
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "touch") return;
+    dragStart.current = { x: e.clientX, t: performance.now() };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    onPause();
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStart.current) return;
+    setDragX(e.clientX - dragStart.current.x);
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStart.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dt = performance.now() - dragStart.current.t;
+    const velocity = Math.abs(dx) / Math.max(1, dt);
+    dragStart.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* no-op */
+    }
+    if (Math.abs(dx) > DRAG_DISMISS_PX || velocity > DRAG_VELOCITY_THRESHOLD) {
+      onDismiss();
+    } else {
+      setDragX(0);
+      onResume();
+    }
+  };
+
+  const dragging = dragStart.current !== null;
+  const transform = dragX !== 0 ? `translate3d(${dragX}px, 0, 0)` : undefined;
+  const opacity = Math.max(0.3, 1 - Math.abs(dragX) / 280);
 
   return (
     <div
@@ -249,7 +289,17 @@ function ToastCard({
       onMouseLeave={onResume}
       onFocusCapture={onPause}
       onBlurCapture={onResume}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
       className={`lw-reveal pointer-events-auto rounded-xl border backdrop-blur-md px-4 py-3 shadow-xl ${s.shell}`}
+      style={{
+        transform,
+        opacity,
+        transition: dragging ? "none" : "transform 140ms ease, opacity 140ms ease",
+        touchAction: "pan-y", // lets the user scroll the region vertically
+      }}
     >
       <div className="flex items-start gap-3">
         <span
