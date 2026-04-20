@@ -311,6 +311,13 @@ function Tier({
           <h2 className="text-lg md:text-xl font-bold text-white tracking-tight">
             {title}
           </h2>
+          {/* POLISH-345 — the gradient rule is intentionally static.
+              Animating only this sliver on an otherwise still
+              doc-page would draw the eye to the one moving thing
+              and fight the "cards stay static" contract from
+              POLISH-339. If the whole tier row ever gets an
+              entrance motion, the rule should draw-in alongside
+              (scaleX from 0) — not on its own. */}
           <div
             aria-hidden
             className={`flex-1 h-px bg-gradient-to-r ${ruleCls} via-white/5 to-transparent`}
