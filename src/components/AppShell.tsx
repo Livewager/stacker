@@ -28,6 +28,7 @@ import { WalletProvider } from "@/components/dunk/WalletContext";
 import { BottomNav } from "@/components/BottomNav";
 import CommandPalette from "@/components/CommandPalette";
 import AppFooter from "@/components/AppFooter";
+import { NetworkBanner } from "@/components/NetworkBanner";
 import { ANCHORS } from "@/lib/routes";
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -37,6 +38,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <a href={ANCHORS.content} className="skip-link">
           Skip to main content
         </a>
+        <NetworkBanner />
         <main id={ANCHORS.content.slice(1)} tabIndex={-1} className="outline-none">
           {children}
         </main>
