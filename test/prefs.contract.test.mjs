@@ -69,9 +69,7 @@ const SESSION_KEYS = [
   "walletQuickTab",
   "leaderboardTab",
   "stackerLastPlayed",
-  "pourLastPlayed",
   "lastAuthAt",
-  "tiltCalibration",
   "stackerWager",
   "stackerMode",
 ];
@@ -153,9 +151,9 @@ test("writeRaw + readRaw round-trip primitives", () => {
 
 test("writeRaw + readRaw round-trip objects", () => {
   const win = freshWin();
-  const calib = { gamma: 1.2, beta: -0.5 };
-  writeRaw(win, "tiltCalibration", calib);
-  assert.deepEqual(readRaw(win, "tiltCalibration", null), calib);
+  const obj = { a: 1.2, b: -0.5 };
+  writeRaw(win, "someObjectPref", obj);
+  assert.deepEqual(readRaw(win, "someObjectPref", null), obj);
 });
 
 test("writeRaw namespaces under the livewager-pref: prefix", () => {

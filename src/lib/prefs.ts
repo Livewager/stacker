@@ -136,7 +136,6 @@ export const PREF_KEYS = {
   stackerWager: "stackerWager", // 0 | 5 | 25 | 100 (LWP)
   stackerMode: "stackerMode", // "ranked" | "unranked"
   stackerLastPlayed: "stackerLastPlayed", // epoch ms | null
-  pourLastPlayed: "pourLastPlayed", // epoch ms | null
   leaderboardTab: "leaderboardTab", // legacy three-tab days; Stacker-only today
   hasSeenOnboarding: "hasSeenOnboarding", // boolean
 
@@ -145,11 +144,6 @@ export const PREF_KEYS = {
 
   // Discovery nudges
   hasOpenedPalette: "hasOpenedPalette", // boolean — once true, ⌘K hint hides
-
-  // Tilt calibration (Tilt Pour). Persisted so repeat players don't
-  // wait 1.8s of blocking calibration on every round. Null until the
-  // first calibration settles. { gamma, beta } — both in degrees.
-  tiltCalibration: "tiltCalibration",
 
   // ActivityFeed filter pill selection. Values: "all" | "mint" |
   // "burn" | "transfer" | "approve". Narrowed at the hook site.
@@ -243,9 +237,7 @@ const SESSION_KEYS: readonly string[] = [
   PREF_KEYS.walletQuickTab,
   PREF_KEYS.leaderboardTab,
   PREF_KEYS.stackerLastPlayed,
-  PREF_KEYS.pourLastPlayed,
   PREF_KEYS.lastAuthAt,
-  PREF_KEYS.tiltCalibration,
   PREF_KEYS.stackerWager,
   PREF_KEYS.stackerMode,
 ];
