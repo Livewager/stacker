@@ -49,6 +49,19 @@ interface Row {
   width: number;
 }
 
+/** Ephemeral chopped-off shard that falls after an imperfect lock. */
+interface Shard {
+  row: number;
+  startCol: number; // fractional cells
+  width: number; // fractional cells
+  vy: number; // cells/sec downward
+  vx: number; // cells/sec sideways
+  rot: number; // radians
+  vrot: number; // radians/sec
+  born: number; // ms, performance.now
+  color: readonly [number, number, number];
+}
+
 interface GameState {
   phase: Phase;
   stack: Row[]; // locked rows, bottom → top
@@ -57,19 +70,25 @@ interface GameState {
     x: number; // float, left-most cell position (can be fractional during slide)
     width: number;
     dir: 1 | -1;
+    spawnedAt: number; // ms, used for spawn pop animation
   } | null;
+  shards: Shard[];
   score: number;
   level: number;
   perfectStreak: number;
+  /** Last perfect-lock row — used to draw an expanding ring on that block. */
+  perfectAt: { row: number; col: number; width: number; at: number } | null;
 }
 
 const initialState = (): GameState => ({
   phase: "idle",
   stack: [],
   current: null,
+  shards: [],
   score: 0,
   level: 1,
   perfectStreak: 0,
+  perfectAt: null,
 });
 
 // Colors cycle as the tower grows — cyan floor → gold top.
@@ -132,10 +151,13 @@ export default function StackerGame() {
         x: 0,
         width: START_WIDTH,
         dir: 1,
+        spawnedAt: performance.now(),
       },
+      shards: [],
       score: 0,
       level: 1,
       perfectStreak: 0,
+      perfectAt: null,
     };
     flashRef.current = 0;
     setHudState((h) => ({
@@ -192,11 +214,53 @@ export default function StackerGame() {
     const newRow: Row = { row: cur.row, startCol: lockedLeft, width: newWidth };
     s.stack.push(newRow);
 
+    // Chop-off: anything in the slider that didn't overlap the block below
+    // spawns as a falling shard for drama.
+    if (below && newWidth < cur.width) {
+      const t = TOP_ROW > 0 ? cur.row / TOP_ROW : 0;
+      const color = mix(CYAN, GOLD, t);
+      const leftChopWidth = lockedLeft - curLeft;
+      const rightChopWidth = curRight - lockedRight;
+      const now = performance.now();
+      if (leftChopWidth > 0) {
+        s.shards.push({
+          row: cur.row,
+          startCol: curLeft,
+          width: leftChopWidth,
+          vy: 8,
+          vx: -3,
+          rot: 0,
+          vrot: -3.2,
+          born: now,
+          color,
+        });
+      }
+      if (rightChopWidth > 0) {
+        s.shards.push({
+          row: cur.row,
+          startCol: lockedRight + 1,
+          width: rightChopWidth,
+          vy: 8,
+          vx: 3,
+          rot: 0,
+          vrot: 3.2,
+          born: now,
+          color,
+        });
+      }
+    }
+
     // Scoring: base 10 per row + 15 streak bonus per consecutive perfect.
     if (perfect) {
       s.perfectStreak += 1;
       s.score += 10 + 15 * s.perfectStreak;
       flashRef.current = performance.now();
+      s.perfectAt = {
+        row: cur.row,
+        col: lockedLeft,
+        width: newWidth,
+        at: performance.now(),
+      };
     } else {
       s.perfectStreak = 0;
       s.score += 10;
@@ -231,6 +295,7 @@ export default function StackerGame() {
       x: startX,
       width: newWidth,
       dir: 1,
+      spawnedAt: performance.now(),
     };
 
     setHudState((h) => ({
@@ -313,6 +378,18 @@ export default function StackerGame() {
         }
       }
 
+      // Simulate shards: gravity + spin. Cull below the board.
+      if (s.shards.length > 0) {
+        const g = 22; // cells/sec^2
+        for (const sh of s.shards) {
+          sh.vy += g * dt;
+          sh.startCol += sh.vx * dt;
+          sh.row -= sh.vy * dt;
+          sh.rot += sh.vrot * dt;
+        }
+        s.shards = s.shards.filter((sh) => sh.row > -3);
+      }
+
       // ---- draw ----
       const W = canvas.width;
       const H = canvas.height;
@@ -374,40 +451,102 @@ export default function StackerGame() {
 
       // Stack.
       s.stack.forEach((r) => {
-        const t = TOP_ROW > 0 ? r.row / TOP_ROW : 0;
-        drawBlock(r.startCol, r.row, r.width, mix(CYAN, GOLD, t));
+        const tt = TOP_ROW > 0 ? r.row / TOP_ROW : 0;
+        drawBlock(r.startCol, r.row, r.width, mix(CYAN, GOLD, tt));
       });
 
-      // Current slider.
+      // Shards (chopped pieces, falling).
+      if (s.shards.length > 0) {
+        const now = performance.now();
+        for (const sh of s.shards) {
+          const age = (now - sh.born) / 1000;
+          const alpha = Math.max(0, 1 - age / 1.2);
+          const cx = padX + (sh.startCol + sh.width / 2) * cellW;
+          const cy = H - padBottom - (sh.row + 0.5) * cellH;
+          const w = cellW * sh.width;
+          const h = cellH;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(sh.rot);
+          const pad = Math.min(cellW, cellH) * 0.06;
+          const grad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+          grad.addColorStop(0, rgba(sh.color, 0.9 * alpha));
+          grad.addColorStop(1, rgba(sh.color, 0.55 * alpha));
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          const rx = Math.min(8 * dpr, h * 0.18);
+          ctx.roundRect(-w / 2 + pad, -h / 2 + pad, w - pad * 2, h - pad * 2, rx);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // Perfect-lock expanding ring on the matched block.
+      if (s.perfectAt) {
+        const pa = s.perfectAt;
+        const age = t - pa.at;
+        if (age < 600) {
+          const prog = age / 600;
+          const a = 1 - prog;
+          const bx = padX + pa.col * cellW;
+          const by = H - padBottom - (pa.row + 1) * cellH;
+          const bw = cellW * pa.width;
+          const bh = cellH;
+          const cx = bx + bw / 2;
+          const cy = by + bh / 2;
+          const maxR = Math.max(bw, bh) * (1 + prog * 1.5);
+          ctx.strokeStyle = rgba(GOLD, 0.7 * a);
+          ctx.lineWidth = 3 * dpr * (1 - prog * 0.6);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, maxR * 0.6, maxR * 0.3, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          s.perfectAt = null;
+        }
+      }
+
+      // Current slider with spawn pop.
       if (s.current) {
-        const t = TOP_ROW > 0 ? s.current.row / TOP_ROW : 0;
+        const tt = TOP_ROW > 0 ? s.current.row / TOP_ROW : 0;
         const col = s.current.x;
         const x = padX + col * cellW;
         const y = H - padBottom - (s.current.row + 1) * cellH;
         const w = cellW * s.current.width;
         const h = cellH;
         const pad = Math.min(cellW, cellH) * 0.06;
-        const color = mix(CYAN, GOLD, t);
-        const grad = ctx.createLinearGradient(x, y, x, y + h);
+        const color = mix(CYAN, GOLD, tt);
+
+        // Spawn pop: scale from 0.7 → 1.0 over first 180ms.
+        const sinceSpawn = t - s.current.spawnedAt;
+        const popScale =
+          sinceSpawn < 180 ? 0.7 + 0.3 * (sinceSpawn / 180) : 1;
+        // Subtle bob: ±1.5% cellH at 2Hz (disabled during pop).
+        const bob = sinceSpawn < 200 ? 0 : Math.sin(t * 0.006) * cellH * 0.015;
+
+        const cx = x + w / 2;
+        const cy = y + h / 2 + bob;
+        const dw = w * popScale;
+        const dh = h * popScale;
+
+        const grad = ctx.createLinearGradient(cx, cy - dh / 2, cx, cy + dh / 2);
         grad.addColorStop(0, rgba(color, 0.95));
         grad.addColorStop(1, rgba(color, 0.6));
         ctx.fillStyle = grad;
         ctx.beginPath();
-        const rx = Math.min(8 * dpr, h * 0.18);
-        ctx.roundRect(x + pad, y + pad, w - pad * 2, h - pad * 2, rx);
+        const rx = Math.min(8 * dpr, dh * 0.18);
+        ctx.roundRect(cx - dw / 2 + pad, cy - dh / 2 + pad, dw - pad * 2, dh - pad * 2, rx);
         ctx.fill();
-        // Moving glow.
         ctx.shadowColor = rgba(color, 0.6);
         ctx.shadowBlur = 14 * dpr;
         ctx.stroke();
         ctx.shadowBlur = 0;
       }
 
-      // Perfect flash.
+      // Perfect flash (full-board warm tint). Brief, gentle.
       const since = t - flashRef.current;
-      if (flashRef.current > 0 && since < 500) {
-        const a = 1 - since / 500;
-        ctx.fillStyle = rgba(GOLD, 0.12 * a);
+      if (flashRef.current > 0 && since < 420) {
+        const a = 1 - since / 420;
+        ctx.fillStyle = rgba(GOLD, 0.09 * a);
         ctx.fillRect(0, 0, W, H);
       }
 
