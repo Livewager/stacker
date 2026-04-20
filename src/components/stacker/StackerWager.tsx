@@ -65,6 +65,16 @@ export function StackerWager({ onStart, disabled }: Props) {
         role="radiogroup"
         aria-label="Stacker mode"
         className="grid grid-cols-2 gap-1.5 mb-4 rounded-xl border border-white/10 bg-black/30 p-1"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          e.preventDefault();
+          const next: StackerMode = mode === "unranked" ? "ranked" : "unranked";
+          setMode(next);
+          const container = e.currentTarget as HTMLElement;
+          const idx = next === "unranked" ? 0 : 1;
+          const btn = container.children[idx] as HTMLButtonElement | undefined;
+          btn?.focus?.();
+        }}
       >
         {(["unranked", "ranked"] as const).map((m) => {
           const active = mode === m;
@@ -74,6 +84,7 @@ export function StackerWager({ onStart, disabled }: Props) {
               type="button"
               role="radio"
               aria-checked={active}
+              tabIndex={active ? 0 : -1}
               onClick={() => setMode(m)}
               disabled={disabled}
               className={[
@@ -141,6 +152,19 @@ export function StackerWager({ onStart, disabled }: Props) {
           role="radiogroup"
           aria-label="Stacker entry fee"
           className="grid grid-cols-4 gap-2 mb-4"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const i = CHIPS.indexOf(stake);
+            if (i < 0) return;
+            const delta = e.key === "ArrowLeft" ? -1 : 1;
+            const next = CHIPS[(i + delta + CHIPS.length) % CHIPS.length];
+            setStake(next);
+            const container = e.currentTarget as HTMLElement;
+            const idx = CHIPS.indexOf(next);
+            const btn = container.children[idx] as HTMLButtonElement | undefined;
+            btn?.focus?.();
+          }}
         >
           {CHIPS.map((c) => {
             const active = stake === c;
@@ -161,6 +185,9 @@ export function StackerWager({ onStart, disabled }: Props) {
                 role="radio"
                 aria-checked={active}
                 aria-disabled={chipShort ? "true" : undefined}
+                // Roving tabindex so Tab-into-radiogroup lands on the
+                // current selection; arrows move within the group.
+                tabIndex={active ? 0 : -1}
                 onClick={() => setStake(c)}
                 disabled={disabled}
                 title={
