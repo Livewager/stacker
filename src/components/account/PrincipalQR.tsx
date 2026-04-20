@@ -62,6 +62,17 @@ export function PrincipalQR({ principal }: Props) {
       // saved QRs from multiple identities. ASCII-safe: principals
       // are already [a-z0-9-] so no filesystem escaping needed; just
       // swap the ellipsis for a plain dash separator.
+      //
+      // POLISH-386 audit: full filename is `livewager-principal-${tag}.svg`
+      // = 21 + 11 + 4 = 36 chars. iOS Safari's share-sheet preview
+      // truncates at ~32 chars, so on iPhone this could mid-ellipsis.
+      // But the iOS branch below (isIOS) uses window.open not
+      // <a download>, so iOS never reads this filename — the user
+      // long-presses the rendered SVG and the OS uses its own
+      // default name. The filename only ships to desktop + Android,
+      // both of which handle 36 chars cleanly in Finder / Files
+      // preview. If a future refactor unifies the paths, shrink
+      // the tag to head:4 tail:3 (30 chars total) before that lands.
       const tag = shortenPrincipal(principal, { head: 6, tail: 4, ellipsis: "-" });
       // iOS / iPadOS / iPhone detection. Modern iPads identify as Mac
       // in userAgent, so also probe for maxTouchPoints > 1 — the
