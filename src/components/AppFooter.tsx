@@ -121,7 +121,14 @@ export default function AppFooter() {
               Leaderboard
             </Link>
             <span className="uppercase tracking-widest text-gray-500">
-              Non-custodial · demo
+              Non-custodial ·{" "}
+              <Link
+                href={ROUTES.settings}
+                className="text-gray-400 underline-offset-2 hover:text-white hover:underline transition"
+                title="Device prefs + data reset"
+              >
+                demo
+              </Link>
             </span>
           </div>
         </div>
