@@ -151,14 +151,75 @@ export default function ActivityFeed({
       ) : events.length === 0 ? (
         <EmptyState principal={!!principal} />
       ) : (
-        <ul className={compact ? "divide-y divide-white/5" : "divide-y divide-white/5"}>
-          {events.map((e) => (
-            <li key={`${e.txId}-${e.kind}`} className="px-4 py-3">
-              <ActivityRow event={e} compact={compact} />
-            </li>
-          ))}
-        </ul>
+        <GroupedEvents events={events} compact={compact} />
       )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Day-grouped list — "Today" / "Yesterday" / dated sticky headers
+// ------------------------------------------------------------------
+
+function dayKeyFromNs(tsNs: bigint): string {
+  // Local-date key so day boundaries match the user's timezone, not UTC.
+  const d = new Date(Number(tsNs / 1_000_000n));
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function dayLabel(tsNs: bigint): string {
+  const d = new Date(Number(tsNs / 1_000_000n));
+  const now = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const thenDayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((dayStart - thenDayStart) / dayMs);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function GroupedEvents({
+  events,
+  compact,
+}: {
+  events: BlockEvent[];
+  compact: boolean;
+}) {
+  // Preserve order (events arrive newest-first); group by local day
+  // key. Each group keeps its internal sort.
+  const groups: { key: string; label: string; items: BlockEvent[] }[] = [];
+  for (const e of events) {
+    const key = dayKeyFromNs(e.tsNs);
+    const head = groups[groups.length - 1];
+    if (head && head.key === key) {
+      head.items.push(e);
+    } else {
+      groups.push({ key, label: dayLabel(e.tsNs), items: [e] });
+    }
+  }
+  return (
+    <div>
+      {groups.map((g) => (
+        <section key={g.key} aria-label={g.label}>
+          <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-1.5 bg-[#061426]/95 backdrop-blur border-b border-white/5">
+            <span className="text-[10px] uppercase tracking-widest text-cyan-300">
+              {g.label}
+            </span>
+            <span className="text-[10px] font-mono text-gray-500">
+              {g.items.length} {g.items.length === 1 ? "event" : "events"}
+            </span>
+          </div>
+          <ul className="divide-y divide-white/5">
+            {g.items.map((e) => (
+              <li key={`${e.txId}-${e.kind}`} className="px-4 py-3">
+                <ActivityRow event={e} compact={compact} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   );
 }
