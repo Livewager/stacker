@@ -262,6 +262,18 @@ export default function SendPage() {
 
         {!identity ? (
           <SignInGate onLogin={login} loading={status === "loading"} />
+        ) : stage === "compose" && balance === 0n ? (
+          // Zero-balance empty state (POLISH-292). Mirrors POLISH-286
+          // on /withdraw. Before: user filled in recipient + hit
+          // Review, and the validator bounced them off "Must be
+          // positive" / "Exceeds balance (fee included)" on a 0-LWP
+          // amount — correct but reads as the form yelling.
+          //
+          // Gate on `balance === 0n` (exact zero), not falsy, so a
+          // still-loading balance (null) keeps rendering the form.
+          // A network flicker shouldn't demote a returning user back
+          // to the empty state.
+          <EmptyBalance principal={principal} />
         ) : stage === "compose" ? (
           <form
             onSubmit={onReview}
@@ -643,6 +655,56 @@ function SignInGate({ onLogin, loading }: { onLogin: () => void; loading: boolea
       <Button onClick={onLogin} loading={loading} tone="cyan" size="lg">
         {loading ? "Connecting…" : "Connect Internet Identity"}
       </Button>
+    </div>
+  );
+}
+
+/**
+ * Signed-in-with-zero-balance empty state. Mirrors the /withdraw
+ * EmptyBalance from POLISH-286. Reframes "you have 0 LWP" as a
+ * next-step signal — the send form's field-level validator would
+ * otherwise bounce the user off "Exceeds balance (fee included)"
+ * on a 0-LWP amount, which reads as the form yelling about
+ * something the user can't control from this screen.
+ *
+ * The principal badge at the bottom matches the compose form's
+ * "From" strip so the transition between empty-state and form-
+ * after-deposit feels continuous — same anchor, different content.
+ * Violet eyebrow mirrors /send's accent (rose on /withdraw, cyan
+ * on /wallet, violet here).
+ */
+function EmptyBalance({ principal }: { principal: string }) {
+  const shortPrincipal =
+    principal.length > 24
+      ? `${principal.slice(0, 10)}…${principal.slice(-6)}`
+      : principal;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
+      <div className="text-[11px] uppercase tracking-widest text-violet-300 mb-3">
+        Nothing to send yet
+      </div>
+      <h2 className="text-2xl md:text-3xl font-black text-white mb-2">
+        Your balance is 0&nbsp;LWP.
+      </h2>
+      <p className="text-sm text-gray-300 max-w-md mx-auto mb-5 leading-snug">
+        Deposit first — LTC mints instantly to your principal in demo mode.
+        Once you have LWP, come back to send it to another Internet Identity.
+      </p>
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <Link href="/deposit">
+          <Button tone="orange" size="lg">
+            Deposit LWP
+          </Button>
+        </Link>
+        <Link href="/play">
+          <Button variant="outline" size="lg">
+            Or play to win some
+          </Button>
+        </Link>
+      </div>
+      <div className="mt-6 text-[10px] uppercase tracking-widest text-gray-500 font-mono">
+        Principal · {shortPrincipal}
+      </div>
     </div>
   );
 }
