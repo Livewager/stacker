@@ -227,6 +227,16 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-6">
+          {/* Visual groupings. Each GroupHeader draws a hairline +
+              uppercase eyebrow above the related cluster of Sections.
+              Purely presentational — the #display/#audio/#cap/#account/
+              #diagnostics/#data anchors on the Section components are
+              preserved exactly, so CommandPalette deep-links still land
+              correctly. The groups cluster: Experience (display +
+              audio), Safety (cap), Account (account + diagnostics),
+              Danger (data reset). */}
+          <GroupHeader label="Experience" first />
+
           {/* ---- Display ---- */}
           <Section
             id="display"
@@ -346,6 +356,8 @@ export default function SettingsPage() {
             )}
           </Section>
 
+          <GroupHeader label="Safety" />
+
           {/* ---- Session cap ---- */}
           <Section
             id="cap"
@@ -452,6 +464,8 @@ export default function SettingsPage() {
             </div>
           </Section>
 
+          <GroupHeader label="Account" />
+
           {/* ---- Account ---- */}
           <Section
             id="account"
@@ -529,6 +543,8 @@ export default function SettingsPage() {
               </Button>
             </div>
           </Section>
+
+          <GroupHeader label="Device" tone="danger" />
 
           {/* ---- Data reset (danger zone) ---- */}
           <Section
@@ -651,5 +667,45 @@ function Section({
       </div>
       <div>{children}</div>
     </section>
+  );
+}
+
+/**
+ * Visual group header rendered between clusters of Section cards.
+ * Draws a 1px hairline plus a small uppercase eyebrow. No DOM
+ * wrapping — sits as a flat sibling inside the space-y-6 list so it
+ * inherits the 24px rhythm and doesn't disturb the existing anchors.
+ *
+ * `first` drops the top hairline on the opening group; `tone="danger"`
+ * tints the eyebrow rose to telegraph the destructive cluster before
+ * the user reaches the Section's "Danger zone" eyebrow inside.
+ */
+function GroupHeader({
+  label,
+  first = false,
+  tone = "default",
+}: {
+  label: string;
+  first?: boolean;
+  tone?: "default" | "danger";
+}) {
+  const accent = tone === "danger" ? "text-rose-300/90" : "text-cyan-300/80";
+  const rule = tone === "danger" ? "border-rose-500/20" : "border-white/10";
+  return (
+    <div
+      className={
+        // Negative-margin trick pulls the rule up so there's a bit
+        // more breathing room above the section below (spacing is
+        // 24px from space-y-6, the extra -mt-2 tightens to ~16px).
+        first ? "pt-1" : `pt-4 border-t ${rule} -mt-2`
+      }
+      aria-hidden
+    >
+      <div
+        className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${accent}`}
+      >
+        {label}
+      </div>
+    </div>
   );
 }
