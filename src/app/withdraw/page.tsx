@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
@@ -375,6 +375,16 @@ function ReviewCard({
   onBack: () => void;
   onConfirm: () => void;
 }) {
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
+  // Match /send's review polish: snap focus to the primary action on
+  // mount so Enter confirms and SR users get the card announced.
+  // preventScroll avoids jumping the page mid lw-reveal entrance.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      confirmRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
   return (
     <div className="lw-reveal rounded-2xl border border-rose-300/30 bg-rose-300/[0.04] p-5 md:p-7 space-y-5">
       <div>
@@ -416,7 +426,7 @@ function ReviewCard({
         <Button onClick={onBack} disabled={busy} variant="ghost" size="sm">
           ← Edit
         </Button>
-        <Button onClick={onConfirm} loading={busy} tone="rose">
+        <Button ref={confirmRef} onClick={onConfirm} loading={busy} tone="rose">
           {busy ? "Burning & queuing…" : "Burn & withdraw"}
         </Button>
       </div>
