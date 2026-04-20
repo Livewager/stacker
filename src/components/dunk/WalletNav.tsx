@@ -174,8 +174,28 @@ export function WalletNav() {
           "◎" or responsive-swap double-read. */}
       <div
         key={flashId}
+        // POLISH-327 — suppress lw-balance-flash while pending. The
+        // flash is a cyan halo (rgba(34,211,238,0.22)) and the
+        // pending pill is amber border+bg; stacking a cyan ring
+        // around an amber surface reads as an unintentional color
+        // clash rather than a signal. Pending's own amber spinning
+        // ring is already the "something's in flight" cue, and
+        // balance deltas that arrive during pending are by-
+        // definition the expected settlement of that mutation —
+        // the flash would be announcing what the pending state
+        // already announced. Keep the flash class off until pending
+        // clears; then genuine background deltas (incoming
+        // transfers arriving while the user sits on a static pill)
+        // get the full halo effect they're designed for.
+        //
+        // Tone-aware amber variant considered and cut: the
+        // post-settlement flash is a "notice me" moment; amber on
+        // amber defeats the purpose, and a separate rgba would
+        // need a per-tone keyframe extraction (POLISH-325 pattern)
+        // for the sole benefit of firing during pending — when the
+        // flash shouldn't fire at all. Scope cut.
         className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-full border text-xs md:text-sm font-mono tabular-nums min-w-0 transition-colors ${
-          flashId > 0 ? "lw-balance-flash" : ""
+          flashId > 0 && !pending ? "lw-balance-flash" : ""
         } ${
           pending
             ? "border-amber-400/50 bg-amber-400/[0.08]"
