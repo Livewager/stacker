@@ -64,6 +64,16 @@ export function ConfirmationRail({ step, confirmations }: ConfirmationRailProps)
       aria-label="Deposit progress"
       className="rounded-xl border border-white/10 bg-black/30 p-4"
     >
+      {/* POLISH-332 audit: rail doesn't overflow at 320px. Math:
+          320 viewport − 32 page px (p-4 ×2) − 32 card px (p-4 ×2) =
+          256 content box. 4 dots × 28px = 112. Remaining 144 split
+          3 ways + mx-1.5 spacing (6×2 per connector) = ~36 px per
+          connector bar, which is still a visible bar. Labels
+          ("1 / 2 confirmations", "Waiting on 1 more block.") render
+          below the rail as free-flowing divs — natural line wrap,
+          no risk of pushing the rail itself. Premise was overflow;
+          the rail is a scaling flex, not a fixed-width strip.
+          Kept as-is. */}
       <div
         role="progressbar"
         aria-valuemin={0}
