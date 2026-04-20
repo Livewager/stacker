@@ -9,8 +9,6 @@
  * Stack until you reach the top. If width hits zero before you reach
  * the top, it's game over.
  *
- * Preserves the Tilt Pour game untouched — this lives at its own route.
- *
  * Design principles:
  *  - Canvas for the actual play surface so motion is cheap; HUD is
  *    rendered as overlaid React so copy tweaks stay fast.

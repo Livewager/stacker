@@ -43,9 +43,12 @@ const mulberry32 = (seed: number) => {
 };
 
 /**
- * Deterministic simulated pour scores for the current hour. Everyone viewing
- * the page in the same hour sees the same set of scores — the set only grows
- * as the hour progresses (scores "appear" at their simulated timestamp).
+ * Deterministic simulated Stacker scores for the current hour.
+ * Everyone viewing the page in the same hour sees the same set of
+ * scores — the set only grows as the hour progresses (entries
+ * "appear" at their simulated timestamp). Game tag is "stacker" so
+ * /leaderboard's stacker-only filter picks these up; an empty live
+ * board would otherwise read as a dead site to first-time visitors.
  *
  * Returns entries already filtered to those whose ts <= now.
  */
@@ -69,7 +72,7 @@ const getSimulatedHourScores = (now = Date.now()): ScoreEntry[] => {
     const ts = hourStart + Math.floor(rng() * Math.max(1, elapsed));
     entries.push({
       id: `sim-${hourStart}-${i}`,
-      game: "pour",
+      game: "stacker",
       handle: p.h,
       flag: p.flag,
       score,
