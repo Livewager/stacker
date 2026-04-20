@@ -12,6 +12,7 @@ import { useWalletState } from "@/components/dunk/WalletContext";
 import { ROUTES } from "@/lib/routes";
 import { useCopyable } from "@/lib/clipboard";
 import { sfx, unlockAudio } from "@/lib/audio";
+import { StorageUsage } from "@/components/settings/StorageUsage";
 
 import { shortenPrincipal } from "@/lib/principal";
 
@@ -442,6 +443,10 @@ export default function SettingsPage() {
             subtitle="Clears local prefs, high scores, cached session cap, Internet Identity session hints. Does not touch the ledger."
             tone="danger"
           >
+            {/* Storage-footprint readout. Surfaces *what* the Clear
+                buttons would free before the user taps them. Refresh
+                updates both numbers post-clear. */}
+            <StorageUsage />
             {/* Session reset — kept above the nuclear row so it's the
                 first affordance in reach. No confirm dialog: the
                 surface is recoverable (preferences stay, session
