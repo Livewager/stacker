@@ -43,6 +43,7 @@ export default function ActivityFeed({
 }: ActivityFeedProps) {
   const [events, setEvents] = useState<BlockEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const mounted = useRef(true);
 
   const ownerBytes = useMemo<Uint8Array | null>(() => {
@@ -83,6 +84,26 @@ export default function ActivityFeed({
     }
   }, [limit, ownerBytes]);
 
+  // Click-driven refresh: shows the spinner for the full request duration
+  // (but never less than 450ms so a fast local replica still registers
+  // as "something happened"). Poll-driven load() calls don't trigger the
+  // spinner — they'd flash it constantly.
+  const manualRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    const minDurationMs = 450;
+    const started = Date.now();
+    try {
+      await load();
+    } finally {
+      const elapsed = Date.now() - started;
+      const remaining = Math.max(0, minDurationMs - elapsed);
+      window.setTimeout(() => {
+        if (mounted.current) setRefreshing(false);
+      }, remaining);
+    }
+  }, [load, refreshing]);
+
   useEffect(() => {
     mounted.current = true;
     load();
@@ -101,11 +122,21 @@ export default function ActivityFeed({
           {title ?? (principal ? "Your Activity" : "Recent Ledger Activity")}
         </div>
         <button
-          onClick={load}
-          className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-cyan-300 transition"
+          onClick={manualRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-gray-400 hover:text-cyan-300 transition disabled:opacity-60 disabled:cursor-wait"
           aria-label="Refresh activity"
+          aria-busy={refreshing}
         >
-          Refresh
+          <svg
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`}
+            aria-hidden
+          >
+            <path d="M4 4a1 1 0 0 1 1 1v1.6A7 7 0 1 1 3 10a1 1 0 1 1 2 0 5 5 0 1 0 1.6-3.67L5.7 7H8a1 1 0 1 1 0 2H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+          </svg>
+          {refreshing ? "Refreshing" : "Refresh"}
         </button>
       </div>
 
