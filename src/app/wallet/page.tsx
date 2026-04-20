@@ -7,6 +7,7 @@ import ActivityFeed from "@/components/dunk/ActivityFeed";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { useToast } from "@/components/dunk/Toast";
+import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 
 function short(s: string, h = 8, t = 8): string {
   if (s.length <= h + t + 1) return s;
@@ -16,7 +17,8 @@ function short(s: string, h = 8, t = 8): string {
 type QuickTab = "buy" | "deposit" | "send" | "withdraw";
 
 export default function WalletPage() {
-  const { identity, principal, balance, status, login, buy } = useWalletState();
+  const { identity, principal, balance, status, login, buy, error, refresh } =
+    useWalletState();
   const toast = useToast();
   const [tab, setTab] = useState<QuickTab>("buy");
   const [buyAmount, setBuyAmount] = useState("1");
@@ -87,6 +89,12 @@ export default function WalletPage() {
             </div>
           )}
         </div>
+
+        {error && signedIn && (
+          <div className="mb-6">
+            <LedgerErrorCard error={error} onRetry={refresh} scope="Wallet" />
+          </div>
+        )}
 
         {!signedIn ? (
           <SignedOutPrompt onLogin={login} loading={status === "loading"} />

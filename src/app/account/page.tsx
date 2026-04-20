@@ -6,6 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import { formatLWP } from "@/lib/icp";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import ActivityFeed from "@/components/dunk/ActivityFeed";
+import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 
 function short(s: string, head = 10, tail = 10): string {
   if (s.length <= head + tail + 1) return s;
@@ -21,6 +22,8 @@ export default function AccountPage() {
     login,
     logout,
     status,
+    error,
+    refresh,
   } = useWalletState();
   const [copied, setCopied] = useState(false);
 
@@ -62,6 +65,12 @@ export default function AccountPage() {
             ICRC-3 block log — nothing here is stored on our servers.
           </p>
         </div>
+
+        {error && signedIn && (
+          <div className="mb-6">
+            <LedgerErrorCard error={error} onRetry={refresh} scope="Account" />
+          </div>
+        )}
 
         {!signedIn ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
