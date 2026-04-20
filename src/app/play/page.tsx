@@ -127,6 +127,12 @@ function formatRelative(tsMs: number, nowMs: number): string {
 export default function PlayHubPage() {
   const [bests, setBests] = useState<Record<string, number | null>>({});
   const [lastPlayed, setLastPlayed] = useState<Record<string, number | null>>({});
+  // Tracks whether the local prefs have been read at least once. Without
+  // this, the page renders a "first-time visitor" banner for a single
+  // frame while prefs hydrate, then flips it away — a brief, confusing
+  // flash for returning players. The flag lets us withhold the banner
+  // until we *know* both last-played stamps are null.
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -138,7 +144,16 @@ export default function PlayHubPage() {
     }
     setBests(bestNext);
     setLastPlayed(lpNext);
+    setPrefsLoaded(true);
   }, []);
+
+  // First-time visitor: no lastPlayed stamp for either game. Surfaces
+  // a "Start here" callout on the Stacker card (demo-friendly first
+  // choice — no motion permissions required) and a one-line header
+  // banner above the grid. Hidden as soon as either game gets played.
+  const firstVisit =
+    prefsLoaded && GAMES.every((g) => !g.lastPlayedKey || !lastPlayed[g.lastPlayedKey]);
+  const suggestedHref = "/stacker";
 
   // Route-scoped number shortcuts: "1" → first game, "2" → second,
   // etc. Only while /play is the active view. Inert inside any text
@@ -185,6 +200,34 @@ export default function PlayHubPage() {
             </p>
           </div>
 
+          {/* First-visit nudge. Hidden once either game has been
+              played. Points at Stacker because it's the demo-friendly
+              first choice — no device-motion permission prompt, no
+              camera, works on desktop + mobile identically. */}
+          {firstVisit && (
+            <div className="lw-reveal mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300/30 bg-cyan-300/[0.05] px-4 py-3 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[10px] uppercase tracking-widest text-cyan-300">
+                  Start here
+                </span>
+                <span className="text-gray-300 truncate">
+                  First time? Try{" "}
+                  <span className="text-white font-semibold">Stacker</span> —
+                  one tap to play, no permissions.
+                </span>
+              </div>
+              <Link
+                href={suggestedHref}
+                className="inline-flex items-center gap-1.5 rounded-md border border-cyan-300/50 bg-cyan-300/10 px-3 py-1.5 text-[11px] uppercase tracking-widest text-cyan-100 hover:bg-cyan-300/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+              >
+                Play Stacker
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+                  <path d="M7.3 4.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 0 1-1.4-1.4L11.58 10 7.3 5.7a1 1 0 0 1 0-1.4Z" />
+                </svg>
+              </Link>
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             {GAMES.map((g, i) => {
               const best = g.bestKey ? bests[g.bestKey] : null;
@@ -193,11 +236,16 @@ export default function PlayHubPage() {
                 lp && Number.isFinite(lp)
                   ? formatRelative(lp, Date.now())
                   : null;
+              const suggested = firstVisit && g.href === suggestedHref;
               return (
                 <ParallaxCard
                   key={g.href}
                   href={g.href}
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/25 hover:bg-white/[0.05]"
+                  className={`group relative overflow-hidden rounded-2xl border p-5 transition ${
+                    suggested
+                      ? "border-cyan-300/40 bg-cyan-300/[0.05] hover:border-cyan-300/60"
+                      : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.05]"
+                  }`}
                 >
                   <div
                     aria-hidden
