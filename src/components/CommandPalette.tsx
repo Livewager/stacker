@@ -64,6 +64,14 @@ const GLOBAL_SHORTCUTS: Shortcut[] = [
   { keys: ["⌘", "K"], what: "Open command palette" },
   { keys: ["?"], what: "Open command palette" },
   { keys: ["Esc"], what: "Close dialogs" },
+  { keys: ["g", "p"], what: "Go to Play" },
+  { keys: ["g", "d"], what: "Go to Tilt Pour" },
+  { keys: ["g", "s"], what: "Go to Stacker" },
+  { keys: ["g", "w"], what: "Go to Wallet" },
+  { keys: ["g", "a"], what: "Go to Account" },
+  { keys: ["g", "r"], what: "Go to Leaderboard (ranks)" },
+  { keys: ["g", "n"], what: "Go to Send (next)" },
+  { keys: ["g", "t"], what: "Go to Settings" },
 ];
 
 const GAME_SHORTCUTS: Shortcut[] = [
@@ -90,7 +98,22 @@ export default function CommandPalette() {
   }, [pathname]);
 
   // -------- hotkeys --------
+  // Vim-style leader key: press `g` then a letter within 1.5s to
+  // navigate. Mapped against the primary routes; inert while typing.
   useEffect(() => {
+    let leaderExpires = 0;
+    const LEADER_MS = 1500;
+    const LEADER_MAP: Record<string, string> = {
+      p: ROUTES.play,
+      d: ROUTES.dunk,
+      s: ROUTES.stacker,
+      w: ROUTES.wallet,
+      a: ROUTES.account,
+      r: ROUTES.leaderboard, // r for "ranks"
+      n: ROUTES.send, // n for "send next"
+      t: ROUTES.settings, // t for "settings"
+    };
+
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
       const typing =
@@ -105,11 +128,30 @@ export default function CommandPalette() {
       if (e.key === "?" && !typing) {
         e.preventDefault();
         setOpen(true);
+        return;
+      }
+
+      if (typing) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // Leader activation
+      if (e.key === "g") {
+        leaderExpires = performance.now() + LEADER_MS;
+        return;
+      }
+      // Leader follow-through within window
+      if (performance.now() < leaderExpires) {
+        const target = LEADER_MAP[e.key.toLowerCase()];
+        if (target) {
+          e.preventDefault();
+          leaderExpires = 0;
+          router.push(target);
+        }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [router]);
 
   const go = useCallback(
     (path: string) => {
