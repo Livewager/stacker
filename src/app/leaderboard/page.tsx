@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 import { usePrefs } from "@/lib/prefs";
 import AppHeader from "@/components/AppHeader";
 import { BackToTop } from "@/components/ui/BackToTop";
