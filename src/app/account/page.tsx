@@ -274,6 +274,13 @@ function RecentTipChips() {
           New send →
         </Link>
       </div>
+      {/* Chip row. Short principal (5+3) is pre-set so the auto-
+          shortened case lands around 9 chars. User-provided r.label
+          is free-form, though — cap each chip at max-w-[11rem] and
+          truncate so a long nickname doesn't blow the row and force
+          the third chip to wrap onto a second line on narrower
+          cards. Row still flex-wraps if the container genuinely
+          can't hold them. */}
       <div className="flex flex-wrap gap-2">
         {list.map((r) => {
           const label = r.label ?? shortenPrincipal(r.principal, { head: 5, tail: 3 });
@@ -281,13 +288,18 @@ function RecentTipChips() {
             <Link
               key={r.principal}
               href={`/send?to=${encodeURIComponent(r.principal)}`}
-              className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/30 bg-violet-300/[0.06] px-2.5 py-1 text-[11px] text-violet-100 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60"
+              className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/30 bg-violet-300/[0.06] px-2.5 py-1 text-[11px] text-violet-100 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 max-w-[11rem]"
               title={`Tip ${r.principal}`}
             >
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden>
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-3 w-3 shrink-0"
+                aria-hidden
+              >
                 <path d="M3.4 9.1l13-5.6a.8.8 0 0 1 1.1 1l-5.6 13a.8.8 0 0 1-1.4 0l-2-4.6-4.6-2a.8.8 0 0 1 0-1.4Z" />
               </svg>
-              <span className="font-mono">{label}</span>
+              <span className="font-mono truncate">{label}</span>
             </Link>
           );
         })}
