@@ -490,6 +490,25 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setBalance(bal);
   }, []);
 
+  // refresh() is called from every mutation epilogue (buy, depositLTC,
+  // send, withdraw). POLISH-317 audit asked whether adjacent mutations
+  // need a debounce to collapse back-to-back balance fetches. Verdict:
+  // no. The access pattern prevents adjacent-mutation overlap by
+  // construction:
+  //   - each mutation `await`s its own API call + refresh() before
+  //     returning, so the caller's promise chain can't dispatch a
+  //     second mutation while the first is still in-flight
+  //   - every UI consumer (BuyPanel, DepositPanel, /send, /withdraw)
+  //     sets a local `busy` state on mutation entry and disables its
+  //     Confirm button for the entire mutation window, so double-click
+  //     is UI-guarded too
+  //   - ActivityFeed's 8s poll uses its own pointsLedger() path
+  //     (block-log fetch), not this refresh — no cross-call race
+  // Adding a leading-edge debounce would be a solution without a
+  // problem, AND would silently drop legitimate back-to-back refreshes
+  // in edge cases the audit can't rule out (cross-tab wallet actions,
+  // test harnesses, future programmatic callers). Current shape is
+  // correct: refresh-after-each-mutation, no debounce.
   const refresh = useCallback(async () => {
     await refreshSupply();
     if (idRef.current) await refreshBalance(idRef.current);
