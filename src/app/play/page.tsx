@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import AppHeader from "@/components/AppHeader";
+import OnboardingNudge from "@/components/OnboardingNudge";
 
 type Game = {
   href: string;
@@ -83,6 +84,7 @@ export default function PlayHubPage() {
   return (
     <>
       <AppHeader />
+      <OnboardingNudge />
       <div className="min-h-screen bg-background text-white">
         <section className="max-w-7xl mx-auto px-5 md:px-8 py-8">
           <div className="max-w-2xl mb-8">
