@@ -1121,6 +1121,11 @@ function WagerPrimer() {
 function FairPlay() {
   return (
     <section className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
+      {/* Body copy gets max-w-prose (≈65ch) — the previous max-w-2xl
+          (672px ≈ 90ch) ran the four-line paragraph past the
+          comfortable reading threshold on wide viewports. Keep the
+          heading block at the wider max so short titles don't look
+          orphaned to the left. */}
       <div className="mb-6 max-w-2xl">
         <div className="flex items-center gap-2 mb-2">
           <Pill status="live">fair play</Pill>
@@ -1131,7 +1136,7 @@ function FairPlay() {
         <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
           Skill, not scripts.
         </h2>
-        <p className="text-sm text-gray-400 leading-snug">
+        <p className="text-sm text-gray-400 leading-snug max-w-prose">
           Every round runs against a server-authoritative canister with a
           signed input transcript. Day-to-day anomaly scoring catches bots and
           farms. Motion and camera checks only kick in when a flagged round
