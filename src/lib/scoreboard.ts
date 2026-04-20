@@ -239,12 +239,19 @@ export const useScoreboardVersion = () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const bump = () => setV((x) => x + 1);
-    window.addEventListener(BUS, bump);
-    window.addEventListener("storage", (e) => {
+    // Keep a named ref for the storage listener so cleanup can remove
+    // the exact handler. An inline closure in addEventListener would
+    // leak on every unmount — the reference we'd pass to
+    // removeEventListener wouldn't match. /leaderboard re-mounts on
+    // every route hop, so the leak compounds per navigation.
+    const onStorage = (e: StorageEvent) => {
       if (e.key === STORE_KEY) bump();
-    });
+    };
+    window.addEventListener(BUS, bump);
+    window.addEventListener("storage", onStorage);
     return () => {
       window.removeEventListener(BUS, bump);
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
   return v;
