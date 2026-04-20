@@ -220,9 +220,13 @@ export default function AccountPage() {
                 </div>
                 <dl className="grid grid-cols-2 gap-4 text-sm">
                   <StatItem label="Ledger supply" value={supply !== null ? formatLWP(supply, 2) + " LWP" : "—"} />
-                  <StatItem label="II anchor" value="connected" />
-                  <StatItem label="Session" value="8h TTL" />
-                  <StatItem label="Idle timeout" value="30 min" />
+                  <StatItem
+                    label="II anchor"
+                    value="connected"
+                    hint="Your Internet Identity anchor — the passkey-backed account you signed in with. Unique per user, visible to this device only."
+                  />
+                  <StatItem label="Session" value="8h TTL" hint="Maximum length of a signed-in session before the II client re-prompts." />
+                  <StatItem label="Idle timeout" value="30 min" hint="After 30 minutes of no canister calls, the delegation is refreshed automatically on the next action." />
                 </dl>
               </section>
 
@@ -241,11 +245,26 @@ export default function AccountPage() {
   );
 }
 
-function StatItem({ label, value }: { label: string; value: string }) {
+function StatItem({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  /** Optional plain-English explanation for jargon labels (e.g. "II anchor").
+   *  Pointer users see it on hover via `title`; screen-reader + keyboard
+   *  users reach it via an sr-only span inside the <dd> so it's part of
+   *  the same announcement, no extra focus stop required. */
+  hint?: string;
+}) {
   return (
-    <div>
+    <div title={hint}>
       <dt className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">{label}</dt>
-      <dd className="text-sm font-mono text-white">{value}</dd>
+      <dd className="text-sm font-mono text-white">
+        {value}
+        {hint && <span className="sr-only"> — {hint}</span>}
+      </dd>
     </div>
   );
 }
@@ -346,17 +365,30 @@ function SessionChip() {
     : remainMs < 30 * 60 * 1000
       ? "border-amber-300/40 bg-amber-500/10 text-amber-200"
       : "border-white/10 bg-white/[0.03] text-gray-400";
+  // Plain-English aria-label for SR users. The visible text is
+  // abbreviated ("authed 2h ago · 5h left") — screen readers get the
+  // expanded sentence instead so "authed" doesn't get read as a word.
+  const srLabel = expired
+    ? "Your Internet Identity session has expired. Sign in again to continue."
+    : `Signed in ${since} ago. Session expires in ${remain}.`;
   return (
     <div
+      role="status"
+      aria-label={srLabel}
       className={`mt-2 inline-flex items-center gap-1.5 rounded-full border px-2 py-[2px] text-[10px] font-mono tabular-nums ${tone}`}
       title={`Session started ${new Date(lastAuthAt).toLocaleString()}`}
     >
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${expired ? "bg-red-400" : "bg-emerald-400"}`} />
-      {expired ? (
-        <>Session expired — sign in again</>
-      ) : (
-        <>authed {since} ago · {remain} left</>
-      )}
+      <span
+        aria-hidden
+        className={`inline-block h-1.5 w-1.5 rounded-full ${expired ? "bg-red-400" : "bg-emerald-400"}`}
+      />
+      <span aria-hidden>
+        {expired ? (
+          <>Session expired — sign in again</>
+        ) : (
+          <>authed {since} ago · {remain} left</>
+        )}
+      </span>
     </div>
   );
 }
