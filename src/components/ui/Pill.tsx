@@ -14,6 +14,20 @@
  * the wallet/account demo eyebrows and pending-tx chips use. Keep
  * them as a pair when you want the tight technical look; they're
  * separate props so callers can opt in independently.
+ *
+ * Emerald palette — shared across live indicators (POLISH-259).
+ * `status="live"` and every other "something is operational" surface
+ * in the app resolve to the same emerald-400/300 stops:
+ *     bg   emerald-400 / 0.08
+ *     fg   emerald-300
+ *     bdr  emerald-400 / 0.40
+ * Call sites aligned: the Pill primitive (here), AppFooter's network
+ * dot (bg-emerald-400 single-use), the /wallet token-card live pill
+ * (now routed through Pill), Toast success (same stops), Card
+ * emerald accent (emerald-300 text). If you need a new live surface,
+ * reach for `<Pill status="live">` before rolling an inline green —
+ * the audit traced every ad-hoc emerald to either a success variant
+ * (already here) or a pulse/celebration accent (intentionally richer).
  */
 
 import type { ReactNode } from "react";

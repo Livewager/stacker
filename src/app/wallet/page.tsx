@@ -719,15 +719,15 @@ function TokenRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold text-white">{symbol}</div>
-            <span
-              className={`text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-full border ${
-                status === "live"
-                  ? "border-emerald-400/40 text-emerald-300"
-                  : "border-white/15 text-gray-400"
-              }`}
-            >
+            {/* Migrated from an inline emerald-tinted span to the Pill
+                primitive so all three live-indicator surfaces (Pill
+                status="live", AppFooter network dot, this token-card
+                badge) render from the same emerald-400/300 source.
+                size="xs" keeps the 9px-ish baseline this corner card
+                was using pre-migration. */}
+            <Pill status={status === "live" ? "live" : "soon"} size="xs">
               {status === "live" ? "live" : "soon"}
-            </span>
+            </Pill>
           </div>
           <div className="text-xs text-gray-500">{name}</div>
         </div>
