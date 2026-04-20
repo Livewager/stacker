@@ -184,7 +184,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={dismissAll}
-            className="pointer-events-auto self-end text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border border-white/15 bg-black/60 text-gray-300 hover:text-white hover:border-white/30 transition backdrop-blur"
+            className="pointer-events-auto self-end text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border border-white/15 bg-black/60 text-gray-300 hover:text-white hover:border-white/30 transition backdrop-blur focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             +{hiddenCount} more · clear all
           </button>
@@ -320,7 +320,7 @@ function ToastCard({
           {t.action && (
             <button
               onClick={t.action.onClick}
-              className="mt-2 text-[11px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/50 rounded"
+              className="mt-2 text-[11px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 rounded px-1 -mx-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1a2e]"
             >
               {t.action.label}
             </button>
@@ -328,7 +328,7 @@ function ToastCard({
         </div>
         <button
           onClick={onDismiss}
-          className="flex-shrink-0 -mt-1 -mr-1 rounded p-1 text-gray-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+          className="flex-shrink-0 -mt-1 -mr-1 rounded p-1 text-gray-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1a2e]"
           aria-label="Dismiss notification"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
