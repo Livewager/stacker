@@ -160,6 +160,32 @@ export default function SettingsPage() {
               onChange={setHaptics}
               disabled={!hapticsSupported}
             />
+            {hapticsSupported && haptics && (
+              <div className="mt-2 flex items-center justify-between gap-3 pl-0 sm:pl-2">
+                <span className="text-[11px] text-gray-500 leading-snug">
+                  Feel the tap? If nothing happens your device ignored the
+                  request — some phones rate-limit or suppress in silent mode.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      navigator.vibrate?.([12, 40, 12]);
+                      toast.push({
+                        kind: "info",
+                        title: "Haptic fired",
+                        description: "If you felt nothing your device muted it.",
+                      });
+                    } catch {
+                      toast.push({ kind: "error", title: "Haptic failed" });
+                    }
+                  }}
+                  className="shrink-0 rounded-md border border-white/15 bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                >
+                  Test tap
+                </button>
+              </div>
+            )}
           </Section>
 
           {/* ---- Session cap ---- */}
