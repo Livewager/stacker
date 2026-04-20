@@ -138,6 +138,7 @@ const rgba = (c: readonly [number, number, number], a = 1) =>
 // ------------------------------------------------------------------
 
 const LS_BEST = "livewager-stacker-best";
+const LS_LAST_PLAYED = "livewager-pref:stackerLastPlayed";
 
 type StackerGameProps = {
   /** Demo-labeled stake, in whole LWP. 0 = free play. */
@@ -241,6 +242,13 @@ export default function StackerGame({
     rngRef.current = createRng(seed);
     setLastSeed(seed);
     setLastTranscript(null);
+    try {
+      // Stamp the local play history so /play can surface
+      // "Last played X ago" without any canister round-trip.
+      window.localStorage.setItem(LS_LAST_PLAYED, JSON.stringify(Date.now()));
+    } catch {
+      /* ignore quota / private mode */
+    }
     setHudState((h) => ({
       ...h,
       phase: "playing",

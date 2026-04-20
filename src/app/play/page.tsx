@@ -23,6 +23,8 @@ type Game = {
   bullets: string[];
   accent: string; // css gradient for the card header bar
   bestKey: string | null; // localStorage key or null
+  /** localStorage key for last-played epoch ms (JSON number). */
+  lastPlayedKey: string | null;
   status: "live" | "beta";
   preview: "pour" | "stacker";
 };
@@ -41,6 +43,7 @@ const GAMES: Game[] = [
     ],
     accent: "linear-gradient(90deg,#22d3ee,#0891b2)",
     bestKey: null,
+    lastPlayedKey: "livewager-pref:pourLastPlayed",
     status: "live",
     preview: "pour",
   },
@@ -57,6 +60,7 @@ const GAMES: Game[] = [
     ],
     accent: "linear-gradient(90deg,#fdba74,#f97316)",
     bestKey: "livewager-stacker-best",
+    lastPlayedKey: "livewager-pref:stackerLastPlayed",
     status: "live",
     preview: "stacker",
   },
@@ -74,15 +78,48 @@ function readNumberPref(key: string): number | null {
   }
 }
 
+/**
+ * Read a JSON epoch-ms value from localStorage. Used by the
+ * lastPlayedKey markers both games stamp on round start.
+ */
+function readEpochPref(key: string): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const n = JSON.parse(raw);
+    return typeof n === "number" && Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatRelative(tsMs: number, nowMs: number): string {
+  const diff = Math.max(0, nowMs - tsMs);
+  const min = 60_000;
+  const hour = 60 * min;
+  const day = 24 * hour;
+  if (diff < min) return "just now";
+  if (diff < hour) return `${Math.floor(diff / min)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
+  const d = new Date(tsMs);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export default function PlayHubPage() {
   const [bests, setBests] = useState<Record<string, number | null>>({});
+  const [lastPlayed, setLastPlayed] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
-    const next: Record<string, number | null> = {};
+    const bestNext: Record<string, number | null> = {};
+    const lpNext: Record<string, number | null> = {};
     for (const g of GAMES) {
-      if (g.bestKey) next[g.bestKey] = readNumberPref(g.bestKey);
+      if (g.bestKey) bestNext[g.bestKey] = readNumberPref(g.bestKey);
+      if (g.lastPlayedKey) lpNext[g.lastPlayedKey] = readEpochPref(g.lastPlayedKey);
     }
-    setBests(next);
+    setBests(bestNext);
+    setLastPlayed(lpNext);
   }, []);
 
   return (
@@ -108,6 +145,11 @@ export default function PlayHubPage() {
           <div className="grid gap-4 md:grid-cols-2">
             {GAMES.map((g) => {
               const best = g.bestKey ? bests[g.bestKey] : null;
+              const lp = g.lastPlayedKey ? lastPlayed[g.lastPlayedKey] : null;
+              const lastPlayedLabel =
+                lp && Number.isFinite(lp)
+                  ? formatRelative(lp, Date.now())
+                  : null;
               return (
                 <Link
                   key={g.href}
@@ -162,6 +204,12 @@ export default function PlayHubPage() {
                       </li>
                     ))}
                   </ul>
+
+                  {lastPlayedLabel && (
+                    <div className="mb-3 text-[10px] font-mono uppercase tracking-widest text-gray-500">
+                      Last played · {lastPlayedLabel}
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] uppercase tracking-widest text-gray-500">

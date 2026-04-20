@@ -1128,6 +1128,16 @@ export const SteadyPour = () => {
     if (status === "ready" || status === "playing") return;
     if (!practice && cooldownUntil > now) return;
     if (!practice && sessionCap !== null && sessionSpend + ENTRY_USD > sessionCap) return;
+    // Stamp a "last played" marker so /play can render "X ago" on
+    // the Tilt Pour card. Idempotent, localStorage-only.
+    try {
+      window.localStorage.setItem(
+        "livewager-pref:pourLastPlayed",
+        JSON.stringify(Date.now()),
+      );
+    } catch {
+      /* ignore quota / private */
+    }
     // Auto-request tilt permission on the same user gesture (required by iOS Safari).
     // Always attempt — `enableTilt()` is a no-op on devices without the API.
     if (!tiltEnabled) {

@@ -110,6 +110,8 @@ export const PREF_KEYS = {
   walletQuickTab: "walletQuickTab", // "buy" | "deposit" | "send" | "withdraw"
   stackerWager: "stackerWager", // 0 | 5 | 25 | 100 (LWP)
   stackerMode: "stackerMode", // "ranked" | "unranked"
+  stackerLastPlayed: "stackerLastPlayed", // epoch ms | null
+  pourLastPlayed: "pourLastPlayed", // epoch ms | null
   hasSeenOnboarding: "hasSeenOnboarding", // boolean
 } as const;
 
