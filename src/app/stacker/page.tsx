@@ -7,6 +7,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { StackerWager, PAYOUT_MULTIPLIER } from "@/components/stacker/StackerWager";
+import { Livestream } from "@/components/stacker/Livestream";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { ROUTES } from "@/lib/routes";
@@ -115,6 +116,13 @@ function StackerPageInner() {
 
       {/* -------------- HERO -------------- */}
       <Hero />
+
+      {/* -------------- LIVESTREAM PLACEHOLDER --------------
+          Social proof of play: a 16:9 gradient tile dressed up as
+          a video player with fake cycling chat beside it. Not a
+          real stream — the "demo" pill and "Chat input opens once
+          the real stream ships" copy keep that honest. */}
+      <Livestream />
 
       {/* -------------- WHY IT'S HARD -------------- */}
       <DifficultyLadder />
