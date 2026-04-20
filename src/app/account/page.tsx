@@ -12,6 +12,7 @@ import { PrincipalQR } from "@/components/account/PrincipalQR";
 import { BalanceSparkline } from "@/components/account/BalanceSparkline";
 import { shortenPrincipal } from "@/lib/principal";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
+import { listRecentRecipients, type RecentRecipient } from "@/lib/recentRecipients";
 
 export default function AccountPage() {
   const {
@@ -189,8 +190,11 @@ export default function AccountPage() {
               </section>
             </div>
 
-            {/* Right: activity feed */}
-            <ActivityFeed principal={principal} limit={20} />
+            {/* Right: quick tip chips + activity feed */}
+            <div className="space-y-4">
+              <RecentTipChips />
+              <ActivityFeed principal={principal} limit={20} />
+            </div>
           </div>
         )}
       </div>
@@ -204,6 +208,55 @@ function StatItem({ label, value }: { label: string; value: string }) {
       <dt className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">{label}</dt>
       <dd className="text-sm font-mono text-white">{value}</dd>
     </div>
+  );
+}
+
+/**
+ * Three most-recent send recipients rendered as deep-link chips into
+ * /send?to=<principal>. Reads from the local ring buffer on mount
+ * (no prefs hook — the ring uses its own namespace) so we don't
+ * pay a subscription cost just to read once. Hidden entirely when
+ * the ring is empty so first-time users don't see a dead "recents"
+ * section.
+ */
+function RecentTipChips() {
+  const [list, setList] = useState<RecentRecipient[]>([]);
+  useEffect(() => {
+    setList(listRecentRecipients().slice(0, 3));
+  }, []);
+  if (list.length === 0) return null;
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] uppercase tracking-widest text-violet-300">
+          Recent recipients
+        </div>
+        <Link
+          href="/send"
+          className="text-[10px] uppercase tracking-widest text-gray-400 hover:text-white transition"
+        >
+          New send →
+        </Link>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {list.map((r) => {
+          const label = r.label ?? shortenPrincipal(r.principal, { head: 5, tail: 3 });
+          return (
+            <Link
+              key={r.principal}
+              href={`/send?to=${encodeURIComponent(r.principal)}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/30 bg-violet-300/[0.06] px-2.5 py-1 text-[11px] text-violet-100 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60"
+              title={`Tip ${r.principal}`}
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden>
+                <path d="M3.4 9.1l13-5.6a.8.8 0 0 1 1.1 1l-5.6 13a.8.8 0 0 1-1.4 0l-2-4.6-4.6-2a.8.8 0 0 1 0-1.4Z" />
+              </svg>
+              <span className="font-mono">{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
