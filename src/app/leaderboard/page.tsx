@@ -206,7 +206,7 @@ function LiveHourPanel({
       </header>
 
       {board.length === 0 ? (
-        <EmptyBoard />
+        <EmptyBoard tab={tab} />
       ) : (
         <ol className="divide-y divide-white/5">
           {/* Podium treatment for the top 3 — different spacing + tint. */}
@@ -313,7 +313,16 @@ function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean
   );
 }
 
-function EmptyBoard() {
+function EmptyBoard({ tab }: { tab: "dunk" | "pour" }) {
+  // Per-tab CTA copy + route. Both currently point at /dunk since
+  // that's where both game modes live in this build, but the copy
+  // is tab-scoped so swapping in a separate route later is a
+  // one-line change — and the empty state's voice matches the tab
+  // the user is actually looking at.
+  const cta =
+    tab === "dunk"
+      ? { href: "/dunk", label: "Dunk", verb: "throw a round" }
+      : { href: "/dunk", label: "Pour", verb: "pour a round" };
   return (
     <div className="px-6 py-10 text-center">
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-cyan-300">
@@ -321,13 +330,15 @@ function EmptyBoard() {
           <path d="M6.3 3.7a1 1 0 0 1 1.5-.87l8 5.3a1 1 0 0 1 0 1.74l-8 5.3A1 1 0 0 1 6.3 14.3v-10.6Z" />
         </svg>
       </div>
-      <div className="text-sm text-white font-semibold mb-1">No scores this hour yet</div>
+      <div className="text-sm text-white font-semibold mb-1">
+        No {tab === "dunk" ? "Dunk" : "Pour"} scores this hour yet
+      </div>
       <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug">
         Be the first — tap{" "}
-        <Link href="/dunk" className="text-cyan-300 hover:underline">
-          Play
+        <Link href={cta.href} className="text-cyan-300 hover:underline">
+          {cta.label}
         </Link>{" "}
-        and pour a round.
+        and {cta.verb}.
       </div>
     </div>
   );
