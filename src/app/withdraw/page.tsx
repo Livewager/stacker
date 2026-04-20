@@ -54,6 +54,9 @@ export default function WithdrawPage() {
     }
   };
   const [ltcAddress, setLtcAddress] = useState("");
+  // Ref on the address input so the clear × button can refocus after
+  // wiping. Mirrors /send's recipient clear pattern (POLISH-235).
+  const addrInputRef = useRef<HTMLInputElement | null>(null);
   const [amount, setAmount] = useState("");
   const [stage, setStage] = useState<Stage>("compose");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -215,32 +218,57 @@ export default function WithdrawPage() {
               }
             >
               <div className="flex items-stretch gap-2">
-                <input
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="ltc1q…"
-                  value={ltcAddress}
-                  onChange={(e) => {
-                    setLtcAddress(e.target.value);
-                    // First keystroke marks the field as touched so
-                    // the live error hint lights up. Paste also
-                    // triggers this (pasteLtcAddress uses
-                    // setLtcAddress too — covered below via the
-                    // non-empty branch).
-                    if (!addrTouched && e.target.value.length > 0) {
-                      setAddrTouched(true);
-                    }
-                  }}
-                  onBlur={() => setAddrTouched(true)}
-                  className={`flex-1 min-w-0 rounded-md bg-black/40 border px-3 py-2.5 text-sm font-mono text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/50 ${
-                    ltcAddress.length === 0
-                      ? "border-white/10 focus:border-rose-300/60"
-                      : addrCheck.ok
-                        ? "border-emerald-300/40 focus:border-emerald-300/70"
-                        : "border-red-400/40 focus:border-red-300/70"
-                  }`}
-                />
+                <div className="relative flex-1 min-w-0">
+                  <input
+                    ref={addrInputRef}
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="ltc1q…"
+                    value={ltcAddress}
+                    onChange={(e) => {
+                      setLtcAddress(e.target.value);
+                      // First keystroke marks the field as touched so
+                      // the live error hint lights up. Paste also
+                      // triggers this (pasteLtcAddress uses
+                      // setLtcAddress too — covered below via the
+                      // non-empty branch).
+                      if (!addrTouched && e.target.value.length > 0) {
+                        setAddrTouched(true);
+                      }
+                    }}
+                    onBlur={() => setAddrTouched(true)}
+                    // pr-9 reserves space for the absolute × button
+                    // so a long address doesn't slide under it.
+                    className={`w-full rounded-md bg-black/40 border pl-3 pr-9 py-2.5 text-sm font-mono text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/50 ${
+                      ltcAddress.length === 0
+                        ? "border-white/10 focus:border-rose-300/60"
+                        : addrCheck.ok
+                          ? "border-emerald-300/40 focus:border-emerald-300/70"
+                          : "border-red-400/40 focus:border-red-300/70"
+                    }`}
+                  />
+                  {/* Clear × button. Only renders when the field has
+                      content — touch-safe ~28px hit target, sits
+                      inside the right padding reserved above. Mirrors
+                      /send's recipient clear (POLISH-235). */}
+                  {ltcAddress.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLtcAddress("");
+                        addrInputRef.current?.focus();
+                      }}
+                      aria-label="Clear LTC address"
+                      title="Clear LTC address"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/[0.06] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/60"
+                    >
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
+                        <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={pasteLtcAddress}
