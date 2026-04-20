@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ROUTES } from "@/lib/routes";
+import { useWalletState } from "@/components/dunk/WalletContext";
 
 /**
  * Character-subsequence fuzzy match with a simple score. Returns
@@ -83,9 +84,13 @@ const GAME_SHORTCUTS: Shortcut[] = [
 export default function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname() || "";
+  const { identity, login, logout } = useWalletState();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
+  // Track login/logout in-flight so the palette can show "…" and
+  // prevent double-fire if the user hammers Enter.
+  const [authBusy, setAuthBusy] = useState(false);
 
   // Track in-session route history: every pathname change bumps the
   // current route to the head of the recent list, deduped, capped at 3.
@@ -161,8 +166,47 @@ export default function CommandPalette() {
     [router],
   );
 
+  const authCommand: Command = useMemo(() => {
+    // Single slot toggles based on current II session. Close the
+    // palette first so the II popup isn't rendered behind the sheet;
+    // then fire the async action with a busy flag to dedupe repeats.
+    if (identity) {
+      return {
+        id: "auth-signout",
+        label: authBusy ? "Signing out…" : "Sign out",
+        hint: "End this Internet Identity session",
+        run: async () => {
+          if (authBusy) return;
+          setOpen(false);
+          setAuthBusy(true);
+          try {
+            await logout();
+          } finally {
+            setAuthBusy(false);
+          }
+        },
+      };
+    }
+    return {
+      id: "auth-signin",
+      label: authBusy ? "Opening Internet Identity…" : "Sign in with Internet Identity",
+      hint: "Authenticate to unlock wallet + ranked play",
+      run: async () => {
+        if (authBusy) return;
+        setOpen(false);
+        setAuthBusy(true);
+        try {
+          await login();
+        } finally {
+          setAuthBusy(false);
+        }
+      },
+    };
+  }, [identity, login, logout, authBusy]);
+
   const commands: Command[] = useMemo(
     () => [
+      authCommand,
       { id: "play", label: "Games hub", hint: ROUTES.play, run: () => go(ROUTES.play) },
       { id: "dunk", label: "Tilt Pour", hint: ROUTES.dunk, run: () => go(ROUTES.dunk) },
       { id: "stacker", label: "Stacker", hint: ROUTES.stacker, run: () => go(ROUTES.stacker) },
@@ -179,7 +223,7 @@ export default function CommandPalette() {
       { id: "settings-account", label: "Settings · Account", hint: `${ROUTES.settings}#account`, run: () => go(`${ROUTES.settings}#account`) },
       { id: "settings-data", label: "Settings · Device data", hint: `${ROUTES.settings}#data`, run: () => go(`${ROUTES.settings}#data`) },
     ],
-    [go],
+    [go, authCommand],
   );
 
   const filtered = useMemo(() => {
