@@ -84,6 +84,7 @@ export default function AppFooter() {
   return (
     <footer
       role="contentinfo"
+      aria-label="Site information"
       className="mt-8 border-t border-white/10 bg-background/60 backdrop-blur-sm"
     >
       <div className="mx-auto max-w-7xl px-4 md:px-8 py-4 md:py-5">
@@ -135,9 +136,15 @@ export default function AppFooter() {
             </button>
           )}
 
-          {/* LWP demo rate */}
-          <span className="font-mono hidden sm:inline">
-            <span className="text-gray-500">LWP</span> 10M / 1 LTC (demo)
+          {/* LWP demo rate. sr-only phrasing expands the shorthand so
+              VoiceOver doesn't letter-spell "L W P 10 M / 1 L T C" and
+              gains "(demo)" context that the visual glyphs only imply. */}
+          <span
+            className="font-mono hidden sm:inline"
+            aria-label="Demo conversion rate: 10 million LWP per 1 LTC"
+          >
+            <span aria-hidden className="text-gray-500">LWP</span>
+            <span aria-hidden> 10M / 1 LTC (demo)</span>
           </span>
 
           {/* Build sha — copyable so support requests can include the
@@ -213,8 +220,12 @@ export default function AppFooter() {
             </Link>
             <span className="uppercase tracking-widest text-gray-500">
               Non-custodial ·{" "}
+              {/* "demo" on its own is a poor accessible name in a link
+                  list (screen readers surface it stripped of context).
+                  aria-label spells out what it actually goes to. */}
               <Link
                 href={ROUTES.settings}
+                aria-label="Demo mode disclosure — open Settings"
                 className="text-gray-400 underline-offset-2 hover:text-white hover:underline transition"
                 title="Device prefs + data reset"
               >
