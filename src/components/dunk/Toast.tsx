@@ -539,6 +539,25 @@ function ToastCard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      // Reduced-motion audit (POLISH-225):
+      //   - lw-reveal entrance: the keyframe duration is clamped to
+      //     0.001ms by the global prefers-reduced-motion rule in
+      //     style.css (both the OS @media query and the in-app
+      //     html.lw-reduce-motion mirror), so the slide+fade
+      //     collapses to the terminal frame.
+      //   - `transition: transform … ease` on the inline style below
+      //     is governed by the same global `transition-duration: 0.001ms`
+      //     clamp — the settle-in animation after a swipe-dismiss
+      //     drag flattens automatically. The drag itself (dragX
+      //     tracking the pointer) is direct manipulation and
+      //     deliberately unaffected: prefers-reduced-motion only
+      //     applies to *autonomous* motion, not user-driven
+      //     transforms that follow a finger.
+      //   - Stack-depth transform at the parent wrapper is a static
+      //     offset applied once; no animation, nothing to clamp.
+      // No local useReducedMotion guard needed. Pinned here so a
+      // future refactor that swaps to framer-motion doesn't silently
+      // regress the contract.
       className={`lw-reveal pointer-events-auto rounded-xl border backdrop-blur-md px-4 py-3 shadow-xl ${s.shell}`}
       style={{
         transform,
