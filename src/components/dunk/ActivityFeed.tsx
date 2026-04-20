@@ -253,7 +253,10 @@ export default function ActivityFeed({
         events.length === 0 ? (
           <EmptyState principal={!!principal} />
         ) : (
-          <FilteredEmpty filter={filter} onClear={() => setRawFilter("all")} />
+          <FilteredEmpty
+            filterLabel={FILTERS.find((f) => f.key === filter)?.label ?? filter}
+            onClear={() => setRawFilter("all")}
+          />
         )
       ) : (
         <>
@@ -286,27 +289,41 @@ export default function ActivityFeed({
 
 /** Shown when the feed has events but the active filter matches none
  *  of them. Distinguishes "no activity" from "no matching activity"
- *  — different fix (sign in / play a round vs. flip the filter). */
+ *  — different fix (sign in / play a round vs. flip the filter).
+ *
+ *  Receives the user-facing pill label ("Mint" / "Transfer" / …), not
+ *  the internal filter key, so the copy reads naturally. The icon
+ *  mirrors the filter-funnel affordance used on the pills themselves,
+ *  so a glance at the empty state reads as "something is filtered."
+ */
 function FilteredEmpty({
-  filter,
+  filterLabel,
   onClear,
 }: {
-  filter: ActivityFilter;
+  filterLabel: string;
   onClear: () => void;
 }) {
   return (
-    <div className="px-6 py-6 text-center text-sm text-gray-400">
-      No{" "}
-      <span className="text-white font-semibold">{filter}</span> events in the
-      last window.{" "}
+    <div className="px-6 py-10 flex flex-col items-center text-center gap-3">
+      <span
+        aria-hidden
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-500"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+          <path d="M3 4a1 1 0 0 1 1-1h12a1 1 0 0 1 .8 1.6l-4.8 6.4V16a1 1 0 0 1-.447.832l-2 1.333A1 1 0 0 1 8 17.333V11L3.2 4.6A1 1 0 0 1 3 4Z" />
+        </svg>
+      </span>
+      <div className="text-sm text-gray-300">
+        No <span className="text-white font-semibold">{filterLabel}</span>{" "}
+        events in the last window.
+      </div>
       <button
         type="button"
         onClick={onClear}
-        className="text-cyan-300 hover:text-cyan-200 underline-offset-2 hover:underline"
+        className="text-[11px] uppercase tracking-widest text-cyan-300 hover:text-cyan-200 border border-white/10 hover:border-cyan-300/40 rounded-md px-3 py-1.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
       >
-        Show all
+        Show all activity
       </button>
-      .
     </div>
   );
 }
