@@ -22,6 +22,7 @@ export const ROUTES = {
   withdraw: "/withdraw",
   leaderboard: "/leaderboard",
   settings: "/settings",
+  fairPlay: "/fair-play",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
