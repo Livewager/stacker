@@ -18,10 +18,9 @@ import { formatLWP } from "@/lib/icp";
 import { useWalletState } from "./WalletContext";
 import { useCopyable } from "@/lib/clipboard";
 
-function shortenPrincipal(p: string): string {
-  if (p.length <= 16) return p;
-  return `${p.slice(0, 8)}…${p.slice(-8)}`;
-}
+import { shortenPrincipal as baseShorten } from "@/lib/principal";
+
+const shortenPrincipal = (p: string) => baseShorten(p, { head: 8, tail: 8 });
 
 // Must stay in sync with src/app/api/dunk/ltc-deposit/route.ts.
 const LWP_PER_LTC = 10_000_000; // 10 M LWP per 1 LTC at the fixed demo rate

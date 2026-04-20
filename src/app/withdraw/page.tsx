@@ -14,10 +14,10 @@ const LWP_PER_LTC = 10_000_000;
 
 type Stage = "compose" | "review" | "queued";
 
-function short(s: string, h = 8, t = 8) {
-  if (s.length <= h + t + 1) return s;
-  return `${s.slice(0, h)}…${s.slice(-t)}`;
-}
+import { shortenPrincipal } from "@/lib/principal";
+
+const short = (s: string, head = 8, tail = 8) =>
+  shortenPrincipal(s, { head, tail });
 
 export default function WithdrawPage() {
   const { identity, principal, balance, status, login, withdrawLTC } = useWalletState();

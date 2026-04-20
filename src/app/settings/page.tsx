@@ -12,10 +12,10 @@ import { useWalletState } from "@/components/dunk/WalletContext";
 import { ROUTES } from "@/lib/routes";
 import { useCopyable } from "@/lib/clipboard";
 
-function shortPrincipal(p: string, h = 10, t = 8): string {
-  if (p.length <= h + t + 1) return p;
-  return `${p.slice(0, h)}…${p.slice(-t)}`;
-}
+import { shortenPrincipal } from "@/lib/principal";
+
+const shortPrincipal = (p: string, h = 10, t = 8) =>
+  shortenPrincipal(p, { head: h, tail: t });
 
 const CAP_PRESETS: Array<{ label: string; value: number | null }> = [
   { label: "$10", value: 10 },

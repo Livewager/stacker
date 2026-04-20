@@ -22,10 +22,10 @@ const MAX_MEMO_BYTES = 32;
 
 type Stage = "compose" | "review" | "sent";
 
-function short(s: string, head = 10, tail = 10) {
-  if (s.length <= head + tail + 1) return s;
-  return `${s.slice(0, head)}…${s.slice(-tail)}`;
-}
+import { shortenPrincipal } from "@/lib/principal";
+
+const short = (s: string, head = 10, tail = 10) =>
+  shortenPrincipal(s, { head, tail });
 
 export default function SendPage() {
   const { identity, principal, balance, status, login, transfer } = useWalletState();

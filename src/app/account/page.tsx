@@ -10,11 +10,7 @@ import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { useCopyable } from "@/lib/clipboard";
 import { PrincipalQR } from "@/components/account/PrincipalQR";
 import { BalanceSparkline } from "@/components/account/BalanceSparkline";
-
-function short(s: string, head = 10, tail = 10): string {
-  if (s.length <= head + tail + 1) return s;
-  return `${s.slice(0, head)}…${s.slice(-tail)}`;
-}
+import { shortenPrincipal } from "@/lib/principal";
 
 export default function AccountPage() {
   const {
@@ -30,7 +26,10 @@ export default function AccountPage() {
   } = useWalletState();
   const [copied, setCopied] = useState(false);
 
-  const shortPrincipal = useMemo(() => (principal ? short(principal) : ""), [principal]);
+  const shortPrincipal = useMemo(
+    () => (principal ? shortenPrincipal(principal, { head: 10, tail: 10 }) : ""),
+    [principal],
+  );
 
   const copy = useCopyable();
   const copyPrincipal = async () => {

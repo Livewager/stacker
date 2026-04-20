@@ -13,11 +13,9 @@ import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { AmountField } from "@/components/ui/AmountField";
+import { shortenPrincipal } from "@/lib/principal";
 
-function short(s: string, h = 8, t = 8): string {
-  if (s.length <= h + t + 1) return s;
-  return `${s.slice(0, h)}…${s.slice(-t)}`;
-}
+const short = (s: string) => shortenPrincipal(s, { head: 8, tail: 8 });
 
 // Demo fiat rate for the Buy panel. LWP is non-fungible for real
 // money; this $1 ≈ 1 LWP stand-in is a readability aid only. Keep
