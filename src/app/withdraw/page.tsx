@@ -551,8 +551,24 @@ function ReviewCard({
         <div className="text-[10px] uppercase tracking-widest text-rose-300 mb-1">
           Review
         </div>
-        <h2 className="text-2xl font-black text-white">
-          Burn {amountLwp} LWP → ≈ {ltcAmount.toFixed(8)} LTC
+        {/* POLISH-308 — 320px audit: the inline "Burn {N} LWP → ≈
+            {X.XXXXXXXX} LTC" h2 overflows the ~248px content box on
+            iPhone SE at worst-case max-cap amounts (33+ chars at
+            text-2xl font-black). Browser wraps mid-expression,
+            sometimes orphaning "≈" onto its own line which reads as a
+            glitch. Stacked on mobile, inline from sm: where the
+            container has room. Each half is its own flex row with
+            tabular-nums on the number so the 8-decimal LTC stays
+            stable; `whitespace-nowrap` on each segment prevents a
+            narrow phone from wrapping mid-number (ugly). The
+            vertical form reads clearly: burn THIS, receive THAT. */}
+        <h2 className="text-2xl font-black text-white leading-tight flex flex-col sm:flex-row sm:flex-wrap sm:items-baseline gap-x-2">
+          <span className="whitespace-nowrap">Burn {amountLwp} LWP</span>
+          <span aria-hidden className="text-rose-300/80 sm:inline hidden">→</span>
+          <span className="whitespace-nowrap tabular-nums">
+            <span className="sm:hidden text-rose-300/80 mr-1">→</span>
+            ≈ {ltcAmount.toFixed(8)} LTC
+          </span>
         </h2>
       </div>
 
