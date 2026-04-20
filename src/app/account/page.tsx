@@ -8,6 +8,7 @@ import { useWalletState } from "@/components/dunk/WalletContext";
 import ActivityFeed from "@/components/dunk/ActivityFeed";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { useCopyable } from "@/lib/clipboard";
+import { PrincipalQR } from "@/components/account/PrincipalQR";
 
 function short(s: string, head = 10, tail = 10): string {
   if (s.length <= head + tail + 1) return s;
@@ -117,13 +118,14 @@ export default function AccountPage() {
                     >
                       {shortPrincipal}
                     </div>
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         onClick={copyPrincipal}
                         className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-200 hover:border-white/30 hover:text-white transition"
                       >
                         {copied ? "Copied" : "Copy"}
                       </button>
+                      <PrincipalQR principal={principal} />
                       <button
                         onClick={logout}
                         className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-300 hover:border-red-300/60 hover:text-red-200 transition"
