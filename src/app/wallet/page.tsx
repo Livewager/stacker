@@ -311,14 +311,9 @@ function SignedOutPrompt({ onLogin, loading }: { onLogin: () => void; loading: b
       <p className="text-sm text-gray-300 max-w-md mx-auto mb-5 leading-snug">
         Internet Identity — no password, no seed phrase. A passkey anchor you control.
       </p>
-      <button
-        onClick={onLogin}
-        disabled={loading}
-        className="px-6 py-3 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
-        style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
-      >
+      <Button onClick={onLogin} loading={loading} tone="cyan" size="lg">
         {loading ? "Connecting…" : "Connect Internet Identity"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -415,12 +410,10 @@ function DepositPanel() {
           <div className="text-[10px] text-gray-500">Arriving</div>
         </Link>
       </div>
-      <Link
-        href="/deposit"
-        className="mt-4 block text-center w-full py-3 rounded-xl font-bold text-black transition hover:brightness-110"
-        style={{ background: "linear-gradient(90deg,#fdba74,#f97316)" }}
-      >
-        Open deposit page
+      <Link href="/deposit" className="mt-4 block">
+        <Button tone="orange" size="lg" fullWidth>
+          Open deposit page
+        </Button>
       </Link>
     </div>
   );
@@ -439,10 +432,7 @@ function ActionStubPanel({
   cta: string;
   tone: "violet" | "rose";
 }) {
-  const [bg, chipFg, chipBr] =
-    tone === "violet"
-      ? ["linear-gradient(90deg,#c4b5fd,#8b5cf6)", "text-violet-200", "border-violet-300/30"]
-      : ["linear-gradient(90deg,#fda4af,#f43f5e)", "text-rose-200", "border-rose-300/30"];
+  const chipFg = tone === "violet" ? "text-violet-200" : "text-rose-200";
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -452,17 +442,13 @@ function ActionStubPanel({
           </div>
           <div className="text-lg font-semibold">{title}</div>
         </div>
-        <span className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border ${chipBr} ${chipFg}`}>
-          demo
-        </span>
+        <Pill status="demo">demo</Pill>
       </div>
       <p className="text-sm text-gray-300 leading-snug mb-4">{body}</p>
-      <Link
-        href={href}
-        className="block w-full text-center py-3 rounded-xl font-bold text-black transition hover:brightness-110"
-        style={{ background: bg }}
-      >
-        {cta} →
+      <Link href={href} className="block">
+        <Button tone={tone} size="lg" fullWidth>
+          {cta} →
+        </Button>
       </Link>
     </div>
   );
