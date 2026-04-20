@@ -135,6 +135,7 @@ export default function AppHeader() {
           href={ROUTES.dunk}
           onClick={onLogoClick}
           aria-label="Livewager · Dunk home (Alt-click for Games hub)"
+          aria-current={pathname === ROUTES.dunk ? "page" : undefined}
           title="Home · Alt-click for Games hub"
           className="inline-flex items-center shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
         >
@@ -152,14 +153,21 @@ export default function AppHeader() {
         {/* Mobile-only active-tab breadcrumb. Slash glyph + cyan label
             so the user always knows where they are without a visible
             tab strip. Desktop hides it (md:hidden) since the full
-            tab row carries the same information. */}
+            tab row carries the same information.
+            SR exposure: the slash is decorative (aria-hidden), but
+            the label itself is announced with an explicit
+            "current page" hint so a VoiceOver user knows which
+            section they're on without a visible tab strip. */}
         {activeTab && (
           <div
             className="md:hidden flex items-baseline gap-1.5 text-[11px] uppercase tracking-widest min-w-0 truncate"
-            aria-hidden
+            aria-label="Current section"
           >
-            <span className="text-gray-600">/</span>
-            <span className="text-cyan-300 font-semibold truncate">
+            <span aria-hidden className="text-gray-600">/</span>
+            <span
+              className="text-cyan-300 font-semibold truncate"
+              aria-current="page"
+            >
               {activeTab.label}
             </span>
           </div>
