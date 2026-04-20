@@ -27,6 +27,7 @@ import { createRng, randomSeed, type SeededRng } from "@/lib/anticheat/rng";
 import { useCopyable } from "@/lib/clipboard";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { postScore } from "@/components/dunk/scoreboard";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 
 // ------------------------------------------------------------------
 // Configuration
@@ -241,7 +242,20 @@ export default function StackerGame({
   const rngRef = useRef<SeededRng | null>(null);
   const [lastTranscript, setLastTranscript] = useState<RoundTranscript | null>(null);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
-  const [showSeed] = useLocalPref<boolean>(PREF_KEYS.stackerShowSeed, false);
+  const [showSeed, setShowSeed] = useLocalPref<boolean>(
+    PREF_KEYS.stackerShowSeed,
+    false,
+  );
+  // Mid-round prefs for the in-game settings sheet (POLISH-248). The
+  // sfx + haptics libs read their own pref from localStorage on each
+  // call, so flipping these hooks — which publishes through useLocalPref —
+  // takes effect on the very next SFX invocation without a reload.
+  const [sound, setSound] = useLocalPref<boolean>(PREF_KEYS.sound, true);
+  const [stackerHaptics, setStackerHaptics] = useLocalPref<boolean>(
+    PREF_KEYS.haptics,
+    true,
+  );
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const copy = useCopyable();
 
   // Restore best score + best streak once on mount.
@@ -1080,8 +1094,62 @@ export default function StackerGame({
             />
           )}
         </div>
-        <HudPill label="Best" value={String(hudState.best || "—")} />
+        <div className="flex items-center gap-2">
+          <HudPill label="Best" value={String(hudState.best || "—")} />
+          {/* In-game settings gear (POLISH-248). Opens a BottomSheet
+              with the three most-relevant toggles so the player
+              doesn't have to leave the round to /settings. Gated
+              pointer-events because the HUD row is pointer-events-none
+              by default (canvas taps pass through to lockRow). */}
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="In-game settings"
+            title="In-game settings"
+            className="pointer-events-auto rounded-full border border-white/15 bg-black/40 backdrop-blur-sm p-1.5 text-gray-300 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden>
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M8.86 2.35a1.5 1.5 0 0 1 2.28 0l.36.41a1.5 1.5 0 0 0 1.58.43l.52-.17a1.5 1.5 0 0 1 1.97 1.14l.1.54a1.5 1.5 0 0 0 1.16 1.16l.54.1a1.5 1.5 0 0 1 1.14 1.97l-.17.52a1.5 1.5 0 0 0 .43 1.58l.41.36a1.5 1.5 0 0 1 0 2.28l-.41.36a1.5 1.5 0 0 0-.43 1.58l.17.52a1.5 1.5 0 0 1-1.14 1.97l-.54.1a1.5 1.5 0 0 0-1.16 1.16l-.1.54a1.5 1.5 0 0 1-1.97 1.14l-.52-.17a1.5 1.5 0 0 0-1.58.43l-.36.41a1.5 1.5 0 0 1-2.28 0l-.36-.41a1.5 1.5 0 0 0-1.58-.43l-.52.17a1.5 1.5 0 0 1-1.97-1.14l-.1-.54a1.5 1.5 0 0 0-1.16-1.16l-.54-.1a1.5 1.5 0 0 1-1.14-1.97l.17-.52a1.5 1.5 0 0 0-.43-1.58l-.41-.36a1.5 1.5 0 0 1 0-2.28l.41-.36a1.5 1.5 0 0 0 .43-1.58l-.17-.52a1.5 1.5 0 0 1 1.14-1.97l.54-.1a1.5 1.5 0 0 0 1.16-1.16l.1-.54a1.5 1.5 0 0 1 1.97-1.14l.52.17a1.5 1.5 0 0 0 1.58-.43l.36-.41ZM10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {/* In-game settings sheet. Wired up three toggles that cover
+          the mid-round "mute the bar sounds / stop the vibration /
+          show me the seed" asks. Anything else lives in /settings;
+          this sheet intentionally doesn't duplicate the whole page. */}
+      <BottomSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title="Quick settings"
+        description="Flip these on or off without leaving the round."
+      >
+        <div className="space-y-3">
+          <QuickToggle
+            label="Sound"
+            description="SFX on tap, perfect-lock, win, and game-over."
+            checked={sound}
+            onChange={setSound}
+          />
+          <QuickToggle
+            label="Haptics"
+            description="Vibration on tap and round-end events. iOS + Android only."
+            checked={stackerHaptics}
+            onChange={setStackerHaptics}
+          />
+          <QuickToggle
+            label="Show seed"
+            description="Reveal the round's RNG seed in the HUD for self-auditing."
+            checked={showSeed}
+            onChange={setShowSeed}
+          />
+        </div>
+      </BottomSheet>
 
       {/* Transient difficulty flare. Centered under the HUD row so it
           doesn't fight the score pills for attention. Fades via CSS,
@@ -1329,6 +1397,56 @@ function HudPill({
     <div className="rounded-md bg-black/70 px-2 py-1 text-[10px] font-mono uppercase tracking-widest">
       <span className="text-gray-400">{label}</span>{" "}
       <span className={`${color} tabular-nums`}>{value}</span>
+    </div>
+  );
+}
+
+/**
+ * Compact toggle row for the in-game settings sheet. Same semantic
+ * shape as /settings Toggle but inlined here so the StackerGame
+ * bundle doesn't pull the whole Settings component tree.
+ *
+ * Uses a real `<button role="switch">` for SR/keyboard parity: space
+ * and enter toggle; aria-checked carries the current state.
+ */
+function QuickToggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1">
+      <div className="min-w-0">
+        <div className="text-sm text-gray-100">{label}</div>
+        <div className="text-[11px] text-gray-500 leading-snug mt-0.5">
+          {description}
+        </div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={`shrink-0 relative inline-flex h-6 w-10 items-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
+          checked
+            ? "bg-cyan-300/30 border-cyan-300/60"
+            : "bg-white/[0.04] border-white/15"
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`inline-block h-4 w-4 rounded-full bg-white transition ${
+            checked ? "translate-x-[20px]" : "translate-x-1"
+          }`}
+        />
+      </button>
     </div>
   );
 }
