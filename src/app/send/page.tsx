@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Principal } from "@dfinity/principal";
 import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
@@ -40,10 +40,31 @@ export default function SendPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [recents, setRecents] = useState<RecentRecipient[]>([]);
 
+  // Refs used by the tab-sequence polish: first field gets focus on
+  // compose mount, recent-chip use jumps to amount so keyboard users
+  // don't have to tab back through the Scan + chip stops.
+  const toInputRef = useRef<HTMLInputElement | null>(null);
+  const amountInputRef = useRef<HTMLInputElement | null>(null);
+
   // Hydrate recents after mount so SSR markup matches.
   useEffect(() => {
     setRecents(listRecentRecipients());
   }, []);
+
+  // Tab-sequence polish: when landing on compose with an empty
+  // recipient, snap focus there so keyboard users don't have to
+  // Tab past the bottom-nav + header to start filling the form.
+  // After a successful send + "Send another", stage resets to
+  // compose with fresh fields — same re-focus is appropriate.
+  useEffect(() => {
+    if (stage !== "compose") return;
+    if (to) return;
+    // Wait one frame so the animation doesn't fight the focus scroll.
+    const id = requestAnimationFrame(() => {
+      toInputRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [stage, to]);
   const [txId, setTxId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -216,6 +237,7 @@ export default function SendPage() {
             >
               <div className="flex items-stretch gap-2">
                 <input
+                  ref={toInputRef}
                   type="text"
                   inputMode="text"
                   autoComplete="off"
@@ -255,7 +277,17 @@ export default function SendPage() {
                     >
                       <button
                         type="button"
-                        onClick={() => setTo(r.principal)}
+                        onClick={() => {
+                          setTo(r.principal);
+                          // Recipient now filled — keyboard/tap users
+                          // almost always want the amount field next.
+                          // requestAnimationFrame so React's render
+                          // completes before we grab the ref (which
+                          // may not exist on the very first paint).
+                          requestAnimationFrame(() => {
+                            amountInputRef.current?.focus({ preventScroll: true });
+                          });
+                        }}
                         className="px-3 py-1 text-[11px] font-mono text-gray-200 hover:text-white transition focus:outline-none focus-visible:text-white"
                         title={`Use ${r.principal}`}
                       >
@@ -310,6 +342,7 @@ export default function SendPage() {
               label="Amount"
               value={amount}
               onChange={setAmount}
+              inputRef={amountInputRef}
               tone="violet"
               error={validation.amount}
               hint={`Fee: ${feeLwp.toFixed(4)} LWP (burned).`}
@@ -477,6 +510,16 @@ function ReviewCard({
   onConfirm: () => void;
 }) {
   const totalLwp = amountLwp + feeLwp;
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
+  // Snap focus to the primary action on mount so Enter confirms and
+  // keyboard users don't land on body-nothing after the stage swap.
+  // preventScroll keeps the lw-reveal entrance from jumping the page.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      confirmRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
   return (
     <div className="lw-reveal rounded-2xl border border-violet-300/30 bg-violet-300/[0.04] p-5 md:p-7 space-y-5">
       <div>
@@ -509,7 +552,7 @@ function ReviewCard({
         <Button onClick={onBack} disabled={busy} variant="ghost" size="sm">
           ← Edit
         </Button>
-        <Button onClick={onConfirm} loading={busy} tone="violet">
+        <Button ref={confirmRef} onClick={onConfirm} loading={busy} tone="violet">
           {busy ? "Signing…" : "Confirm & send"}
         </Button>
       </div>

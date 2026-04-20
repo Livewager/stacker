@@ -15,7 +15,7 @@
  *  - Insufficient-balance hint when the entered value exceeds balance.
  */
 
-import { useMemo } from "react";
+import { useMemo, type Ref } from "react";
 
 type Props = {
   /** Raw numeric string the caller owns. "" when empty. */
@@ -42,6 +42,12 @@ type Props = {
   /** Hide preset chips even when balance is known. Useful in read-only review rows. */
   hideChips?: boolean;
   disabled?: boolean;
+  /**
+   * Optional ref to the inner <input>. Lets the caller drive focus
+   * from elsewhere (e.g. /send jumps focus here after a recent-chip
+   * use). Accepts any valid React Ref.
+   */
+  inputRef?: Ref<HTMLInputElement>;
 };
 
 const CHIPS: Array<{ label: string; fraction: number }> = [
@@ -95,6 +101,7 @@ export function AmountField({
   id,
   hideChips = false,
   disabled = false,
+  inputRef,
 }: Props) {
   const raw = useMemo(() => sanitize(value), [value]);
 
@@ -150,6 +157,7 @@ export function AmountField({
       >
         <input
           id={id}
+          ref={inputRef}
           type="text"
           inputMode="decimal"
           autoComplete="off"
