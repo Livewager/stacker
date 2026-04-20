@@ -6,3 +6,6 @@ out
 # Rust / dfx
 target
 .dfx
+
+# Unrelated sibling project
+FDC-PRESENTATION/
