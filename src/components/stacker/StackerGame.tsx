@@ -166,6 +166,12 @@ export default function StackerGame({
     best: number;
   }>({ phase: "idle", score: 0, level: 1, perfectStreak: 0, best: 0 });
 
+  // Transient difficulty-ramp flare: renders "Random spawn" when
+  // entering row RANDOM_DIR_ROW and "Jitter on" at JITTER_ROW. Cleared
+  // by a 2s timeout so the HUD stays calm the rest of the time.
+  const [flare, setFlare] = useState<null | "spawn" | "jitter">(null);
+  const flareRow = useRef<number>(-1);
+
   // Restore best score once on mount.
   useEffect(() => {
     try {
@@ -201,6 +207,8 @@ export default function StackerGame({
       perfectAt: null,
     };
     flashRef.current = 0;
+    flareRow.current = -1;
+    setFlare(null);
     setHudState((h) => ({
       ...h,
       phase: "playing",
@@ -355,6 +363,19 @@ export default function StackerGame({
       dir,
       spawnedAt: performance.now(),
     };
+
+    // Flare when we cross a difficulty tripwire for the first time
+    // this round. flareRow ref guards against re-firing inside the
+    // same round; startRound resets it.
+    if (nextRow === RANDOM_DIR_ROW && flareRow.current < RANDOM_DIR_ROW) {
+      flareRow.current = RANDOM_DIR_ROW;
+      setFlare("spawn");
+      window.setTimeout(() => setFlare(null), 2000);
+    } else if (nextRow === JITTER_ROW && flareRow.current < JITTER_ROW) {
+      flareRow.current = JITTER_ROW;
+      setFlare("jitter");
+      window.setTimeout(() => setFlare(null), 2000);
+    }
 
     setHudState((h) => ({
       ...h,
@@ -699,6 +720,27 @@ export default function StackerGame({
         </div>
         <HudPill label="Best" value={String(hudState.best || "—")} />
       </div>
+
+      {/* Transient difficulty flare. Centered under the HUD row so it
+          doesn't fight the score pills for attention. Fades via CSS,
+          cleared by its own 2s timer in the lock handler. */}
+      {flare && hudState.phase === "playing" && (
+        <div
+          aria-live="polite"
+          className="absolute top-14 left-0 right-0 flex justify-center pointer-events-none"
+        >
+          <div
+            className={[
+              "lw-reveal rounded-full border px-3 py-1 text-[10px] font-mono uppercase tracking-widest shadow-xl backdrop-blur-md",
+              flare === "spawn"
+                ? "border-orange-400/50 bg-orange-400/15 text-orange-200"
+                : "border-yellow-400/50 bg-yellow-400/15 text-yellow-200",
+            ].join(" ")}
+          >
+            {flare === "spawn" ? "Random spawn engaged" : "Speed jitter engaged"}
+          </div>
+        </div>
+      )}
 
       {/* Status overlay */}
       {(hudState.phase === "idle" || hudState.phase === "won" || hudState.phase === "over") && (
