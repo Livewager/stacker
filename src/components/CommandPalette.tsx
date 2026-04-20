@@ -304,14 +304,38 @@ export default function CommandPalette() {
     [go, authCommand, actionCommands],
   );
 
+  // Authoritative "is this path still a thing we route to?" set,
+  // derived from the commands list's hints. A recent-route entry
+  // whose path isn't in here is stale (route renamed / removed /
+  // typoed pushState). Strip the #hash before comparison so
+  // /settings#data in recent still matches the /settings command.
+  const knownPaths = useMemo(
+    () =>
+      new Set(
+        commands
+          .map((c) => (c.hint ? c.hint.split("#")[0] : null))
+          .filter((p): p is string => Boolean(p)),
+      ),
+    [commands],
+  );
+
+  // Pre-computed live-recent list shared by the header + the feed,
+  // so the "Recent · this session" label never renders without rows
+  // beneath it.
+  const liveRecent = useMemo(
+    () => recent.filter((p) => p !== pathname && knownPaths.has(p)),
+    [recent, pathname, knownPaths],
+  );
+
   const filtered = useMemo(() => {
     const needle = q.trim();
     if (!needle) {
       // Empty query: surface the most-recently-visited routes at the
       // top, then the rest in declaration order. Current pathname
-      // filtered out — no "jump to where I already am".
-      const recentCommands = recent
-        .map((p) => commands.find((c) => c.hint === p && p !== pathname))
+      // filtered out — no "jump to where I already am". liveRecent
+      // also filters out stale paths (dead routes, typoed pushState).
+      const recentCommands = liveRecent
+        .map((p) => commands.find((c) => c.hint === p))
         .filter((c): c is Command => Boolean(c));
       const recentIds = new Set(recentCommands.map((c) => c.id));
       return [
@@ -335,7 +359,7 @@ export default function CommandPalette() {
       .filter((x) => x.score !== null)
       .sort((a, b) => (a.score as number) - (b.score as number));
     return scored.map((x) => x.c);
-  }, [q, commands, recent, pathname]);
+  }, [q, commands, liveRecent, pathname]);
 
   // Close resets the search.
   useEffect(() => {
@@ -365,7 +389,7 @@ export default function CommandPalette() {
         aria-label="Search commands"
       />
 
-      {q.trim() === "" && recent.filter((p) => p !== pathname).length > 0 && (
+      {q.trim() === "" && liveRecent.length > 0 && (
         <div className="mt-3 text-[10px] uppercase tracking-widest text-cyan-300">
           Recent · this session
         </div>
