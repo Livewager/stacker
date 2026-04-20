@@ -568,7 +568,12 @@ function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean
           href={`/send?handle=${encodeURIComponent(entry.handle)}`}
           data-row-action="tip"
           aria-label={`Tip @${entry.handle}`}
-          className="opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-300/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-violet-200 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 focus-visible:opacity-100"
+          // Mobile (<md): always visible at 70% opacity since hover
+          // doesn't exist and keyboard focus-within is uncommon on
+          // touch devices. Desktop (md+): hover-reveal as before,
+          // with the same focus-visible + focus-within fallbacks so
+          // keyboard navigation still surfaces it. POLISH-229.
+          className="opacity-70 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-300/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-violet-200 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 focus-visible:opacity-100"
           title={`Open /send with @${entry.handle} pre-filled`}
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden>
