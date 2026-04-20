@@ -8,6 +8,7 @@ import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
+import { Pill } from "@/components/ui/Pill";
 import { AmountField } from "@/components/ui/AmountField";
 // Defer the scanner chunk until the user actually opens the sheet.
 // PrincipalScanner pulls in the BottomSheet + camera boot path, and
@@ -211,12 +212,14 @@ export default function SendPage() {
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs uppercase tracking-widest text-violet-300">Send</span>
-            <span
-              className="inline-flex items-center rounded-full border border-violet-300/30 bg-violet-300/[0.06] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-violet-200"
+            <Pill
+              status="info"
+              size="xs"
+              mono
               title="Local ICRC-1 ledger — no real money moves"
             >
               demo
-            </span>
+            </Pill>
           </div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">Send LWP</h1>
           <p className="text-sm text-gray-400 mt-1 max-w-xl">

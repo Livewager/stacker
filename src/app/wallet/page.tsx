@@ -97,7 +97,8 @@ export default function WalletPage() {
               <span className="text-xs uppercase tracking-widest text-cyan-300">Wallet</span>
               <Pill
                 status="demo"
-                className="font-mono text-[9px]"
+                size="xs"
+                mono
                 title="Local ICRC-1 ledger — no real money moves"
               >
                 demo
@@ -106,29 +107,32 @@ export default function WalletPage() {
                   deposit, send, withdraw) surfaces as a small amber
                   chip next to the eyebrow. Tells the user their
                   balance is about to change before the toast + number
-                  update land. aria-live=polite so screen readers
-                  announce transitions. */}
+                  update land. role=status + aria-label on the Pill
+                  means SR announces transitions. */}
               {(status === "buying" ||
                 status === "depositing" ||
                 status === "sending" ||
                 status === "withdrawing") && (
-                <span
+                <Pill
+                  status="pending"
+                  size="xs"
+                  mono
                   role="status"
+                  className="gap-1.5"
                   aria-label={`Transaction in flight: ${status}. Balance will update when it lands.`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/[0.08] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-amber-200"
                   title="A transaction is in flight — balance will update when it lands"
                 >
                   <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
                   <span aria-hidden>
-                  {status === "buying"
-                    ? "buying"
-                    : status === "depositing"
-                      ? "depositing"
-                      : status === "sending"
-                        ? "sending"
-                        : "withdrawing"}
+                    {status === "buying"
+                      ? "buying"
+                      : status === "depositing"
+                        ? "depositing"
+                        : status === "sending"
+                          ? "sending"
+                          : "withdrawing"}
                   </span>
-                </span>
+                </Pill>
               )}
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight">

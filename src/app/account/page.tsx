@@ -67,7 +67,8 @@ export default function AccountPage() {
             <span className="text-xs uppercase tracking-widest text-cyan-300">Account</span>
             <Pill
               status="demo"
-              className="font-mono text-[9px]"
+              size="xs"
+              mono
               title="Local ICRC-1 ledger — no real money moves"
             >
               demo
