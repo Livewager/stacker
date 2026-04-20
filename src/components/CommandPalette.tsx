@@ -205,21 +205,44 @@ export default function CommandPalette() {
         {filtered.length === 0 ? (
           <li className="px-3 py-3 text-xs text-gray-500">No matches.</li>
         ) : (
-          filtered.map((c) => (
-            <li key={c.id}>
-              <button
-                onClick={c.run}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-white/[0.03] transition focus:outline-none focus-visible:bg-white/[0.05]"
-              >
-                <span className="text-sm text-white">{c.label}</span>
-                {c.hint && (
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-gray-500">
-                    {c.hint}
+          filtered.map((c) => {
+            const isCurrent = c.hint === pathname;
+            return (
+              <li key={c.id}>
+                <button
+                  onClick={c.run}
+                  aria-current={isCurrent ? "page" : undefined}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition focus:outline-none ${
+                    isCurrent
+                      ? "bg-cyan-300/[0.04] cursor-default"
+                      : "hover:bg-white/[0.03] focus-visible:bg-white/[0.05]"
+                  }`}
+                >
+                  <span
+                    className={`text-sm flex items-center gap-2 ${
+                      isCurrent ? "text-gray-400" : "text-white"
+                    }`}
+                  >
+                    {c.label}
+                    {isCurrent && (
+                      <span className="text-[9px] uppercase tracking-widest text-cyan-300 border border-cyan-300/40 rounded-full px-1.5 py-[1px]">
+                        here
+                      </span>
+                    )}
                   </span>
-                )}
-              </button>
-            </li>
-          ))
+                  {c.hint && (
+                    <span
+                      className={`text-[10px] font-mono uppercase tracking-widest ${
+                        isCurrent ? "text-cyan-300/70" : "text-gray-500"
+                      }`}
+                    >
+                      {c.hint}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })
         )}
       </ul>
 
