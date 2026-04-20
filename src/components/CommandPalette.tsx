@@ -246,6 +246,7 @@ export default function CommandPalette() {
       { id: "settings-audio", label: "Settings · Audio & feedback", hint: `${ROUTES.settings}#audio`, run: () => go(`${ROUTES.settings}#audio`) },
       { id: "settings-cap", label: "Settings · Session cap", hint: `${ROUTES.settings}#cap`, run: () => go(`${ROUTES.settings}#cap`) },
       { id: "settings-account", label: "Settings · Account", hint: `${ROUTES.settings}#account`, run: () => go(`${ROUTES.settings}#account`) },
+      { id: "settings-diagnostics", label: "Settings · Diagnostics", hint: `${ROUTES.settings}#diagnostics`, run: () => go(`${ROUTES.settings}#diagnostics`) },
       { id: "settings-data", label: "Settings · Device data", hint: `${ROUTES.settings}#data`, run: () => go(`${ROUTES.settings}#data`) },
     ],
     [go, authCommand],

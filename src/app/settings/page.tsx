@@ -88,6 +88,57 @@ export default function SettingsPage() {
     });
   };
 
+  // One-click diagnostics dump. Builds a compact text report with
+  // everything support typically asks for — build SHA, UA, viewport,
+  // reduced-motion posture, and a sanitized pref snapshot — and
+  // copies it to the clipboard. Principal is redacted to its head/
+  // tail so users don't accidentally paste it into a public issue.
+  const onCopyDiagnostics = async () => {
+    const sha = process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev";
+    const ua =
+      typeof navigator !== "undefined" ? navigator.userAgent : "n/a";
+    const vw =
+      typeof window !== "undefined"
+        ? `${window.innerWidth}×${window.innerHeight} @${window.devicePixelRatio || 1}x`
+        : "n/a";
+    const rm =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "os"
+          : "no"
+        : "n/a";
+    const prefsSnapshot: Record<string, unknown> = {};
+    if (typeof window !== "undefined") {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (!k || !k.startsWith("livewager-pref:")) continue;
+        const raw = window.localStorage.getItem(k);
+        if (raw === null) continue;
+        try {
+          prefsSnapshot[k.slice("livewager-pref:".length)] = JSON.parse(raw);
+        } catch {
+          prefsSnapshot[k.slice("livewager-pref:".length)] = raw;
+        }
+      }
+    }
+    const lines = [
+      `livewager-dunk · diagnostics`,
+      `ts: ${new Date().toISOString()}`,
+      `build: ${sha}`,
+      `url: ${typeof location !== "undefined" ? location.href : "n/a"}`,
+      `viewport: ${vw}`,
+      `reduced-motion (OS): ${rm}`,
+      `principal: ${principal ? shortenPrincipal(principal, { head: 6, tail: 4 }) : "anon"}`,
+      `prefs:`,
+      ...Object.entries(prefsSnapshot).map(
+        ([k, v]) => `  ${k}: ${JSON.stringify(v)}`,
+      ),
+      `ua: ${ua}`,
+    ];
+    await copy(lines.join("\n"), { label: "Diagnostics", silent: false });
+  };
+
   const setCap = (usd: number | null) => {
     setSessionCapUsd(usd);
     if (usd === null) {
@@ -333,6 +384,30 @@ export default function SettingsPage() {
                 </Link>
               </div>
             )}
+          </Section>
+
+          {/* ---- Diagnostics (non-destructive) ---- */}
+          <Section
+            id="diagnostics"
+            eyebrow="Support"
+            title="Diagnostics"
+            subtitle="One-click dump of everything we'd ask about in a bug report — build SHA, viewport, prefs, and a redacted principal. Paste in the issue."
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xs text-gray-400 max-w-md leading-snug">
+                Your full principal is redacted to head+tail; session cap,
+                haptics, and other prefs are included verbatim. Nothing is
+                sent — the button just copies.
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCopyDiagnostics}
+                aria-label="Copy diagnostics to clipboard"
+              >
+                Copy diagnostics
+              </Button>
+            </div>
           </Section>
 
           {/* ---- Data reset (danger zone) ---- */}
