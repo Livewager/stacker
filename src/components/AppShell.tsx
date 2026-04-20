@@ -91,8 +91,16 @@ function GlobalEscBackHandler() {
  *   3. Snaps to 100% + fades out once the pathname actually changes.
  *
  * Not a real progress estimate — just a motion affordance that says
- * "something's happening." Respects reduced motion via the CSS
- * pipeline (transition clamp applied globally).
+ * "something's happening."
+ *
+ * Reduced motion (POLISH-234): the CSS transitions on the strip are
+ * clamped to ~0ms by the global prefers-reduced-motion rule in
+ * style.css, but the rAF-driven crawl bypasses that clamp — it
+ * updates React state directly. Fixed by gating the crawl itself
+ * on the pref: when reduced, snap progress to 85 on click and let
+ * the path-change effect snap to 100 as before. No animated climb,
+ * but the user still sees a static progress bar materialise + fade,
+ * which reads as "something's happening" without autonomous motion.
  */
 function RouteTransitionBar() {
   const pathname = usePathname() || "";
@@ -101,6 +109,12 @@ function RouteTransitionBar() {
   const rafRef = useRef(0);
   const startedRef = useRef(0);
   const lastPathRef = useRef(pathname);
+  // In-app reduced-motion pref. Skip the autonomous rAF crawl when
+  // set; the user still sees the bar materialise + snap, just
+  // without a 1.2s asymptotic climb driven by state updates.
+  const { reducedMotion } = usePrefs();
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
 
   // Kick off the crawl when a link is clicked. Uses a single
   // document-level listener so we don't have to touch every Link.
@@ -130,6 +144,13 @@ function RouteTransitionBar() {
         return;
       }
       setVisible(true);
+      // Reduced-motion: snap to 85 immediately and skip the rAF crawl.
+      // The user still sees a materialise → settle → snap-100 → fade
+      // sequence on navigation, just without an animated climb.
+      if (reducedMotionRef.current) {
+        setProgress(85);
+        return;
+      }
       setProgress(8);
       startedRef.current = performance.now();
       cancelAnimationFrame(rafRef.current);
