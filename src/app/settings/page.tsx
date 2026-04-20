@@ -4,9 +4,17 @@ import Link from "next/link";
 import { useState } from "react";
 import AppHeader from "@/components/AppHeader";
 import { Toggle } from "@/components/ui/Toggle";
+import { Button } from "@/components/ui/Button";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { clearAllLocalData, usePrefs } from "@/lib/prefs";
 import { useToast } from "@/components/dunk/Toast";
 import { useWalletState } from "@/components/dunk/WalletContext";
+import { ROUTES } from "@/lib/routes";
+
+function shortPrincipal(p: string, h = 10, t = 8): string {
+  if (p.length <= h + t + 1) return p;
+  return `${p.slice(0, h)}…${p.slice(-t)}`;
+}
 
 const CAP_PRESETS: Array<{ label: string; value: number | null }> = [
   { label: "$10", value: 10 },
@@ -36,6 +44,9 @@ export default function SettingsPage() {
   const { identity, logout, principal } = useWalletState();
 
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [expandPrincipal, setExpandPrincipal] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [customCap, setCustomCap] = useState<string>(
     sessionCapUsd && !CAP_PRESETS.some((p) => p.value === sessionCapUsd)
       ? String(sessionCapUsd)
@@ -77,6 +88,26 @@ export default function SettingsPage() {
       return;
     }
     setCap(Math.round(n));
+  };
+
+  const copyPrincipal = async () => {
+    if (!principal) return;
+    try {
+      await navigator.clipboard.writeText(principal);
+      toast.push({ kind: "success", title: "Principal copied" });
+    } catch {
+      toast.push({ kind: "error", title: "Clipboard blocked" });
+    }
+  };
+
+  const confirmSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await logout();
+      setSignOutOpen(false);
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -212,28 +243,47 @@ export default function SettingsPage() {
             subtitle="Your Internet Identity session. The principal itself is unaffected by anything on this page."
           >
             {identity ? (
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">
+              <div className="space-y-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-2">
                     Signed in as
                   </div>
-                  <div className="text-sm font-mono text-white truncate">{principal}</div>
+                  <button
+                    type="button"
+                    onClick={() => setExpandPrincipal((v) => !v)}
+                    className="w-full text-left rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white hover:border-white/25 transition break-all"
+                    aria-label={expandPrincipal ? "Collapse principal" : "Expand principal"}
+                    title="Click to toggle full principal"
+                  >
+                    {expandPrincipal ? principal : shortPrincipal(principal)}
+                  </button>
                 </div>
-                <button
-                  onClick={logout}
-                  className="shrink-0 text-[11px] uppercase tracking-widest px-3 py-2 rounded-md border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition"
-                >
-                  Sign out
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={copyPrincipal} variant="outline" size="sm">
+                    Copy principal
+                  </Button>
+                  <Link href={ROUTES.account} className="inline-flex">
+                    <Button variant="outline" size="sm">
+                      Open account
+                    </Button>
+                  </Link>
+                  <Button
+                    onClick={() => setSignOutOpen(true)}
+                    variant="danger"
+                    size="sm"
+                    className="ml-auto"
+                  >
+                    Sign out
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm text-gray-300">Not signed in right now.</div>
-                <Link
-                  href="/account"
-                  className="shrink-0 text-[11px] uppercase tracking-widest px-3 py-2 rounded-md border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition"
-                >
-                  Go to account
+                <Link href={ROUTES.account} className="inline-flex shrink-0">
+                  <Button variant="outline" size="sm">
+                    Go to account
+                  </Button>
                 </Link>
               </div>
             )}
@@ -266,6 +316,31 @@ export default function SettingsPage() {
           </Section>
         </div>
       </main>
+
+      <BottomSheet
+        open={signOutOpen}
+        onClose={() => setSignOutOpen(false)}
+        title="Sign out?"
+        description="This only clears the local session — your Internet Identity anchor, principal, and LWP balance on the ledger are unaffected. You can sign back in any time."
+      >
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button
+            onClick={() => setSignOutOpen(false)}
+            variant="outline"
+            disabled={signingOut}
+          >
+            Stay signed in
+          </Button>
+          <Button
+            data-autofocus
+            onClick={confirmSignOut}
+            loading={signingOut}
+            variant="danger"
+          >
+            Sign out
+          </Button>
+        </div>
+      </BottomSheet>
     </>
   );
 }
