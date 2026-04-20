@@ -218,6 +218,28 @@ encode real tiers. Before "consolidating" one of these, check here:
   captions/timestamps → /500. Don't collapse these — the ramp is
   what keeps info-dense rows legible without over-emphasizing
   every supporting line.
+- **`rounded-*` radius tiers** — a 6-rung surface-shape ramp, not
+  drift (audited POLISH-289). Pick by surface kind, not size:
+  - `rounded-full` (~125) — pills, chips, dots, avatars, circular
+    badges. Anything that's "always circular."
+  - `rounded-3xl` (~4) — BottomSheet top corners only. Oversize
+    to read as sheet-lifting-from-bottom rather than card.
+  - `rounded-2xl` (~75) — primary surface cards + panels. 94%
+    co-occur with `border-white/10 + bg-white/[0.02-0.035]` (the
+    canonical card treatment). The "this is a section" tier.
+  - `rounded-xl` (~85) — secondary surfaces: small cards,
+    ActionTiles, InfoTiles, inline chip-boxes with more presence
+    than a pill.
+  - `rounded-lg` (~55) — primary controls (Button primitive
+    default). Visually distinct from cards so a button on a card
+    doesn't fight for the same corner-radius attention.
+  - `rounded-md` (~90) — inputs (often paired with `h-11`),
+    tight controls, small chips with internal padding.
+  - `rounded-sm` (~5) — decorative / focus-ring targets only.
+  Writing a new surface? Match by kind: card → /2xl, tile → /xl,
+  button → /lg, input → /md, pill → /full. Don't mix tiers on
+  the same hierarchy level (e.g. a card with /xl buttons inside
+  /2xl container — the button reads as a mini-card).
 
 ### The anti-patterns to watch for
 
