@@ -285,7 +285,30 @@ export default function SendPage() {
               </div>
             </div>
 
-            {/* Recipient */}
+            {/* Recipient.
+                POLISH-288 a11y wiring. The Field wrapper renders
+                error + hint text as siblings but doesn't aria-wire
+                them to the input. A screen reader tabbing into the
+                field today reads the label only — no validation
+                error, no hint, no recent-recipients status. Three
+                fixes below:
+
+                  1. role="alert" on the error (implicit aria-live
+                     assertive) → SR interrupts with the validation
+                     copy the moment it appears.
+                  2. aria-describedby on the input points at the
+                     hint id so SR reads label + hint on focus.
+                  3. aria-invalid reflects validation state so the
+                     SR announces "invalid entry" before the user
+                     re-reads the error.
+
+                Ids are stable across renders (route-scoped strings,
+                not useId-derived) because the field is a singleton
+                on this page; no collision risk. The Field wrapper
+                itself stays unchanged — scoped fix to this one
+                form's most-SR-used input, not a primitive refactor.
+                If the pattern proves out, Memo + amount can follow
+                in a later tick. */}
             <Field
               label="Recipient principal"
               error={validation.to}
@@ -295,6 +318,7 @@ export default function SendPage() {
                 <div className="relative flex-1 min-w-0">
                   <input
                     ref={toInputRef}
+                    id="send-recipient"
                     type="text"
                     inputMode="text"
                     autoComplete="off"
@@ -302,6 +326,12 @@ export default function SendPage() {
                     placeholder="rrkah-fqaaa-aaaaa-aaaaq-cai"
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
+                    aria-invalid={validation.to ? true : undefined}
+                    aria-describedby={
+                      validation.to
+                        ? "send-recipient-error send-recipient-hint"
+                        : "send-recipient-hint"
+                    }
                     // pr-9 reserves space for the absolute × button so
                     // a long principal doesn't slide under it. Added
                     // focus-visible ring for keyboard parity with the
@@ -328,6 +358,28 @@ export default function SendPage() {
                       </svg>
                     </button>
                   )}
+                  {/* SR-only mirrors for the describedby chain. Field's
+                      visual error + hint stay on the label row /
+                      below the input (sighted users see them there);
+                      these hidden spans are the programmatic targets
+                      aria-describedby points at. role=alert on the
+                      error gives implicit aria-live=assertive so the
+                      SR interrupts when validation trips. The hint
+                      mirror is static — describes the field on focus
+                      but doesn't re-announce on re-read. */}
+                  {validation.to && (
+                    <span
+                      id="send-recipient-error"
+                      role="alert"
+                      className="sr-only"
+                    >
+                      {validation.to}
+                    </span>
+                  )}
+                  <span id="send-recipient-hint" className="sr-only">
+                    Any Internet Identity principal. You can type it, paste it,
+                    or scan a QR.
+                  </span>
                 </div>
                 <button
                   type="button"
