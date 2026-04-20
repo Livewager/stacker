@@ -64,6 +64,43 @@ export function WalletNav() {
     );
   }, [balance]);
 
+  // Pending-state debounce — MUST be declared here, above the
+  // `if (!identity) return …` early return below, so hook count
+  // stays constant across renders regardless of auth state. The
+  // previous shape had useState(rawPending) + useEffect placed
+  // *after* the signed-out early return, which works when the user
+  // stays signed-in but throws React error #310
+  // ("rendered more hooks than during the previous render") the
+  // first time a user signs in (signed-out path skipped these
+  // hooks, signed-in path adds them — hook order diverges).
+  //
+  // Mid-flight transitions shift the pill tone to amber + swap the
+  // glyph for a slow spinning ring. Matches the pending chip on
+  // /wallet so the "balance is about to change" cue lives in the
+  // header too — important because users might be on any route when
+  // a tx lands.
+  //
+  // Debounce the trailing edge: a transaction that resolves quickly
+  // (optimistic "buying" → "idle" in <120ms) would flash the ring
+  // on and straight back off, reading as a UI glitch. We hold the
+  // pending state true for 180ms after the raw status clears. The
+  // leading edge is immediate (no debounce) so users still see
+  // feedback on the first tap.
+  const rawPending =
+    status === "buying" ||
+    status === "depositing" ||
+    status === "sending" ||
+    status === "withdrawing";
+  const [pending, setPending] = useState(rawPending);
+  useEffect(() => {
+    if (rawPending) {
+      setPending(true);
+      return;
+    }
+    const t = setTimeout(() => setPending(false), 180);
+    return () => clearTimeout(t);
+  }, [rawPending]);
+
   const isMobile =
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 767px)").matches;
@@ -137,33 +174,6 @@ export function WalletNav() {
       </>
     );
   }
-
-  // Mid-flight transitions shift the pill tone to amber + swap the
-  // glyph for a slow spinning ring. Matches the pending chip on
-  // /wallet so the "balance is about to change" cue lives in the
-  // header too — important because users might be on any route when
-  // a tx lands.
-  //
-  // Debounce the trailing edge: a transaction that resolves quickly
-  // (optimistic "buying" → "idle" in <120ms) would flash the ring
-  // on and straight back off, reading as a UI glitch. We hold the
-  // pending state true for 180ms after the raw status clears. The
-  // leading edge is immediate (no debounce) so users still see
-  // feedback on the first tap.
-  const rawPending =
-    status === "buying" ||
-    status === "depositing" ||
-    status === "sending" ||
-    status === "withdrawing";
-  const [pending, setPending] = useState(rawPending);
-  useEffect(() => {
-    if (rawPending) {
-      setPending(true);
-      return;
-    }
-    const t = setTimeout(() => setPending(false), 180);
-    return () => clearTimeout(t);
-  }, [rawPending]);
 
   return (
     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
