@@ -168,6 +168,20 @@ export default function AppHeader() {
   }, []);
   return (
     <header
+      // POLISH-368 — safe-area-inset-top on the header itself, not
+      // the inner content row. Root layout sets viewport-fit=cover,
+      // so on notched iPhones + dynamic-island devices the viewport
+      // begins under the notch. With `sticky top-0` the header
+      // anchors there, and without a top inset the logo + tabs
+      // sit behind the notch / clipped by the island. Pushing the
+      // inset onto the <header> keeps the backdrop-blur stretching
+      // to the hardware edge (so the notch still sees the tinted
+      // pane, not a gap) while the content row (padding below)
+      // clears the island. The audit ticket framed this as a
+      // hero-tower concern; the actual offender was higher in the
+      // tree. Hero tower is below-fold in document flow and was
+      // never the problem.
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       className={`sticky top-0 z-40 border-b bg-background/85 backdrop-blur-md transition-shadow duration-200 ${
         scrolled
           ? "border-white/15 shadow-[0_8px_24px_-16px_rgba(0,0,0,0.65)]"
