@@ -6,6 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
+import { AmountField } from "@/components/ui/AmountField";
 
 // Mirror the deposit side's fixed rate: 10M LWP per 1 LTC.
 const LWP_PER_LTC = 10_000_000;
@@ -169,39 +170,27 @@ export default function WithdrawPage() {
               />
             </Field>
 
-            {/* Amount */}
-            <Field
+            {/* Amount. Demo burn has no ledger fee, so balanceLwp is
+                just the raw balance; AmountField's chip math and the
+                exceeds-balance guard align with validation.amount's
+                own balance check. The "you receive" strip sits below
+                the field unchanged. */}
+            <AmountField
+              id="withdraw-amount"
               label="Amount"
+              value={amount}
+              onChange={setAmount}
+              tone="rose"
               error={validation.amount}
               hint={`Rate: ${LWP_PER_LTC.toLocaleString()} LWP → 1 LTC. No burn fee in the demo canister.`}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.0001"
-                  placeholder="0.0000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="flex-1 rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-right text-white focus:border-rose-300/60 focus:outline-none"
-                />
-                <span className="text-[11px] font-mono text-gray-400 shrink-0">LWP</span>
-                <button
-                  type="button"
-                  onClick={setMax}
-                  className="rounded-md border border-white/15 px-3 py-2 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition"
-                >
-                  Max
-                </button>
-              </div>
-              <div className="mt-2 rounded-lg border border-rose-300/30 bg-rose-300/[0.05] px-3 py-2 text-[11px] text-rose-200 font-mono flex items-baseline justify-between">
-                <span>You receive</span>
-                <span className="tabular-nums text-rose-200 text-sm">
-                  ≈ {ltcEstimate.toFixed(8)} LTC
-                </span>
-              </div>
-            </Field>
+              balanceLwp={balance !== null ? Number(balance) / 1e8 : null}
+            />
+            <div className="mt-2 rounded-lg border border-rose-300/30 bg-rose-300/[0.05] px-3 py-2 text-[11px] text-rose-200 font-mono flex items-baseline justify-between">
+              <span>You receive</span>
+              <span className="tabular-nums text-rose-200 text-sm">
+                ≈ {ltcEstimate.toFixed(8)} LTC
+              </span>
+            </div>
 
             <div className="flex items-center justify-between pt-2">
               <Link
