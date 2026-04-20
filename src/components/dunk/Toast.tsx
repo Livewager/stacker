@@ -46,7 +46,16 @@ interface ToastEntry extends Required<Pick<ToastInput, "title">> {
   ttlMs: number;
   action?: ToastInput["action"];
   createdAt: number;
+  /** Number of times an identical toast has been collapsed into this
+   *  entry. Rendered as " · ×N" when > 1 so rage-clicks don't spawn
+   *  a tower of duplicates. */
+  repeatCount: number;
 }
+
+/** Collapse window for identical toasts. Anything within this many
+ *  ms of the most recent matching toast merges into it instead of
+ *  spawning a new entry. */
+const COLLAPSE_WINDOW_MS = 2000;
 
 interface ToastApi {
   push: (t: ToastInput) => string;
@@ -90,18 +99,68 @@ export function ToastHost({ children }: { children: ReactNode }) {
 
   const push = useCallback(
     (input: ToastInput) => {
+      const kind = input.kind ?? "info";
+      const ttlMs = input.ttlMs ?? 4500;
+      const now = Date.now();
+
+      // Collapse-into-last when an identical (kind + title) toast is
+      // already on screen and within the collapse window. Avoids the
+      // "rage-click produces N identical toasts" failure mode.
+      let collapsed = false;
+      let targetId = "";
+      setToasts((xs) => {
+        const last = xs[xs.length - 1];
+        if (
+          last &&
+          last.kind === kind &&
+          last.title === input.title &&
+          now - last.createdAt < COLLAPSE_WINDOW_MS
+        ) {
+          collapsed = true;
+          targetId = last.id;
+          return xs.map((t) =>
+            t.id === last.id
+              ? {
+                  ...t,
+                  repeatCount: t.repeatCount + 1,
+                  description: input.description ?? t.description,
+                  createdAt: now, // reset for the next collapse window
+                }
+              : t,
+          );
+        }
+        return xs;
+      });
+
+      if (collapsed) {
+        // Reset the TTL on the collapsed target so the count-bump
+        // stays visible for a full TTL cycle.
+        const st = timers.current.get(targetId);
+        if (st) {
+          clearTimeout(st.handle);
+          const handle = setTimeout(() => dismiss(targetId), ttlMs);
+          timers.current.set(targetId, {
+            handle,
+            startedAt: performance.now(),
+            remainingMs: ttlMs,
+          });
+        }
+        return targetId;
+      }
+
       const id =
         (typeof crypto !== "undefined" && "randomUUID" in crypto
           ? crypto.randomUUID()
           : String(Math.random())) + "";
       const entry: ToastEntry = {
         id,
-        kind: input.kind ?? "info",
+        kind,
         title: input.title,
         description: input.description,
-        ttlMs: input.ttlMs ?? 4500,
+        ttlMs,
         action: input.action,
-        createdAt: Date.now(),
+        createdAt: now,
+        repeatCount: 1,
       };
       setToasts((xs) => [...xs, entry]);
       if (entry.ttlMs > 0) {
@@ -311,7 +370,14 @@ function ToastCard({
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-white leading-snug">{t.title}</div>
+          <div className="text-sm font-semibold text-white leading-snug">
+            {t.title}
+            {t.repeatCount > 1 && (
+              <span className="ml-2 inline-flex items-center rounded-full border border-white/15 bg-black/40 px-1.5 py-0.5 text-[10px] font-mono text-gray-300">
+                ×{t.repeatCount}
+              </span>
+            )}
+          </div>
           {t.description && (
             <div className="mt-0.5 text-xs text-gray-300 leading-snug break-words">
               {t.description}
