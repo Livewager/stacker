@@ -140,6 +140,11 @@ export const PREF_KEYS = {
   // /deposit tab selection. "ltc" | "card" | "bank". Persisted so
   // repeat visits land on the method the user actually uses.
   depositTab: "depositTab",
+
+  // Stacker power-user toggle: show the round's RNG seed in the HUD
+  // during play. Off by default — most players don't care; power
+  // users and ANTICHEAT-T1 shakeout benefit.
+  stackerShowSeed: "stackerShowSeed",
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];

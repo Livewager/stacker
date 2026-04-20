@@ -6,7 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { clearAllLocalData, clearSessionState, usePrefs } from "@/lib/prefs";
+import { clearAllLocalData, clearSessionState, usePrefs, useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { useToast } from "@/components/dunk/Toast";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { ROUTES } from "@/lib/routes";
@@ -42,6 +42,10 @@ export default function SettingsPage() {
     sessionCapUsd,
     setSessionCapUsd,
   } = usePrefs();
+  const [stackerShowSeed, setStackerShowSeed] = useLocalPref<boolean>(
+    PREF_KEYS.stackerShowSeed,
+    false,
+  );
   const toast = useToast();
   const { identity, logout, principal } = useWalletState();
 
@@ -202,6 +206,13 @@ export default function SettingsPage() {
               }
               checked={reducedMotion}
               onChange={setReducedMotion}
+            />
+            <div className="border-t border-white/5" />
+            <Toggle
+              label="Show Stacker seed"
+              description="Surface the round's RNG seed in the Stacker HUD. Useful for self-auditing a run — pairs with the ?seed= replay URL."
+              checked={stackerShowSeed}
+              onChange={setStackerShowSeed}
             />
           </Section>
 

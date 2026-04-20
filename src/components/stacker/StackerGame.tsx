@@ -25,6 +25,7 @@ import { haptics } from "@/lib/haptics";
 import { createRound, type Round, type RoundTranscript } from "@/lib/anticheat/tapEntropy";
 import { createRng, randomSeed, type SeededRng } from "@/lib/anticheat/rng";
 import { useCopyable } from "@/lib/clipboard";
+import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { postScore } from "@/components/dunk/scoreboard";
 
 // ------------------------------------------------------------------
@@ -226,6 +227,7 @@ export default function StackerGame({
   const rngRef = useRef<SeededRng | null>(null);
   const [lastTranscript, setLastTranscript] = useState<RoundTranscript | null>(null);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
+  const [showSeed] = useLocalPref<boolean>(PREF_KEYS.stackerShowSeed, false);
   const copy = useCopyable();
 
   // Restore best score + best streak once on mount.
@@ -984,11 +986,17 @@ export default function StackerGame({
 
       {/* HUD */}
       <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-3 pointer-events-none">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <HudPill label="Score" value={String(hudState.score)} />
           <HudPill label="Row" value={`${hudState.level}/${GRID_ROWS}`} />
           {hudState.perfectStreak > 1 && (
             <HudPill label="Streak" value={`×${hudState.perfectStreak}`} accent="gold" />
+          )}
+          {showSeed && lastSeed !== null && (
+            <HudPill
+              label="Seed"
+              value={`0x${lastSeed.toString(16).padStart(8, "0")}`}
+            />
           )}
         </div>
         <HudPill label="Best" value={String(hudState.best || "—")} />
