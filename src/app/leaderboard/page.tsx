@@ -390,19 +390,54 @@ function HallOfFame() {
 // ----------------------------------------------------------------
 
 function BestsPanel({ stackerBest }: { stackerBest: number }) {
+  const pourBest = readAllTimePourBest();
+  const bothZero = pourBest === 0 && stackerBest === 0;
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
       <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-3">
         Your bests (this device)
       </div>
-      <ul className="divide-y divide-white/5">
-        <BestRow game="Tilt Pour" best={readAllTimePourBest()} cta={{ href: "/dunk", label: "Play" }} />
-        <BestRow game="Stacker" best={stackerBest} cta={{ href: "/stacker", label: "Play" }} />
-      </ul>
-      <div className="mt-3 text-[11px] text-gray-500 leading-snug">
-        Device-local right now. Sign-in-synced bests land when accounts pair with the
-        ledger.
-      </div>
+      {bothZero ? (
+        <div className="py-6 text-center">
+          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-cyan-300">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+              <path d="M10 2a1 1 0 0 1 .894.553l1.934 3.87 4.272.62a1 1 0 0 1 .554 1.706l-3.091 3.013.73 4.254a1 1 0 0 1-1.451 1.054L10 15.077l-3.842 2.019a1 1 0 0 1-1.451-1.054l.73-4.254L2.346 8.75a1 1 0 0 1 .554-1.706l4.272-.62 1.934-3.87A1 1 0 0 1 10 2Z" />
+            </svg>
+          </div>
+          <div className="text-sm text-white font-semibold mb-1">
+            No personal bests yet
+          </div>
+          <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug mb-4">
+            Play a round in either game and your score shows up here. Beats are
+            stored locally until accounts pair with the ledger.
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Link
+              href="/dunk"
+              className="rounded-md border border-cyan-300/40 bg-cyan-300/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-widest text-cyan-200 hover:bg-cyan-300/[0.15] transition"
+            >
+              Tilt Pour
+            </Link>
+            <Link
+              href="/stacker"
+              className="rounded-md border border-orange-400/40 bg-orange-400/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-widest text-orange-200 hover:bg-orange-400/[0.15] transition"
+            >
+              Stacker
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          <ul className="divide-y divide-white/5">
+            <BestRow game="Tilt Pour" best={pourBest} cta={{ href: "/dunk", label: "Play" }} />
+            <BestRow game="Stacker" best={stackerBest} cta={{ href: "/stacker", label: "Play" }} />
+          </ul>
+          <div className="mt-3 text-[11px] text-gray-500 leading-snug">
+            Device-local right now. Sign-in-synced bests land when accounts pair
+            with the ledger.
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -416,18 +451,27 @@ function BestRow({
   best: number;
   cta: { href: string; label: string };
 }) {
+  const has = best > 0;
   return (
     <li className="flex items-center gap-3 py-3">
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="text-sm text-white">{game}</div>
-        <div className="text-[11px] text-gray-500">Personal best</div>
+        <div className="text-[11px] text-gray-500">
+          {has ? "Personal best" : "No round played yet"}
+        </div>
       </div>
-      <div className="font-mono text-xl tabular-nums text-white">{best || "—"}</div>
+      <div
+        className={`font-mono text-xl tabular-nums shrink-0 ${
+          has ? "text-white" : "text-gray-600"
+        }`}
+      >
+        {has ? best : "—"}
+      </div>
       <Link
         href={cta.href}
-        className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition"
+        className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition shrink-0"
       >
-        {cta.label}
+        {has ? cta.label : "Start"}
       </Link>
     </li>
   );
