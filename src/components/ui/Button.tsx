@@ -119,7 +119,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       ) : (
         leading
       )}
-      <span>{children}</span>
+      <span className={loading ? "opacity-60" : undefined}>{children}</span>
       {!loading && trailing}
     </button>
   );
