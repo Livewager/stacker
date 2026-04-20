@@ -145,6 +145,12 @@ export const PREF_KEYS = {
   // during play. Off by default — most players don't care; power
   // users and ANTICHEAT-T1 shakeout benefit.
   stackerShowSeed: "stackerShowSeed",
+
+  // One-shot "we don't use cookies — but we do use localStorage"
+  // disclosure banner. Boolean; once true, the banner never renders
+  // again on this device. Treated as acknowledgement, not consent —
+  // the app needs storage to function (see Settings for details).
+  storageAck: "storageAck",
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];

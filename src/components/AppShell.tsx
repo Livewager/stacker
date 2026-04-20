@@ -32,6 +32,7 @@ import { BottomNav } from "@/components/BottomNav";
 import CommandPalette from "@/components/CommandPalette";
 import AppFooter from "@/components/AppFooter";
 import { NetworkBanner } from "@/components/NetworkBanner";
+import { StorageAckBanner } from "@/components/StorageAckBanner";
 import { ANCHORS, ROUTES } from "@/lib/routes";
 import { usePrefs } from "@/lib/prefs";
 
@@ -229,6 +230,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <AppFooter />
         <BottomNav />
         <CommandPalette />
+        <StorageAckBanner />
       </WalletProvider>
     </ToastHost>
   );
