@@ -195,13 +195,21 @@ export function Livestream() {
           </div>
 
           {/* Center play glyph — the only "this is a video" cue.
-              Not clickable, so no onClick + focus ring. */}
+              Not clickable, so no onClick + focus ring.
+
+              POLISH-380 — ramp the size through three breakpoints.
+              On ultra-narrow (280px effective viewport → ~240px
+              video wide → 135px tall at 16:9), the original
+              h-16/w-16 ate ~47% of the video height and crowded
+              the chat overlay below. h-12 default (48px) sits at
+              ~36% height on 240px and scales up to h-16 at sm,
+              h-20 at md. Inner svg tracks the same ladder. */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-white/10 border border-white/20 backdrop-blur flex items-center justify-center">
+            <div className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 rounded-full bg-white/10 border border-white/20 backdrop-blur flex items-center justify-center">
               <svg
                 viewBox="0 0 24 24"
                 fill="currentColor"
-                className="h-7 w-7 md:h-8 md:w-8 text-white/80 translate-x-[2px]"
+                className="h-5 w-5 sm:h-7 sm:w-7 md:h-8 md:w-8 text-white/80 translate-x-[2px]"
                 aria-hidden
               >
                 <path d="M8 5v14l11-7z" />
@@ -221,12 +229,24 @@ export function Livestream() {
               meaning; announcing them (even once) would plant
               nonsense in an SR user's model of the page. Paired
               with the desktop chat getting the same treatment
-              below, so neither viewport exposes the churn. */}
+              below, so neither viewport exposes the churn.
+
+              POLISH-380 — tighten scrim padding on ultra-narrow
+              viewports. Original pt-10 (40px) ate more than half
+              the video at 280px (video is ~135px tall there).
+              pt-6 (24px) default + pt-10 at sm keeps the 3-row
+              feed legible without crowding the play glyph above.
+              Also trim to 2 rows below sm so the feed never
+              exceeds ~40% of the video's vertical budget on the
+              tightest breakpoint. */}
           <div
             aria-hidden="true"
-            className="md:hidden absolute inset-x-0 bottom-0 p-3 pt-10 pointer-events-none bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+            className="md:hidden absolute inset-x-0 bottom-0 p-3 pt-6 sm:pt-10 pointer-events-none bg-gradient-to-t from-black/80 via-black/40 to-transparent"
           >
-            <ul className="space-y-1 text-[12px] leading-snug">
+            {/* Hide the oldest row below sm so ultra-narrow keeps
+                just 2 messages visible. Tailwind's first:hidden
+                on .sm:inline hides the first <li> until sm+. */}
+            <ul className="space-y-1 text-[12px] leading-snug [&>li:first-child]:hidden sm:[&>li:first-child]:list-item">
               {feed.slice(-3).map((m) => (
                 <li key={m.id} className="truncate">
                   <span className={`font-semibold ${toneClasses(m.tone)}`}>
