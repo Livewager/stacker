@@ -24,7 +24,7 @@ const TABS: Tab[] = [
   { href: "/wallet", label: "Wallet" },
   { href: "/deposit", label: "Deposit" },
   { href: "/send", label: "Send" },
-  { href: "/stacker", label: "Stacker" },
+  { href: "/withdraw", label: "Withdraw" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/account", label: "Account" },
 ];

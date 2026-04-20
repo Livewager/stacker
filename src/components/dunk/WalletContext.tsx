@@ -38,6 +38,7 @@ export type WalletStatus =
   | "buying"
   | "depositing"
   | "sending"
+  | "withdrawing"
   | "error";
 
 export interface TransferInput {
@@ -70,7 +71,27 @@ export interface WalletState {
   depositLTC: (amountLtc: number) => Promise<void>;
   /** Real ICRC-1 transfer signed by the II identity. */
   transfer: (input: TransferInput) => Promise<TransferResult>;
+  /** Real burn + mocked LTC payout intent (see route.ts). */
+  withdrawLTC: (input: WithdrawInput) => Promise<WithdrawResult>;
   refresh: () => Promise<void>;
+}
+
+export interface WithdrawInput {
+  /** Destination LTC address (any non-empty string — we don't validate
+   *  against Litecoin network rules in the demo). */
+  ltcAddress: string;
+  /** Amount in whole LWP to burn before we "pay out" LTC. */
+  amountLwp: number;
+}
+export interface WithdrawResult {
+  /** Ledger tx id of the burn block. */
+  burnTxId: bigint;
+  /** Stub payout reference returned by /api/dunk/ltc-withdraw. */
+  payoutId: string;
+  /** Estimated minutes until the real oracle would settle (fake). */
+  etaMinutes: number;
+  /** LTC amount the mock oracle queued. */
+  ltcAmount: number;
 }
 
 const Ctx = createContext<WalletState | null>(null);
@@ -323,6 +344,87 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     [refresh, toast],
   );
 
+  const withdrawLTC = useCallback<WalletState["withdrawLTC"]>(
+    async ({ ltcAddress, amountLwp }) => {
+      if (!idRef.current) throw new Error("Sign in first");
+      if (!Number.isFinite(amountLwp) || amountLwp <= 0) {
+        throw new Error("Amount must be positive");
+      }
+      const cleanedAddr = ltcAddress.trim();
+      if (cleanedAddr.length < 25 || cleanedAddr.length > 90) {
+        // Real validation happens at the oracle. Demo-side guard is
+        // generous but rejects obviously-wrong input so the burn call
+        // doesn't waste a cycle.
+        throw new Error("LTC address looks wrong");
+      }
+
+      setError(null);
+      setLastTx(null);
+      setStatus("withdrawing");
+      try {
+        const ledger = await pointsLedger({ identity: idRef.current });
+        const baseUnits = BigInt(Math.round(amountLwp * 1e8));
+        // Memo records the payout intent so the ICRC-3 block is auditable.
+        const memoText = `ltc-withdraw:${cleanedAddr}`;
+        const memoBytes = new TextEncoder().encode(memoText).slice(0, 32);
+
+        const burnRes = await ledger.burn({
+          from_subaccount: [],
+          amount: baseUnits,
+          memo: [Array.from(memoBytes)],
+          created_at_time: [],
+        });
+        if ("Err" in burnRes) {
+          const key = Object.keys(burnRes.Err)[0] ?? "Unknown";
+          throw new Error(`Burn rejected: ${key}`);
+        }
+        const burnTxId = burnRes.Ok;
+
+        // Stub payout queue — the real oracle would broadcast LTC.
+        const res = await fetch("/api/dunk/ltc-withdraw", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            principal: idRef.current.getPrincipal().toString(),
+            ltcAddress: cleanedAddr,
+            amountLwpBaseUnits: baseUnits.toString(),
+            burnTxId: burnTxId.toString(),
+          }),
+        });
+        const data = (await res.json()) as {
+          ok: boolean;
+          payoutId?: string;
+          etaMinutes?: number;
+          ltcAmount?: number;
+          error?: string;
+        };
+        if (!data.ok) throw new Error(data.error || "payout queue failed");
+
+        setLastTx(burnTxId.toString());
+        await refresh();
+        toast.push({
+          kind: "success",
+          title: `Withdraw queued — ${data.ltcAmount ?? 0} LTC`,
+          description: `Burn tx #${burnTxId.toString()} · eta ~${data.etaMinutes ?? 2} min`,
+        });
+        return {
+          burnTxId,
+          payoutId: data.payoutId ?? "pending",
+          etaMinutes: data.etaMinutes ?? 2,
+          ltcAmount: data.ltcAmount ?? 0,
+        };
+      } catch (e) {
+        const msg = (e as Error).message;
+        setError(msg);
+        toast.push({ kind: "error", title: "Withdraw failed", description: msg });
+        throw e;
+      } finally {
+        setStatus("idle");
+      }
+    },
+    [refresh, toast],
+  );
+
   const value = useMemo<WalletState>(
     () => ({
       identity,
@@ -337,6 +439,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       buy,
       depositLTC,
       transfer,
+      withdrawLTC,
       refresh,
     }),
     [
@@ -352,6 +455,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       buy,
       depositLTC,
       transfer,
+      withdrawLTC,
       refresh,
     ],
   );
