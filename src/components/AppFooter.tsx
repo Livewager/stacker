@@ -99,11 +99,22 @@ export default function AppFooter() {
             <span className="text-gray-500">LWP</span> 10M / 1 LTC (demo)
           </span>
 
-          {/* Build sha (optional) */}
+          {/* Build sha — copyable so support requests can include the
+              deployed build without screenshotting. Clicking copies the
+              full sha (not the truncated display). Still desktop-only
+              since mobile's footer is tight and this is a power-user
+              affordance. */}
           {sha && (
-            <span className="font-mono hidden md:inline text-gray-500">
-              build {sha.slice(0, 7)}
-            </span>
+            <button
+              type="button"
+              onClick={() => copy(sha, { label: "Build SHA" })}
+              className="font-mono hidden md:inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-200 transition focus:outline-none focus-visible:text-gray-200 focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
+              title={`Click to copy · ${sha}`}
+              aria-label={`Copy build SHA ${sha}`}
+            >
+              <span>build</span>
+              <span className="text-gray-300">{sha.slice(0, 7)}</span>
+            </button>
           )}
 
           {/* Routes */}
