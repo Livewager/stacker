@@ -100,12 +100,12 @@ export default function NotFound() {
   return (
     <ErrorScaffold
       tone="muted"
-      eyebrow="404 · Spilled"
-      title="Nothing poured at this address."
+      eyebrow="404 · Off the grid"
+      title="Nothing stacked at this address."
       body={
         <>
-          The page you were after doesn&apos;t exist or moved. Head to the games
-          hub — Tilt Pour and Stacker are both one tap away.
+          The page you were after doesn&apos;t exist or moved. Tap the games
+          hub for Stacker, or head straight to your wallet.
           {suggestion && (
             <>
               {" "}
