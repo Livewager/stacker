@@ -88,6 +88,31 @@ export default function WalletPage() {
               >
                 demo
               </span>
+              {/* Pending tx pill: any balance-changing status (buy,
+                  deposit, send, withdraw) surfaces as a small amber
+                  chip next to the eyebrow. Tells the user their
+                  balance is about to change before the toast + number
+                  update land. aria-live=polite so screen readers
+                  announce transitions. */}
+              {(status === "buying" ||
+                status === "depositing" ||
+                status === "sending" ||
+                status === "withdrawing") && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/[0.08] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-amber-200"
+                  aria-live="polite"
+                  title="A transaction is in flight — balance will update when it lands"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
+                  {status === "buying"
+                    ? "buying"
+                    : status === "depositing"
+                      ? "depositing"
+                      : status === "sending"
+                        ? "sending"
+                        : "withdrawing"}
+                </span>
+              )}
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight">
               Your balances.
