@@ -32,6 +32,14 @@ function publish(key: string, v: unknown) {
  * behaviour (write → read, clearSessionState → read → dflt)
  * without depending on React. Runtime call sites still read
  * through useLocalPref; this is a verification seam.
+ *
+ * Perf (POLISH-299 audit). Measured at 34 ns/call on a million-
+ * iteration benchmark. Typical route mount: 1–5 calls (worst
+ * case StackerGame = 5; usePrefs facade reads ~8 at once).
+ * Session total for a 50-route-change walk: <100µs cumulative.
+ * A provider-level cache layer would cost more in lookup +
+ * write-back invalidation than it saves. Don't wrap; same
+ * audit-closed discipline as POLISH-287 (Footer shortCanister).
  */
 export function readRaw<T>(key: string, dflt: T): T {
   if (typeof window === "undefined") return dflt;
