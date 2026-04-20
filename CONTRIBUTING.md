@@ -174,6 +174,21 @@ re-read localStorage per call, so flipping a shared pref mid-round
 still lands on the next SFX invocation. Zero new storage keys, zero
 migration surface, same UX.
 
+**POLISH-294 — rule-of-three before extracting a primitive.**
+Ticket: "consolidate Field a11y wiring across /send and /withdraw."
+Tempting to build a `<FieldA11y>` or `useFieldIds()` primitive that
+threads `useId`-backed error/hint ids into every input via a
+render-prop or cloneElement. Cut: the real consumer count is
+three (send recipient, send memo, withdraw address), the shapes
+differ per call site (different input types, different supplementary
+slots like the memo byte counter), and a primitive with three
+consumers usually encodes more flexibility than it saves. Did the
+explicit hand-wiring (POLISH-288 + POLISH-294) three times and
+pinned a rule-of-four trigger: when the fourth unique Field shape
+needs a11y wiring, extract the primitive then. Duplication of three
+stable-shape things beats a wrong abstraction that 40% of the
+consumers have to bend around.
+
 ### Design tokens already in use (don't re-audit)
 
 A few Tailwind-class patterns look duplicative at first glance but

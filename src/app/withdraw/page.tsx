@@ -235,8 +235,17 @@ export default function WithdrawPage() {
             >
               <div className="flex items-stretch gap-2">
                 <div className="relative flex-1 min-w-0">
+                  {/* POLISH-294 a11y wiring — mirror of POLISH-288's
+                      fix on /send's recipient. Adds stable id + error
+                      and hint describedby chain + aria-invalid so
+                      screen readers announce the validation state
+                      and field purpose on focus. sr-only mirror
+                      spans below the input hold the AT-visible text;
+                      the Field wrapper's visual error + hint keep
+                      their existing sighted-user rendering. */}
                   <input
                     ref={addrInputRef}
+                    id="withdraw-ltc-address"
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
@@ -254,6 +263,12 @@ export default function WithdrawPage() {
                       }
                     }}
                     onBlur={() => setAddrTouched(true)}
+                    aria-invalid={validation.ltcAddress ? true : undefined}
+                    aria-describedby={
+                      validation.ltcAddress
+                        ? "withdraw-ltc-address-error withdraw-ltc-address-hint"
+                        : "withdraw-ltc-address-hint"
+                    }
                     // pr-9 reserves space for the absolute × button
                     // so a long address doesn't slide under it.
                     className={`w-full rounded-md bg-black/40 border pl-3 pr-9 py-2.5 text-sm font-mono text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/50 ${
@@ -264,6 +279,20 @@ export default function WithdrawPage() {
                           : "border-red-400/40 focus:border-red-300/70"
                     }`}
                   />
+                  {validation.ltcAddress && (
+                    <span
+                      id="withdraw-ltc-address-error"
+                      role="alert"
+                      className="sr-only"
+                    >
+                      {validation.ltcAddress}
+                    </span>
+                  )}
+                  <span id="withdraw-ltc-address-hint" className="sr-only">
+                    Destination LTC address. Accepts bech32 (ltc1…), legacy
+                    (L…), or P2SH (M… or 3…). You can paste from the clipboard
+                    using the Paste button.
+                  </span>
                   {/* Clear × button. Only renders when the field has
                       content — touch-safe ~28px hit target, sits
                       inside the right padding reserved above. Mirrors

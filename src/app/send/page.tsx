@@ -508,6 +508,23 @@ export default function SendPage() {
             />
 
             {/* Memo */}
+            {/* Memo field.
+                POLISH-294 a11y wiring (mirror of POLISH-288's fix on
+                the recipient field). Before: the input had
+                aria-describedby="memo-counter" but there was no
+                element with that id in the DOM — the counter lives
+                inside the Field's `meta` slot as a bare span. SRs
+                landed on a dangling reference. Also missing:
+                aria-invalid + error / hint describedby chain.
+                Three fixes:
+                  1. id="send-memo" on the input for stable target.
+                  2. sr-only mirror for the byte counter so the
+                     existing aria-describedby id resolves.
+                  3. error + hint mirror spans (role=alert on error
+                     gives implicit aria-live=assertive).
+                aria-describedby chains all three ids together.
+                aria-invalid reflects over-budget state so the SR
+                announces "invalid entry" before re-reading. */}
             <Field
               label="Memo (optional)"
               error={validation.memo}
@@ -519,12 +536,18 @@ export default function SendPage() {
               }
             >
               <input
+                id="send-memo"
                 type="text"
                 maxLength={128}
                 placeholder="what's this for?"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                aria-describedby="memo-counter"
+                aria-invalid={validation.memo ? true : undefined}
+                aria-describedby={
+                  validation.memo
+                    ? "send-memo-error send-memo-hint send-memo-counter"
+                    : "send-memo-hint send-memo-counter"
+                }
                 className={`w-full rounded-md bg-black/40 border px-3 py-2.5 text-sm text-white focus:outline-none ${
                   memoTone === "over"
                     ? "border-red-400/50 focus:border-red-300/70"
@@ -533,6 +556,18 @@ export default function SendPage() {
                       : "border-white/10 focus:border-violet-300/60"
                 }`}
               />
+              {validation.memo && (
+                <span id="send-memo-error" role="alert" className="sr-only">
+                  {validation.memo}
+                </span>
+              )}
+              <span id="send-memo-hint" className="sr-only">
+                Optional public memo. Max {MAX_MEMO_BYTES} bytes. Stored on the
+                ICRC-3 block, readable by anyone who fetches the transfer.
+              </span>
+              <span id="send-memo-counter" className="sr-only" aria-live="polite">
+                {memoBytes} of {MAX_MEMO_BYTES} bytes used
+              </span>
             </Field>
 
             <div className="flex items-center justify-between pt-2">
