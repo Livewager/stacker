@@ -152,10 +152,19 @@
      bumped duration 520→600ms so the fall has room to breathe.
      Reduced-motion is still handled globally by the
      prefers-reduced-motion / html.lw-reduce-motion clamp. */
+  /* POLISH-325: tone-aware success pulse. The keyframe ring color
+     was hard-coded cyan rgb(34,211,238) which was fine while only
+     the /wallet Buy button (tone=cyan) wired successPulse — but
+     the Button primitive supports 5 tones and any future violet
+     (/send) or rose (/withdraw) caller would fire a cyan ring
+     over its own gradient, visible drift. Read the color from a
+     --lw-pulse-rgb custom property with cyan as the fallback
+     so legacy call sites keep their current look; the Button
+     primitive sets the property per-tone on the element style. */
   @keyframes lw-press-pulse {
-    0%   { box-shadow: 0 0 0 0  rgba(34, 211, 238, 0.45); }
-    20%  { box-shadow: 0 0 0 10px rgba(34, 211, 238, 0.30); }
-    100% { box-shadow: 0 0 0 14px rgba(34, 211, 238, 0); }
+    0%   { box-shadow: 0 0 0 0 rgba(var(--lw-pulse-rgb, 34, 211, 238), 0.45); }
+    20%  { box-shadow: 0 0 0 10px rgba(var(--lw-pulse-rgb, 34, 211, 238), 0.30); }
+    100% { box-shadow: 0 0 0 14px rgba(var(--lw-pulse-rgb, 34, 211, 238), 0); }
   }
   .lw-btn-success {
     animation: lw-press-pulse 600ms ease-out 1;

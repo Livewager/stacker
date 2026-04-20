@@ -16,7 +16,7 @@
  */
 
 import { forwardRef, useEffect, useState } from "react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
 export type ButtonTone = "cyan" | "orange" | "violet" | "rose" | "emerald";
 // variant=danger is the destructive CTA treatment: translucent red
@@ -59,6 +59,20 @@ const TONE_GRADIENTS: Record<ButtonTone, string> = {
   violet: "linear-gradient(90deg,#c4b5fd,#8b5cf6)",
   rose: "linear-gradient(90deg,#fda4af,#f43f5e)",
   emerald: "linear-gradient(90deg,#6ee7b7,#059669)",
+};
+
+// POLISH-325: tone-aware success-pulse ring rgb triples. The
+// @keyframes lw-press-pulse reads these via the --lw-pulse-rgb
+// custom property. Each value is the "hero" stop of the matching
+// gradient (cyan-400, orange-500, violet-500, rose-500, emerald-500)
+// so the ring reads as the tone's own accent rather than a generic
+// cyan halo fired over a colored surface.
+const TONE_PULSE_RGB: Record<ButtonTone, string> = {
+  cyan: "34, 211, 238",
+  orange: "249, 115, 22",
+  violet: "139, 92, 246",
+  rose: "244, 63, 94",
+  emerald: "5, 150, 105",
 };
 
 // Minimums hit the 44px target for primary touch actions at md/lg.
@@ -136,10 +150,17 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
           ? "border border-red-400/40 bg-red-500/10 text-red-200 hover:bg-red-500/20"
           : "text-gray-300 hover:text-white hover:bg-white/5";
 
+  // POLISH-325: set the tone-scoped pulse rgb on every rendering so
+  // `lw-btn-success` reads the right color whether the class arrives
+  // on mount or later. Attach unconditionally (cheap, one CSS var)
+  // so a future non-primary tone-aware pulse callsite doesn't need
+  // branching. Type cast via React.CSSProperties is required because
+  // custom properties aren't in the base type.
+  const toneStyle = { "--lw-pulse-rgb": TONE_PULSE_RGB[tone] } as CSSProperties;
   const bgStyle =
     variant === "primary"
-      ? { background: TONE_GRADIENTS[tone], ...style }
-      : style;
+      ? { background: TONE_GRADIENTS[tone], ...toneStyle, ...style }
+      : { ...toneStyle, ...style };
 
   return (
     <button
