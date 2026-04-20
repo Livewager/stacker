@@ -70,6 +70,9 @@ export default function StackerPage() {
       {/* -------------- WAGER PRIMER -------------- */}
       <WagerPrimer />
 
+      {/* -------------- FAIR PLAY -------------- */}
+      <FairPlay />
+
       {/* -------------- PLAY -------------- */}
       <section
         id="play"
@@ -752,6 +755,273 @@ function WagerPrimer() {
         </div>
       </div>
     </section>
+  );
+}
+
+// =============================================================
+// Fair play — anti-cheat primer
+// =============================================================
+
+function FairPlay() {
+  return (
+    <section className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
+      <div className="mb-6 max-w-xl">
+        <div className="flex items-center gap-2 mb-2">
+          <Pill status="live">human-only</Pill>
+          <span className="text-[10px] uppercase tracking-widest text-gray-500">
+            fair play
+          </span>
+        </div>
+        <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
+          Skill, not scripts.
+        </h2>
+        <p className="text-sm text-gray-400 leading-snug">
+          Prize mode only pays when we&apos;re confident a human tapped. Three
+          layered signals — device motion, tap entropy, and an optional camera
+          liveness check — make bots and macros impractical without ever
+          recording you.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <FairCard
+          idx="01"
+          title="Motion signature"
+          tone="cyan"
+          kicker="accelerometer"
+          body="A real hand holding a phone produces sub-degree micro-tremor. A script replaying taps produces perfectly flat signal. We sample motion during your round and attach a signature to the score claim."
+          visual={<MotionAnim />}
+        />
+        <FairCard
+          idx="02"
+          title="Tap entropy"
+          tone="violet"
+          kicker="timing + position"
+          body="Every tap captures the slider position, frame time, and inter-tap delta. Humans drift. Bots don't. The distribution of deltas over a round is fingerprint-grade — scripted play stands out instantly."
+          visual={<EntropyAnim />}
+        />
+        <FairCard
+          idx="03"
+          title="Liveness (optional)"
+          tone="orange"
+          kicker="camera · opt-in"
+          body="Enable the camera to add a human-presence probe. We run eye and face landmarks on-device (WASM, no upload) and only record that a face was present — never video. Decline it and you can still play ranked with the other two signals."
+          visual={<EyeAnim />}
+        />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-4 flex flex-wrap items-start gap-3 text-[12px] text-emerald-100/90">
+        <span
+          aria-hidden
+          className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+            <path d="M16.707 5.293a1 1 0 0 1 0 1.414l-7.5 7.5a1 1 0 0 1-1.414 0l-3.5-3.5a1 1 0 1 1 1.414-1.414L8.5 12.086l6.793-6.793a1 1 0 0 1 1.414 0Z" />
+          </svg>
+        </span>
+        <div className="min-w-0">
+          <strong className="text-emerald-200 font-semibold">
+            No video leaves your device.
+          </strong>{" "}
+          Liveness uses MediaPipe face landmarks running entirely in your
+          browser. We log only a time-stamped &quot;human present&quot; flag. Motion
+          and tap entropy work without camera at all — liveness is bonus
+          evidence, not a requirement.
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FairCard({
+  idx,
+  title,
+  kicker,
+  body,
+  visual,
+  tone,
+}: {
+  idx: string;
+  title: string;
+  kicker: string;
+  body: string;
+  visual: React.ReactNode;
+  tone: "cyan" | "violet" | "orange";
+}) {
+  const toneText =
+    tone === "cyan"
+      ? "text-cyan-300"
+      : tone === "violet"
+        ? "text-violet-300"
+        : "text-orange-300";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.4 }}
+      className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 overflow-hidden"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-mono tracking-widest text-gray-500">
+          {idx}
+        </span>
+        <span className={`text-[10px] uppercase tracking-widest font-mono ${toneText}`}>
+          {kicker}
+        </span>
+      </div>
+      <div className="relative aspect-[5/3] mb-4 rounded-xl overflow-hidden border border-white/5 bg-black/40">
+        {visual}
+      </div>
+      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
+      <p className="text-sm text-gray-400 leading-snug">{body}</p>
+    </motion.div>
+  );
+}
+
+// ---- Fair-play mini animations ----
+
+function MotionAnim() {
+  const reduced = useReducedMotion();
+  // Two overlaid traces: human (jittery) vs bot (straight line).
+  const humanPath = useMemo(() => {
+    let x = 6;
+    let y = 30;
+    const pts: string[] = [`M ${x} ${y}`];
+    for (let i = 0; i < 40; i++) {
+      x += 2.2;
+      y = 30 + Math.sin(i * 0.6) * 3 + (Math.sin(i * 1.7) * 2) + (i % 5 === 0 ? (Math.random() - 0.5) * 3 : 0);
+      pts.push(`L ${x.toFixed(1)} ${y.toFixed(1)}`);
+    }
+    return pts.join(" ");
+  }, []);
+  return (
+    <svg viewBox="0 0 100 60" className="absolute inset-0 w-full h-full p-3" aria-hidden>
+      {/* Bot: flat line */}
+      <line
+        x1="6"
+        y1="45"
+        x2="94"
+        y2="45"
+        stroke="rgba(239,68,68,0.55)"
+        strokeWidth="1"
+        strokeDasharray="2 2"
+      />
+      <text x="94" y="53" fontSize="4.5" fontFamily="ui-monospace" fill="rgba(239,68,68,0.8)" textAnchor="end">BOT</text>
+
+      {/* Human: jittery trace, drawn progressively */}
+      <motion.path
+        d={humanPath}
+        fill="none"
+        stroke="#22d3ee"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+        initial={{ pathLength: reduced ? 1 : 0 }}
+        animate={{ pathLength: 1 }}
+        transition={reduced ? { duration: 0 } : { duration: 3, repeat: Infinity, repeatType: "loop", ease: "linear" }}
+      />
+      <text x="6" y="17" fontSize="4.5" fontFamily="ui-monospace" fill="rgba(34,211,238,0.9)">HUMAN · tremor</text>
+    </svg>
+  );
+}
+
+function EntropyAnim() {
+  const reduced = useReducedMotion();
+  // Histogram bars — human distribution is wider & noisier, bot is a spike.
+  const humanBars = useMemo(
+    () => [2, 3, 5, 8, 11, 9, 7, 5, 3, 2],
+    [],
+  );
+  return (
+    <svg viewBox="0 0 100 60" className="absolute inset-0 w-full h-full p-3" aria-hidden>
+      {/* Human histogram */}
+      {humanBars.map((h, i) => (
+        <motion.rect
+          key={i}
+          x={6 + i * 7}
+          width={5.5}
+          rx={0.6}
+          fill="rgba(167,139,250,0.7)"
+          initial={{ height: 0, y: 50 }}
+          animate={reduced ? { height: h * 3, y: 50 - h * 3 } : { height: [0, h * 3, h * 3], y: [50, 50 - h * 3, 50 - h * 3] }}
+          transition={reduced ? { duration: 0 } : { duration: 2.4, times: [0, 0.45, 1], delay: i * 0.05, repeat: Infinity, repeatDelay: 1.2 }}
+        />
+      ))}
+
+      {/* Bot spike — a single tall red bar */}
+      <motion.rect
+        x={46}
+        width={5.5}
+        rx={0.6}
+        fill="rgba(239,68,68,0.85)"
+        initial={{ height: 0, y: 50 }}
+        animate={reduced ? { height: 36, y: 14 } : { height: [0, 36, 36], y: [50, 14, 14] }}
+        transition={reduced ? { duration: 0 } : { duration: 2.4, times: [0, 0.55, 1], delay: 0.55, repeat: Infinity, repeatDelay: 1.2 }}
+      />
+
+      <text x="6" y="8" fontSize="4.5" fontFamily="ui-monospace" fill="rgba(167,139,250,0.9)">HUMAN</text>
+      <text x="94" y="8" fontSize="4.5" fontFamily="ui-monospace" fill="rgba(239,68,68,0.9)" textAnchor="end">BOT</text>
+    </svg>
+  );
+}
+
+function EyeAnim() {
+  const reduced = useReducedMotion();
+  return (
+    <svg viewBox="0 0 100 60" className="absolute inset-0 w-full h-full p-3" aria-hidden>
+      {/* Eye outline */}
+      <path
+        d="M 20 30 Q 50 8 80 30 Q 50 52 20 30 Z"
+        fill="rgba(0,0,0,0.4)"
+        stroke="rgba(251,146,60,0.7)"
+        strokeWidth="1.2"
+      />
+      {/* Iris */}
+      <motion.g
+        initial={{ x: 0 }}
+        animate={reduced ? {} : { x: [-6, 6, -4, 5, -6] }}
+        transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <circle cx={50} cy={30} r={9} fill="#f97316" opacity={0.8} />
+        <circle cx={50} cy={30} r={4} fill="#020b18" />
+        <circle cx={52} cy={28} r={1.2} fill="#fff" opacity={0.9} />
+      </motion.g>
+
+      {/* Blink */}
+      {!reduced && (
+        <motion.rect
+          x={18}
+          y={14}
+          width={64}
+          height={32}
+          fill="#020b18"
+          initial={{ scaleY: 0, transformOrigin: "center" }}
+          animate={{ scaleY: [0, 0, 1, 0] }}
+          transition={{ duration: 5, repeat: Infinity, times: [0, 0.82, 0.88, 0.94], ease: "easeInOut" }}
+          style={{ transformOrigin: "50px 30px" }}
+        />
+      )}
+
+      {/* Landmark crosshair ticks to suggest detection */}
+      {[
+        [30, 28],
+        [70, 28],
+        [50, 18],
+        [50, 42],
+      ].map(([cx, cy], i) => (
+        <motion.g
+          key={i}
+          initial={{ opacity: 0 }}
+          animate={reduced ? { opacity: 0.6 } : { opacity: [0, 0.8, 0.4, 0.8, 0] }}
+          transition={{ duration: 4, repeat: Infinity, delay: i * 0.2 }}
+        >
+          <circle cx={cx} cy={cy} r={1.5} fill="#f97316" />
+          <circle cx={cx} cy={cy} r={3} fill="none" stroke="#f97316" strokeOpacity={0.3} strokeWidth={0.5} />
+        </motion.g>
+      ))}
+
+      <text x="6" y="8" fontSize="4.5" fontFamily="ui-monospace" fill="rgba(251,146,60,0.9)">ON-DEVICE · NO UPLOAD</text>
+    </svg>
   );
 }
 
