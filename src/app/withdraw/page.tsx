@@ -644,7 +644,13 @@ function QueuedCard({
   const ss = eta % 60;
 
   return (
-    <div className="rounded-2xl border border-amber-300/30 bg-amber-300/[0.05] p-5 md:p-7 text-center">
+    // POLISH-291 audit: compose → review was already using lw-reveal
+    // (POLISH-95 set the precedent); review → queued was a hard pop
+    // that felt abrupt for a confirmation surface. Added lw-reveal
+    // here so the three stages share the same arrival motion —
+    // fade + 6px translate-up over 220ms with a GPU-composited
+    // transform, reduced-motion-safe via the global clamp.
+    <div className="lw-reveal rounded-2xl border border-amber-300/30 bg-amber-300/[0.05] p-5 md:p-7 text-center">
       <div
         className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/50 bg-amber-300/10 text-amber-300"
         aria-hidden
