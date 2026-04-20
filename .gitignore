@@ -10,3 +10,7 @@ target
 
 # Unrelated sibling project
 FDC-PRESENTATION/
+
+# Local env files (contain secrets)
+.env.local
+.env*.local
