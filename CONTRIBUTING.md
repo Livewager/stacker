@@ -216,6 +216,40 @@ encode real tiers. Before "consolidating" one of these, check here:
   treatment, distinct from `tone="rose"` (gradient-fill rose CTA
   like /withdraw "Send"). Don't merge them; they read as different
   affordances (POLISH-253).
+- **Primary text = `text-white`** — the top of the text-color
+  ladder. Headings (`h1`/`h2`/`h3`), row labels inside Toggle-shaped
+  settings/config rows, balance values, leaderboard handles, CTA
+  text — all `text-white`. 270+ hits; the Toggle primitive's
+  internal label is `text-sm font-semibold text-white`, and any
+  hand-rolled settings row should match (audited POLISH-355).
+  Don't use `text-gray-100` — it's almost identical to white but
+  reads visibly dimmer next to the Toggle rows on the same surface;
+  two strays got caught in the POLISH-355 sweep and were
+  normalized.
+- **`text-gray-200` has three legitimate roles — not a primary-text
+  alias** (audited POLISH-355). Reach for it only when you're in
+  one of these:
+  1. **Ghost-button rest state** — `border-white/15 text-gray-200
+     hover:text-white`. The "gray-at-rest, white-on-hover" is a
+     deliberate affordance cue; gray-200 is chosen because it's
+     dim enough to read as "not the primary CTA" but bright enough
+     to stay legible on dark surfaces. The majority of the ~44
+     hits are this pattern.
+  2. **Mono / code / kbd text on `bg-black/40` wells** — pure
+     `text-white` at 10–11px on a pure-black well is too harsh;
+     gray-200 softens it while preserving legibility. See the kbd
+     pills in CommandPalette and the address-copy code blocks in
+     LtcDepositPanel.
+  3. **Panel-prose on saturated marketing surfaces** — GamesHub
+     card descriptions, /dunk quote blockquote, /stacker tier
+     body. These sit on gradient or tinted backgrounds where
+     `text-gray-300` (the standard prose rung) would wash out.
+     Use judiciously; if you're on the default `bg-background` or
+     a neutral card, reach for `text-gray-300` instead.
+  Rule of thumb: if the text is on a plain card and you're
+  reaching for gray-200 to "soften" it, the right answer is
+  probably gray-300. gray-200 is elevated-prose-only or
+  affordance-only.
 - **`text-gray-300/400/500/600`** — a 4-rung secondary-text ramp, not
   drift (audited POLISH-277). Picks by role and usual font size:
   - `text-gray-300` (~80 hits) — primary explanatory copy that's

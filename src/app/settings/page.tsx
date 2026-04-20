@@ -280,7 +280,7 @@ export default function SettingsPage() {
                     adjacent rows in the same Section look tuned. */}
             <div className="flex items-start justify-between gap-4 py-1">
               <div className="min-w-0 flex-1">
-                <div className="text-sm text-gray-100">Replay onboarding tip</div>
+                <div className="text-sm font-semibold text-white">Replay onboarding tip</div>
                 <div className="text-[11px] text-gray-500 leading-snug mt-0.5">
                   Re-shows the first-visit tip bar on the next route.
                   Useful for demos or if you dismissed it accidentally.
