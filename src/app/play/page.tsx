@@ -151,6 +151,18 @@ export default function PlayHubPage() {
   // a "Start here" callout on the Stacker card (demo-friendly first
   // choice — no motion permissions required) and a one-line header
   // banner above the grid. Hidden as soon as either game gets played.
+  //
+  // POLISH-334 audit-closed 2026-04-20. Ticket hypothesized
+  // first-visit users see "Best: 0" or "Best: —" on every card, making
+  // the hub uninviting. That's not what happens — the Best chip below
+  // is gated on `best !== null && best !== undefined` so brand-new
+  // users see no score chip at all (cleaner than a placeholder).
+  // Combined with (a) the firstVisit banner above the grid, (b) the
+  // cyan accent on Stacker's card via `suggested`, and (c) the
+  // "First time? Try Stacker" CTA, the empty state is already doing
+  // the "First round on the house" framing the ticket proposed.
+  // Don't fall back to rendering "Best: 0" — the chip-absent state is
+  // the feature, not a gap.
   const firstVisit =
     prefsLoaded && GAMES.every((g) => !g.lastPlayedKey || !lastPlayed[g.lastPlayedKey]);
   const suggestedHref = "/stacker";
