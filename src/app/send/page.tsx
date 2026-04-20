@@ -69,6 +69,31 @@ export default function SendPage() {
   const searchParams = useSearchParams();
   const initialTo = searchParams?.get("to") ?? "";
   const [to, setTo] = useState(initialTo);
+  // POLISH-372 — screen readers land on /send?to=<principal> with the
+  // recipient field silently prefilled and no signal that the chip/tip
+  // link did so. The visible "From / Balance" chip + recipient field
+  // reading are still the same — nothing in the a11y tree announces
+  // "this came from a link." Fire a one-shot polite announcement on
+  // mount when initialTo is non-empty, then null the node out so the
+  // same string can't re-announce on a later re-render. Gate on
+  // initialTo (the URL read), not `to` — so typing into a blank field
+  // doesn't trigger this path, and so the announcement reflects what
+  // the user actually arrived with (the decoded principal). Kept
+  // terse ("Recipient pre-filled from link.") because verbose live-
+  // region text under VoiceOver interrupts the user's flow.
+  const [prefillAnnouncement, setPrefillAnnouncement] = useState<string>(
+    () => (initialTo ? "Recipient pre-filled from link." : ""),
+  );
+  useEffect(() => {
+    if (!prefillAnnouncement) return;
+    // Let the polite region fire, then clear so a future re-render
+    // with the same string doesn't double-announce. 3s is long
+    // enough for VoiceOver / NVDA to queue + speak the string even
+    // on slower machines; the region is sr-only so clearing it is
+    // invisible to sighted users.
+    const id = window.setTimeout(() => setPrefillAnnouncement(""), 3000);
+    return () => window.clearTimeout(id);
+  }, [prefillAnnouncement]);
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [stage, setStage] = useState<Stage>("compose");
@@ -265,6 +290,21 @@ export default function SendPage() {
   return (
     <>
       <AppHeader />
+      {/* POLISH-372 — one-shot polite live region for deep-link
+          prefill. Empty string when there's nothing to announce so
+          the region exists across renders (screen readers subscribe
+          to it at mount) but doesn't fire. aria-atomic="true" so
+          the whole sentence is read as one utterance instead of
+          word-by-word diffing. Not wrapped in role="status" — the
+          implicit role from aria-live="polite" is sufficient and
+          avoids a double-announce under some AT configurations. */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {prefillAnnouncement}
+      </div>
       <div className="mx-auto max-w-3xl px-4 md:px-8 py-8 md:py-12">
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
