@@ -389,6 +389,12 @@ function CandidUiLink() {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        // target=_blank isn't announced by SR as "opens in a new
+        // tab" on its own. Explicit aria-label phrases the full
+        // intent so VoiceOver / NVDA warn the user before they
+        // activate. Visual text stays short; the arrow icon is
+        // decorative (aria-hidden).
+        aria-label="Open ledger in Candid UI — opens in a new tab"
         className="inline-flex items-center gap-1.5 text-sm text-cyan-300 hover:text-cyan-200 transition underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 rounded-sm"
       >
         Open in Candid UI
