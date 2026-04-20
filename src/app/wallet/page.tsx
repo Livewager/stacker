@@ -100,12 +100,13 @@ export default function WalletPage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs uppercase tracking-widest text-cyan-300">Wallet</span>
-              <span
-                className="inline-flex items-center rounded-full border border-cyan-300/30 bg-cyan-300/[0.06] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-cyan-200"
+              <Pill
+                status="demo"
+                className="font-mono text-[9px]"
                 title="Local ICRC-1 ledger — no real money moves"
               >
                 demo
-              </span>
+              </Pill>
               {/* Pending tx pill: any balance-changing status (buy,
                   deposit, send, withdraw) surfaces as a small amber
                   chip next to the eyebrow. Tells the user their

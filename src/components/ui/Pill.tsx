@@ -56,12 +56,25 @@ type Props = {
   status?: PillStatus;
   children: ReactNode;
   className?: string;
+  /** Native tooltip — matches the `<span title>` the inline variants used. */
+  title?: string;
+  /** Optional a11y override for pills where the visual text is a glyph or
+   *  shorthand that doesn't speak well (e.g. "×3" streak badges). */
+  "aria-label"?: string;
 };
 
-export function Pill({ status = "neutral", children, className = "" }: Props) {
+export function Pill({
+  status = "neutral",
+  children,
+  className = "",
+  title,
+  "aria-label": ariaLabel,
+}: Props) {
   const s = STYLES[status];
   return (
     <span
+      title={title}
+      aria-label={ariaLabel}
       className={[
         "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-widest font-semibold",
         s.bg,

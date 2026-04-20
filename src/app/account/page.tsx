@@ -10,6 +10,7 @@ import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { useCopyable } from "@/lib/clipboard";
 import { PrincipalQR } from "@/components/account/PrincipalQR";
 import { BalanceSparkline } from "@/components/account/BalanceSparkline";
+import { Pill } from "@/components/ui/Pill";
 import { shortenPrincipal } from "@/lib/principal";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { listRecentRecipients, type RecentRecipient } from "@/lib/recentRecipients";
@@ -64,12 +65,13 @@ export default function AccountPage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs uppercase tracking-widest text-cyan-300">Account</span>
-            <span
-              className="inline-flex items-center rounded-full border border-cyan-300/30 bg-cyan-300/[0.06] px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest text-cyan-200"
+            <Pill
+              status="demo"
+              className="font-mono text-[9px]"
               title="Local ICRC-1 ledger — no real money moves"
             >
               demo
-            </span>
+            </Pill>
           </div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">Your profile</h1>
           <p className="text-sm text-gray-400 mt-1 max-w-xl">
