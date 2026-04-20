@@ -368,15 +368,41 @@ export function ToastHost({ children }: { children: ReactNode }) {
             +{hiddenCount} more · clear all
           </button>
         )}
-        {visible.map((t) => (
-          <ToastCard
-            key={t.id}
-            t={t}
-            onDismiss={() => dismiss(t.id)}
-            onPause={() => pause(t.id)}
-            onResume={() => resume(t.id)}
-          />
-        ))}
+        {visible.map((t, i) => {
+          // Stack-depth cue: the newest toast (last in array) renders
+          // flat; each older one above it gets a subtle scale-down
+          // and a small translateY to peek from behind. Gives the
+          // "pile" a depth read without stealing room from the text.
+          // Capped at 3 steps of recession so a five-deep stack
+          // doesn't vanish. Newest-first visual order: reverse-index
+          // from the end of the array.
+          const fromNewest = visible.length - 1 - i;
+          const steps = Math.min(fromNewest, 3);
+          const scale = 1 - steps * 0.03;
+          const translateY = steps * 4;
+          const depthStyle =
+            steps === 0
+              ? undefined
+              : {
+                  transform: `translateY(${translateY}px) scale(${scale})`,
+                  transformOrigin: "center top",
+                  opacity: 1 - steps * 0.07,
+                };
+          return (
+            <div
+              key={t.id}
+              className="transition-[transform,opacity] duration-200 ease-out"
+              style={depthStyle}
+            >
+              <ToastCard
+                t={t}
+                onDismiss={() => dismiss(t.id)}
+                onPause={() => pause(t.id)}
+                onResume={() => resume(t.id)}
+              />
+            </div>
+          );
+        })}
       </div>
     </ToastCtx.Provider>
   );
