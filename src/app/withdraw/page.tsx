@@ -376,6 +376,7 @@ function ReviewCard({
   onConfirm: () => void;
 }) {
   const confirmRef = useRef<HTMLButtonElement | null>(null);
+  const prevBusyRef = useRef(busy);
   // Match /send's review polish: snap focus to the primary action on
   // mount so Enter confirms and SR users get the card announced.
   // preventScroll avoids jumping the page mid lw-reveal entrance.
@@ -385,6 +386,22 @@ function ReviewCard({
     });
     return () => cancelAnimationFrame(id);
   }, []);
+  // Retry-path focus audit: when the burn call resolves (busy true →
+  // false) WITH an error, re-snap focus to Confirm so the user can
+  // press Enter to retry without grabbing the mouse. Without this,
+  // some browsers drop focus during the loading transition and the
+  // keyboard user has to Tab back to the button. role="alert" on
+  // the error block covers SR announcement independently.
+  useEffect(() => {
+    const wasBusy = prevBusyRef.current;
+    prevBusyRef.current = busy;
+    if (wasBusy && !busy && error) {
+      const id = requestAnimationFrame(() => {
+        confirmRef.current?.focus({ preventScroll: true });
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [busy, error]);
   return (
     <div className="lw-reveal rounded-2xl border border-rose-300/30 bg-rose-300/[0.04] p-5 md:p-7 space-y-5">
       <div>
@@ -417,7 +434,11 @@ function ReviewCard({
       </dl>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300"
+        >
           {error}
         </div>
       )}
