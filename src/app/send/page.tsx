@@ -411,11 +411,31 @@ export default function SendPage() {
                 use so the form stays clean; appears as tappable chips
                 once history exists. Click pastes, "×" forgets. */}
             {recents.length > 0 && (
-              <div className="-mt-3" aria-label="Recent recipients">
-                <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1.5">
+              // POLISH-312 — a11y audit: ticket framed this as a
+              // "listbox" but the premise was wrong. A listbox implies
+              // single-selection + arrow-key nav + aria-activedescendant,
+              // and this is a toolbar of paired actions (use + forget)
+              // per row, not option entries. Applied the right
+              // pattern instead: role="toolbar" landmark (matches the
+              // W3C toolbar pattern POLISH-252 used on /wallet's quick-
+              // action rail), eyebrow promoted to aria-labelledby so
+              // the group name is announced, and each use-button gets
+              // a descriptive aria-label ("Fill recipient: principal
+              // ending xxxxxxxxxx") instead of the raw truncated string
+              // — AT reads the visible chip text character-by-character
+              // which is unparseable as speech.
+              <div className="-mt-3">
+                <div
+                  id="send-recents-label"
+                  className="text-[10px] uppercase tracking-widest text-gray-500 mb-1.5"
+                >
                   Recent
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div
+                  role="toolbar"
+                  aria-labelledby="send-recents-label"
+                  className="flex flex-wrap gap-1.5"
+                >
                   {recents.map((r) => (
                     <div
                       key={r.principal}
@@ -436,8 +456,9 @@ export default function SendPage() {
                         }}
                         className="px-3 py-1 text-[11px] font-mono text-gray-200 hover:text-white transition focus:outline-none focus-visible:text-white"
                         title={`Use ${r.principal}`}
+                        aria-label={`Fill recipient: principal ending ${r.principal.slice(-10)}`}
                       >
-                        {short(r.principal, 6, 4)}
+                        <span aria-hidden>{short(r.principal, 6, 4)}</span>
                       </button>
                       <button
                         type="button"
@@ -467,7 +488,7 @@ export default function SendPage() {
                           });
                         }}
                         className="px-2 py-1 text-gray-500 hover:text-red-300 transition focus:outline-none focus-visible:text-red-300"
-                        aria-label={`Forget recipient ${r.principal}`}
+                        aria-label={`Forget recipient ending ${r.principal.slice(-10)}`}
                       >
                         <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
                           <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
