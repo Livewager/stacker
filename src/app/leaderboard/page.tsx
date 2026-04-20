@@ -21,10 +21,36 @@ export default function LeaderboardPage() {
   const [now, setNow] = useState<number>(() => Date.now());
   const myHandle = getPlayerHandle();
 
-  // Tick the clock once a second so the hour countdown is live.
+  // Tick the clock once a second so both the hour countdown AND the
+  // "Xs ago / Xm ago / Xh ago" timestamps on every row stay live
+  // without a full refetch. Two polish guards:
+  //   - Pause the interval when the tab is hidden (saves battery for
+  //     users who pin /leaderboard and switch away). On return, snap
+  //     `now` forward so timestamps don't stall at the hidden-ago.
+  //   - Single interval at page root — rows read `now` via closure,
+  //     not per-row setInterval.
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
+    let id: number | null = null;
+    const start = () => {
+      if (id !== null) return;
+      setNow(Date.now());
+      id = window.setInterval(() => setNow(Date.now()), 1000);
+    };
+    const stop = () => {
+      if (id === null) return;
+      window.clearInterval(id);
+      id = null;
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") stop();
+      else start();
+    };
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   // Full hour board from the shared util, then derive per-game slices
@@ -737,8 +763,16 @@ function BestRow({
 // Helpers
 // ----------------------------------------------------------------
 
-function relTime(ts: number): string {
-  const diff = Date.now() - ts;
+/**
+ * "Xs ago / Xm ago / Xh ago" formatter. Takes an explicit `now`
+ * anchor so all timestamps in one render share a single clock — no
+ * visual drift between neighbouring rows — and so the caller can
+ * drive re-renders via its state without relTime reaching for a
+ * fresh Date.now() on every call. Defaults to Date.now() for
+ * legacy call sites.
+ */
+function relTime(ts: number, now: number = Date.now()): string {
+  const diff = now - ts;
   const s = Math.max(0, Math.floor(diff / 1000));
   if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
