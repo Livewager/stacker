@@ -128,18 +128,27 @@ export function Livestream() {
       aria-label="DUNK livestream (demo placeholder)"
       className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12"
     >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-rose-300 mb-1">
+      {/* POLISH-379 — pin the header to Shape 1 from CONTRIBUTING
+          (POLISH-343): flat text eyebrow + inline <Pill size="xs"
+          mono>demo</Pill> as a sibling span. Originally shipped the
+          Pill top-right via justify-between which was Pattern B
+          (tile-right, used inside cards like /wallet Mint tile) and
+          drifted from how /send and /withdraw render their section
+          headers. Now matches the money-flow shape verbatim — one
+          placement pattern for section-level eyebrows across
+          demo-labeled surfaces. */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] uppercase tracking-widest text-rose-300">
             Live now · DUNK
-          </div>
-          <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-            Watch a round in progress
-          </h2>
+          </span>
+          <Pill status="demo" size="xs" mono title="No real stream — placeholder">
+            demo
+          </Pill>
         </div>
-        <Pill status="demo" size="xs" mono title="No real stream — placeholder">
-          demo
-        </Pill>
+        <h2 className="text-2xl md:text-3xl font-black tracking-tight">
+          Watch a round in progress
+        </h2>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1.6fr_1fr]">
