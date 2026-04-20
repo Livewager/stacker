@@ -235,14 +235,25 @@ function ArrivingMethod({
             Zapier webhook is wired via DUNK_WAITLIST_WEBHOOK. On
             "done" the input + button lock so the user sees the
             decision stuck, and the copy swaps to a confirmation. */}
-        <form onSubmit={submit} className="mt-5 flex items-stretch gap-2 max-w-sm">
-          {/* h-11 to match Button's default (md) size — flex
-              items-stretch would otherwise auto-stretch the input to
-              the button's 44px height while its padding + text-size
-              were calibrated for ~36px, leaving the cursor and
-              placeholder drifting above the visual center of the
-              field. POLISH-283 audit pairs inputs + buttons at the
-              same explicit height rather than relying on stretch. */}
+        {/* Stacked column on mobile, side-by-side from sm: up.
+            POLISH-302 audit: inline row fits on 320px but feels
+            squeezed when the button hits its longest state
+            ("On the list" ≈ 100px, email gets ~170px after gap,
+            about 28 chars of placeholder visible — technically
+            usable but tight). Column layout on mobile gives the
+            email its full natural width and the button a
+            comfortable thumb-target. sm:flex-row restores the
+            inline pairing for desktop where the row fits with
+            room to breathe.
+            h-11 on the input still pins height consistency with
+            the Button's md size (POLISH-283 — items-stretch
+            would otherwise drift internal metrics). fullWidth on
+            the Button for the stacked state; sm:w-auto restores
+            content-sized for desktop. */}
+        <form
+          onSubmit={submit}
+          className="mt-5 flex flex-col sm:flex-row sm:items-stretch gap-2 max-w-sm"
+        >
           <input
             type="email"
             required
@@ -258,6 +269,7 @@ function ArrivingMethod({
             type="submit"
             tone={btnTone}
             disabled={status === "sending" || status === "done"}
+            className="w-full sm:w-auto"
           >
             {status === "done"
               ? "On the list"
