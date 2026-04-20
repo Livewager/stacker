@@ -815,11 +815,31 @@ function ReviewCard({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3">
-        <Button onClick={onBack} disabled={busy} variant="ghost" size="sm">
+      {/* Mirror of POLISH-284 on /withdraw. Stacked on mobile with
+          Confirm painted on top (primary-action-first per
+          iOS/Android convention), sm:flex-row restores the
+          desktop single-line layout. flex-col-reverse preserves
+          the logical tab order (Edit first → Confirm second) while
+          flipping the visual paint order — Edit is the escape
+          hatch beneath, Confirm is eye-level first. Both w-full
+          on mobile for maximum thumb-target. */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+        <Button
+          onClick={onBack}
+          disabled={busy}
+          variant="ghost"
+          size="sm"
+          className="sm:w-auto w-full"
+        >
           ← Edit
         </Button>
-        <Button ref={confirmRef} onClick={onConfirm} loading={busy} tone="violet">
+        <Button
+          ref={confirmRef}
+          onClick={onConfirm}
+          loading={busy}
+          tone="violet"
+          className="sm:w-auto w-full"
+        >
           {busy ? "Signing…" : "Confirm & send"}
         </Button>
       </div>
