@@ -152,7 +152,22 @@ function StepDot({
 
 /** Thin cyan arc that sweeps from top (12 o'clock) clockwise in
  *  proportion to `ratio`. Pure SVG; no motion lib; composites on
- *  the GPU. Radius is sized to match the dot's 28px box. */
+ *  the GPU. Radius is sized to match the dot's 28px box.
+ *
+ *  Reduced-motion:
+ *   - The global CSS pipeline (style.css: media prefers-reduced-motion
+ *     AND html.lw-reduce-motion) already clamps transition-duration
+ *     to 0.001ms, so the stroke sweep effectively snaps. Each
+ *     demo-ticker bump of `ratio` still lands on the correct frame —
+ *     just without the 400ms ease-out.
+ *   - animate-pulse on the non-ratio active-dot path is also
+ *     explicitly disabled (opacity:1) by the same pipeline.
+ *   - The 500ms transition on the connector <div> in the parent is
+ *     covered by the same global rule.
+ *   Audited 2026-04-20 — no local motion-safe guard needed. The
+ *   inline `transition` style below is still honoured by non-reduce
+ *   clients because the global rules target duration, not the
+ *   property; terminal frames are always correct. */
 function ProgressArc({ ratio }: { ratio: number }) {
   const r = 9;
   const c = 2 * Math.PI * r;
