@@ -114,7 +114,12 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
   useEffect(() => {
     if (successPulse > 0) {
       setPulseVer((v) => v + 1);
-      const t = window.setTimeout(() => setPulseVer((v) => v + 1), 560);
+      // Matches the CSS animation duration in style.css (.lw-btn-
+      // success = lw-press-pulse 600ms) + a 20ms buffer so the
+      // class removal never clips the final transparent frame of
+      // the ring. Keep these two numbers in sync — POLISH-261
+      // tuned the decay curve and bumped duration 520→600ms.
+      const t = window.setTimeout(() => setPulseVer((v) => v + 1), 620);
       return () => window.clearTimeout(t);
     }
   }, [successPulse]);
