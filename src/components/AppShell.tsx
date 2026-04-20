@@ -22,7 +22,7 @@
  * route during POLISH-54.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -79,6 +79,112 @@ function GlobalEscBackHandler() {
 }
 
 /**
+ * Thin cyan progress strip at the very top of the viewport. Next's
+ * App Router navigates via RSC streaming and doesn't ship a browser-
+ * style loading indicator, so long dynamic imports or cold routes
+ * feel dead from click → render. This bar:
+ *
+ *   1. Starts on any same-origin anchor click (bubbling, capture
+ *      phase to beat the route change itself).
+ *   2. Crawls toward 90% via rAF while the navigation settles.
+ *   3. Snaps to 100% + fades out once the pathname actually changes.
+ *
+ * Not a real progress estimate — just a motion affordance that says
+ * "something's happening." Respects reduced motion via the CSS
+ * pipeline (transition clamp applied globally).
+ */
+function RouteTransitionBar() {
+  const pathname = usePathname() || "";
+  const [progress, setProgress] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const rafRef = useRef(0);
+  const startedRef = useRef(0);
+  const lastPathRef = useRef(pathname);
+
+  // Kick off the crawl when a link is clicked. Uses a single
+  // document-level listener so we don't have to touch every Link.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      // Only left-click with no modifiers — cmd-click opens a new
+      // tab and shouldn't show a progress indicator in *this* tab.
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      const a = (e.target as HTMLElement | null)?.closest("a");
+      if (!a) return;
+      const href = a.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+        return;
+      }
+      if (a.target && a.target !== "_self") return;
+      // Resolve to check same-origin; external links get the
+      // browser's own spinner.
+      try {
+        const url = new URL(href, window.location.href);
+        if (url.origin !== window.location.origin) return;
+        if (url.pathname === window.location.pathname && url.search === window.location.search) {
+          return; // in-page anchor navigation, no route change
+        }
+      } catch {
+        return;
+      }
+      setVisible(true);
+      setProgress(8);
+      startedRef.current = performance.now();
+      cancelAnimationFrame(rafRef.current);
+      const tick = () => {
+        const elapsed = performance.now() - startedRef.current;
+        // Asymptotic crawl: fast early, slows approaching 90%.
+        const target = 90;
+        const t = Math.min(1, elapsed / 1200);
+        const eased = target * (1 - Math.pow(1 - t, 2));
+        setProgress((p) => Math.max(p, eased));
+        if (eased < target - 0.5) rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // Path change = destination settled. Snap to 100 + fade.
+  useEffect(() => {
+    if (pathname === lastPathRef.current) return;
+    lastPathRef.current = pathname;
+    if (!visible) return;
+    cancelAnimationFrame(rafRef.current);
+    setProgress(100);
+    const hideT = window.setTimeout(() => {
+      setVisible(false);
+      // Reset to 0 after fade so the next nav starts fresh.
+      window.setTimeout(() => setProgress(0), 200);
+    }, 180);
+    return () => window.clearTimeout(hideT);
+  }, [pathname, visible]);
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none fixed top-0 left-0 right-0 z-[1000] h-[2px]"
+      style={{ opacity: visible ? 1 : 0, transition: "opacity 180ms ease-out" }}
+    >
+      <div
+        className="h-full origin-left"
+        style={{
+          background: "linear-gradient(90deg,#22d3ee,#0891b2)",
+          transform: `scaleX(${progress / 100})`,
+          transition: "transform 160ms ease-out",
+          width: "100%",
+        }}
+      />
+    </div>
+  );
+}
+
+/**
  * Mirrors the in-app `reducedMotion` pref onto <html>.lw-reduce-motion
  * so CSS rules can kill animation uniformly — including server-rendered
  * skeleton shimmer that has no client hook. The OS prefers-reduced-motion
@@ -102,6 +208,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <WalletProvider>
         <ReducedMotionBridge />
         <GlobalEscBackHandler />
+        <RouteTransitionBar />
         {/* Paired skip-links. DOM order matters: "main content" is
             the first Tab stop (matches tab-order invariant in the
             file header), "games" is second. Both use the shared
