@@ -740,16 +740,26 @@ function HallOfFame() {
           <div className="mt-1 text-[11px] text-gray-400 leading-snug">{cur.note}</div>
         </div>
       </div>
+      {/* POLISH-350 — visible dots stay slim (h-1.5) for the
+          progress-bar read, but the button expands to h-6 with
+          a transparent bg so the tap target clears the 44px-tall
+          minimum once the finger lands on the row. Inner span
+          carries the visible color; button wraps it centered. */}
       <div className="mt-4 flex gap-1.5">
         {LEGENDS.map((_, i) => (
           <button
             key={i}
             onClick={() => setIdx(i)}
             aria-label={`Show legend ${i + 1}`}
-            className={`h-1.5 flex-1 rounded-full transition ${
-              i === idx ? "bg-yellow-300" : "bg-white/15 hover:bg-white/25"
-            }`}
-          />
+            className="flex-1 h-6 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60 rounded-sm"
+          >
+            <span
+              aria-hidden
+              className={`block h-1.5 w-full rounded-full transition ${
+                i === idx ? "bg-yellow-300" : "bg-white/15 hover:bg-white/25"
+              }`}
+            />
+          </button>
         ))}
       </div>
       {/* Scoped keyframes. Scoped via data-attr so no global bleed. */}
