@@ -24,6 +24,7 @@ import { sfx, unlockAudio } from "@/lib/audio";
 import { haptics } from "@/lib/haptics";
 import { createRound, type Round, type RoundTranscript } from "@/lib/anticheat/tapEntropy";
 import { createRng, randomSeed, type SeededRng } from "@/lib/anticheat/rng";
+import { useCopyable } from "@/lib/clipboard";
 
 // ------------------------------------------------------------------
 // Configuration
@@ -180,6 +181,7 @@ export default function StackerGame({
   const rngRef = useRef<SeededRng | null>(null);
   const [lastTranscript, setLastTranscript] = useState<RoundTranscript | null>(null);
   const [lastSeed, setLastSeed] = useState<number | null>(null);
+  const copy = useCopyable();
 
   // Restore best score once on mount.
   useEffect(() => {
@@ -874,6 +876,37 @@ export default function StackerGame({
                   {lastSeed !== null && (
                     <div className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">
                       Seed · {lastSeed.toString(16).padStart(8, "0")}
+                    </div>
+                  )}
+
+                  {lastSeed !== null && (
+                    <div className="pt-2 flex justify-center pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          // Don't let the tap bubble into the canvas
+                          // handler (which would restart the round).
+                          e.stopPropagation();
+                          const seedHex = lastSeed
+                            .toString(16)
+                            .padStart(8, "0");
+                          const score = hudState.score;
+                          const taps = lastTranscript.stats.count;
+                          const mean = Math.round(lastTranscript.stats.meanDt);
+                          const outcome = hudState.phase === "won" ? "WON" : "OVER";
+                          // Compact single-line payload — good for
+                          // chat, short enough for Twitter, and easy
+                          // to re-parse into a deterministic replay
+                          // once ANTICHEAT-T1 ships.
+                          const line = `Stacker · ${outcome} · score ${score} · row ${hudState.level}/${GRID_ROWS} · seed 0x${seedHex} · ${taps} taps · μΔt ${mean}ms · livewager.io/stacker`;
+                          copy(line, { label: "Run" });
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                        aria-label="Copy run details"
+                      >
+                        Copy run
+                      </button>
                     </div>
                   )}
                 </div>
