@@ -93,6 +93,16 @@ export function WalletNav() {
     );
   }
 
+  // Mid-flight transitions shift the pill tone to amber + swap the
+  // glyph for a pulsing dot. Matches the pending chip on /wallet so
+  // the "balance is about to change" cue lives in the header too —
+  // important because users might be on any route when a tx lands.
+  const pending =
+    status === "buying" ||
+    status === "depositing" ||
+    status === "sending" ||
+    status === "withdrawing";
+
   return (
     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
       {/* Balance pill. On small screens we drop the "LWP" label and
@@ -101,10 +111,21 @@ export function WalletNav() {
           phrased announcement so a screen reader never gets a stray
           "◎" or responsive-swap double-read. */}
       <div
-        className="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] text-xs md:text-sm font-mono tabular-nums min-w-0"
+        className={`flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-full border text-xs md:text-sm font-mono tabular-nums min-w-0 transition-colors ${
+          pending
+            ? "border-amber-400/50 bg-amber-400/[0.08]"
+            : "border-cyan-300/40 bg-cyan-300/[0.08]"
+        }`}
         aria-hidden
       >
-        <span className="text-cyan-300">◎</span>
+        {pending ? (
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse"
+            title="Transaction in flight"
+          />
+        ) : (
+          <span className="text-cyan-300">◎</span>
+        )}
         <span className="text-white truncate max-w-[96px] md:max-w-none">
           <span className="md:hidden">
             {balance !== null ? formatLWP(balance, 2) : "—"}
@@ -118,9 +139,11 @@ export function WalletNav() {
         </span>
       </div>
       <span className="sr-only" aria-live="polite">
-        {balance !== null
-          ? `Balance ${formatLWP(balance, 4)} LWP`
-          : "Balance unavailable"}
+        {pending
+          ? `${status} in progress, balance ${balance !== null ? formatLWP(balance, 4) + " LWP" : "unavailable"}`
+          : balance !== null
+            ? `Balance ${formatLWP(balance, 4)} LWP`
+            : "Balance unavailable"}
       </span>
       {/* Deposit CTA — scrolls to the wallet card. */}
       <a
