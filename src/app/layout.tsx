@@ -96,8 +96,12 @@ export const viewport: Viewport = {
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // NOTE: maximumScale + userScalable were previously 1/false to keep
+  // the "app-like" feel on iOS. That's a WCAG 2.0 AA violation (1.4.4
+  // Resize text — users with low vision need pinch-to-zoom). Dropped.
+  // The Stacker canvas game is the only surface where zoom would be
+  // awkward, and its touch-action: manipulation handler already
+  // prevents gesture conflicts with double-tap-zoom.
   viewportFit: "cover",
 };
 
