@@ -292,15 +292,45 @@ export default function SettingsPage() {
               role="radiogroup"
               aria-label="Session cap preset"
               className="flex flex-wrap gap-2"
+              onKeyDown={(e) => {
+                // Arrow-key navigation per the WAI-ARIA radio-group
+                // pattern: ←/↑ prev, →/↓ next, Home/End to ends.
+                // Wraps around. Only the currently-checked radio is a
+                // Tab stop (tabIndex below); arrows move between the
+                // rest. Matches native radio semantics screen readers
+                // already announce this way.
+                const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+                if (!keys.includes(e.key)) return;
+                e.preventDefault();
+                const i = CAP_PRESETS.findIndex((p) => p.value === sessionCapUsd);
+                let next = i < 0 ? 0 : i;
+                if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (i + 1) % CAP_PRESETS.length;
+                if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (i - 1 + CAP_PRESETS.length) % CAP_PRESETS.length;
+                if (e.key === "Home") next = 0;
+                if (e.key === "End") next = CAP_PRESETS.length - 1;
+                const picked = CAP_PRESETS[next];
+                setCap(picked.value);
+                // Shift focus to the newly-active chip so the SR
+                // announces the change and the visible ring follows.
+                const container = e.currentTarget as HTMLElement;
+                const btn = container.children[next] as HTMLButtonElement | undefined;
+                btn?.focus?.();
+              }}
             >
-              {CAP_PRESETS.map((p) => {
+              {CAP_PRESETS.map((p, i) => {
                 const active = sessionCapUsd === p.value;
+                const anyActive = CAP_PRESETS.some((x) => x.value === sessionCapUsd);
+                // If no preset matches (custom cap active), fall back
+                // to making the first chip the Tab-reachable one so
+                // keyboard users don't get skipped over the whole group.
+                const tabStop = active || (!anyActive && i === 0);
                 return (
                   <button
                     key={p.label}
                     type="button"
                     role="radio"
                     aria-checked={active}
+                    tabIndex={tabStop ? 0 : -1}
                     onClick={() => setCap(p.value)}
                     className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
                       active
@@ -338,7 +368,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={commitCustom}
-                  className="rounded-md border border-white/15 px-2 py-1 text-[10px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition"
+                  className="rounded-md border border-white/15 px-2 py-1 text-[10px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
                 >
                   Set
                 </button>
