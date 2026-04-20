@@ -124,6 +124,9 @@ export const PREF_KEYS = {
 
   // Auth session metadata (not user-settable; written by WalletContext)
   lastAuthAt: "lastAuthAt", // epoch ms of last II login | null
+
+  // Discovery nudges
+  hasOpenedPalette: "hasOpenedPalette", // boolean — once true, ⌘K hint hides
 } as const;
 
 export type PrefKey = (typeof PREF_KEYS)[keyof typeof PREF_KEYS];

@@ -20,6 +20,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ROUTES } from "@/lib/routes";
 import { useWalletState } from "@/components/dunk/WalletContext";
+import { writeRaw, PREF_KEYS } from "@/lib/prefs";
+
+/**
+ * Global event name other components can dispatch to open the palette
+ * without importing the component (keeps the import graph clean).
+ * Example: window.dispatchEvent(new Event(OPEN_PALETTE_EVENT)).
+ */
+export const OPEN_PALETTE_EVENT = "lw:open-palette";
 
 /**
  * Character-subsequence fuzzy match with a simple score. Returns
@@ -157,6 +165,23 @@ export default function CommandPalette() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [router]);
+
+  // Imperative open hook: any component can dispatch OPEN_PALETTE_EVENT
+  // to surface the palette. Used by the header's ⌘K discovery hint so
+  // mouse-first users can still try the feature without memorising a
+  // keyboard shortcut.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(OPEN_PALETTE_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_PALETTE_EVENT, onOpen);
+  }, []);
+
+  // Stamp "user has discovered the palette" once it opens for the
+  // first time. Written through the shared prefs pipeline so the
+  // header's hint pill can react immediately across tabs.
+  useEffect(() => {
+    if (open) writeRaw<boolean>(PREF_KEYS.hasOpenedPalette, true);
+  }, [open]);
 
   const go = useCallback(
     (path: string) => {

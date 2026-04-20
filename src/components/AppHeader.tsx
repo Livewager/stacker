@@ -15,9 +15,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { WalletNav } from "@/components/dunk/WalletNav";
 import { ROUTES } from "@/lib/routes";
+import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
+import { OPEN_PALETTE_EVENT } from "@/components/CommandPalette";
 
 type Tab = { href: string; label: string };
 
@@ -40,6 +43,13 @@ function isActive(pathname: string, href: string): boolean {
 export default function AppHeader() {
   const pathname = usePathname() || "";
   const router = useRouter();
+  // Discovery nudge: once the user has opened the palette (by shortcut
+  // or click), the hint never returns. Persisted via the shared prefs
+  // pipeline so cross-tab + future-session dismissal sticks.
+  const [hasOpenedPalette] = useLocalPref<boolean>(
+    PREF_KEYS.hasOpenedPalette,
+    false,
+  );
   // Mobile breadcrumb: first matching tab wins. Desktop shows the
   // full tab strip so this label stays hidden at md+.
   const activeTab = TABS.find((t) => isActive(pathname, t.href));
@@ -121,10 +131,45 @@ export default function AppHeader() {
           })}
         </nav>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          {/* ⌘K discovery hint — desktop only (md+), hidden after the
+              user has opened the palette once. Clicking fires the
+              global OPEN_PALETTE_EVENT so mouse users can discover
+              the feature without knowing the shortcut. Platform-
+              aware label: macOS shows ⌘K, elsewhere ^K. */}
+          {!hasOpenedPalette && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+              aria-label="Open command palette (⌘K)"
+              title="Open command palette"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-widest text-gray-400 hover:text-white hover:border-white/25 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+            >
+              <kbd className="font-mono text-[10px] text-cyan-300">
+                <PlatformModKey />K
+              </kbd>
+              <span>palette</span>
+            </button>
+          )}
           <WalletNav />
         </div>
       </div>
     </header>
   );
+}
+
+/**
+ * Platform-aware modifier symbol for keyboard hints. macOS users
+ * expect ⌘; everyone else gets ^ (caret, universally readable as
+ * "Ctrl"). Detected after mount so SSR doesn't emit one symbol and
+ * hydrate another — both passes start with ⌘ (most common in our
+ * audience) and the effect swaps to ^ only on non-Mac clients.
+ */
+function PlatformModKey() {
+  const [glyph, setGlyph] = useState<"⌘" | "^">("⌘");
+  useEffect(() => {
+    const platform = navigator.platform || navigator.userAgent || "";
+    if (!/mac|iphone|ipad|ipod/i.test(platform)) setGlyph("^");
+  }, []);
+  return <>{glyph}</>;
 }
