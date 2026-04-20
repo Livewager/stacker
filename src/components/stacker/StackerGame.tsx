@@ -584,6 +584,51 @@ export default function StackerGame({
         drawBlock(r.startCol, r.row, r.width, mix(CYAN, GOLD, tt));
       });
 
+      // Overlap hint — dim rectangle marking where a lock would land
+      // right now given the current slider position vs the top of the
+      // stack. Training-wheels only: visible on early rows, fades out
+      // by row 4 so experts aren't coddled. Skipped on row 0 since
+      // there's nothing to align against yet.
+      const HINT_FADE_ROW = 4;
+      if (
+        s.phase === "playing" &&
+        s.current &&
+        s.current.row > 0 &&
+        s.current.row < HINT_FADE_ROW &&
+        s.stack.length > 0
+      ) {
+        const below = s.stack[s.stack.length - 1];
+        const curLeft = Math.round(s.current.x);
+        const curRight = curLeft + s.current.width - 1;
+        const belowLeft = below.startCol;
+        const belowRight = below.startCol + below.width - 1;
+        const ovLeft = Math.max(curLeft, belowLeft);
+        const ovRight = Math.min(curRight, belowRight);
+        if (ovRight >= ovLeft) {
+          const ovWidth = ovRight - ovLeft + 1;
+          const alpha =
+            1 - s.current.row / HINT_FADE_ROW; // 1 at row 1, 0 at HINT_FADE_ROW
+          const x = padX + ovLeft * cellW;
+          const y = H - padBottom - (s.current.row + 1) * cellH;
+          const w = cellW * ovWidth;
+          const h = cellH;
+          const pad = Math.min(cellW, cellH) * 0.1;
+          ctx.setLineDash([4 * dpr, 3 * dpr]);
+          ctx.strokeStyle = `rgba(255,255,255,${0.35 * alpha})`;
+          ctx.lineWidth = 1 * dpr;
+          ctx.beginPath();
+          ctx.roundRect(
+            x + pad,
+            y + pad,
+            w - pad * 2,
+            h - pad * 2,
+            Math.min(6 * dpr, h * 0.15),
+          );
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
       // Shards (chopped pieces, falling).
       if (s.shards.length > 0) {
         const now = performance.now();
