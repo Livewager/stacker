@@ -109,15 +109,26 @@ export default function AppHeader() {
       router.push(ROUTES.play);
     }
   };
-  // Soft depth cue: once the page has scrolled, cast a faint shadow
-  // under the header so it reads as elevated above the scrolling
-  // content instead of a flat strip. Threshold is low (4px) so even a
-  // tiny scroll registers — passive listener so we don't block
-  // scrolling on low-end mobile.
+  // Soft depth cue: once the page has scrolled meaningfully, cast a
+  // faint shadow under the header. Hysteresis band (24px on, 8px
+  // off) suppresses flicker from iOS rubber-band bounces and the
+  // ±2px scrollY jitter that address-bar collapse introduces.
+  // Passive listener so we don't block scrolling on low-end mobile.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const check = () => setScrolled(window.scrollY > 4);
+    const ON = 24;
+    const OFF = 8;
+    // Functional updater: uses the previous `scrolled` state so the
+    // band is applied as true→false / false→true transitions, not
+    // as a pure threshold. A user who scrolls to 28 → rubber-bands
+    // to 14 won't flicker the shadow off.
+    const check = () =>
+      setScrolled((prev) => {
+        const y = window.scrollY;
+        if (prev) return y > OFF;
+        return y > ON;
+      });
     check();
     window.addEventListener("scroll", check, { passive: true });
     return () => window.removeEventListener("scroll", check);
