@@ -193,18 +193,24 @@ export default function SettingsPage() {
             title="Session spending cap"
             subtitle="Hard stop per session so a hot streak can't run you over. Advisory for demo mode."
           >
-            <div className="flex flex-wrap gap-2">
+            <div
+              role="radiogroup"
+              aria-label="Session cap preset"
+              className="flex flex-wrap gap-2"
+            >
               {CAP_PRESETS.map((p) => {
                 const active = sessionCapUsd === p.value;
                 return (
                   <button
                     key={p.label}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
                     onClick={() => setCap(p.value)}
-                    aria-pressed={active}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
                       active
-                        ? "bg-cyan-300/15 border-cyan-300/60 text-cyan-100"
-                        : "border-white/10 bg-white/[0.02] text-gray-300 hover:text-white hover:border-white/25"
+                        ? "bg-cyan-300/[0.08] text-cyan-300 border-cyan-300/40"
+                        : "bg-white/[0.04] text-gray-300 border-white/15 hover:text-white hover:border-white/30"
                     }`}
                   >
                     {p.label}
