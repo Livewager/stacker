@@ -292,6 +292,19 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Motion curves: single-stage vs two-stage** (audited POLISH-315).
+  The POLISH-261 two-stage shape applied to `lw-press-pulse`
+  (ripple: ring expansion + opacity fall, two independent axes
+  that want different timing) does NOT generalize to every decay
+  animation. For motions where the composed axes *reinforce* each
+  other on a single coordinated arc (e.g. `lw-dismiss`: opacity
+  fades AND translateY slides down — both saying "leaving"), a
+  single-stage cubic-bezier(0.4, 0, 0.2, 1) over 220ms is correct
+  — desyncing them with a two-stage curve reads as a hiccup, not
+  a polished exit. The test: can you describe the motion with
+  one sentence ("the card leaves")? Stay single-stage. Two
+  sentences ("the ring snaps out, then the opacity fades")? Go
+  two-stage.
 - **Settings-row layout contract** (audited POLISH-314). Any row
   in /settings with [label + description + right-side control]
   must follow the `Toggle` primitive's shape, regardless of

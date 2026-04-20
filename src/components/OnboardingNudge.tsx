@@ -93,7 +93,19 @@ export default function OnboardingNudge() {
           `dismissing` is true we apply lw-dismiss which fades +
           slides the card down over 220ms before the parent sets
           seen and BottomSheet unmounts. Uses GPU-composited props
-          only. */}
+          only.
+
+          Curve audit pinned POLISH-315: single-stage
+          cubic-bezier(0.4, 0, 0.2, 1) is correct here. POLISH-261
+          split lw-press-pulse into two stages because it's a ripple
+          (ring expansion + opacity fall = two independent axes that
+          benefit from separate timing). lw-dismiss is categorically
+          different — opacity + translateY are synchronized fall
+          axes (the card fades AND slides, reinforcing each other).
+          A two-stage shape would desync them, which reads as
+          "hiccup" instead of "leaving." Reduced-motion is handled
+          globally by the prefers-reduced-motion + lw-reduce-motion
+          clamp in style.css; no local guard needed. */}
       <div className={dismissing ? "lw-dismiss" : undefined}>
       <ul className="space-y-3 mb-6">
         <Bullet
