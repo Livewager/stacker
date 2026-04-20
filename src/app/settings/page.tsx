@@ -10,6 +10,7 @@ import { clearAllLocalData, usePrefs } from "@/lib/prefs";
 import { useToast } from "@/components/dunk/Toast";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { ROUTES } from "@/lib/routes";
+import { useCopyable } from "@/lib/clipboard";
 
 function shortPrincipal(p: string, h = 10, t = 8): string {
   if (p.length <= h + t + 1) return p;
@@ -90,15 +91,8 @@ export default function SettingsPage() {
     setCap(Math.round(n));
   };
 
-  const copyPrincipal = async () => {
-    if (!principal) return;
-    try {
-      await navigator.clipboard.writeText(principal);
-      toast.push({ kind: "success", title: "Principal copied" });
-    } catch {
-      toast.push({ kind: "error", title: "Clipboard blocked" });
-    }
-  };
+  const copy = useCopyable();
+  const copyPrincipal = () => copy(principal, { label: "Principal" });
 
   const confirmSignOut = async () => {
     setSigningOut(true);

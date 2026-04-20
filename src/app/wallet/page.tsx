@@ -7,6 +7,7 @@ import ActivityFeed from "@/components/dunk/ActivityFeed";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { useToast } from "@/components/dunk/Toast";
+import { useCopyable } from "@/lib/clipboard";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
@@ -45,15 +46,8 @@ export default function WalletPage() {
       description: "Demo build; the live flow lands next sprint.",
     });
 
-  const copyPrincipal = async () => {
-    if (!principal) return;
-    try {
-      await navigator.clipboard.writeText(principal);
-      toast.push({ kind: "success", title: "Principal copied" });
-    } catch {
-      toast.push({ kind: "error", title: "Clipboard blocked" });
-    }
-  };
+  const copy = useCopyable();
+  const copyPrincipal = () => copy(principal, { label: "Principal" });
 
   // Deterministic hue per principal so the hero card has individuality.
   const heroHue = useMemo(() => {

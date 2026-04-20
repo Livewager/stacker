@@ -21,7 +21,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { resolveCanisterId, resolveHost } from "@/lib/icp/actor";
-import { useToast } from "@/components/dunk/Toast";
+import { useCopyable } from "@/lib/clipboard";
 import { ROUTES } from "@/lib/routes";
 
 const HIDDEN_ON: readonly string[] = [ROUTES.dunk, ROUTES.stacker];
@@ -33,7 +33,7 @@ function shortCanister(id: string, h = 5, t = 3): string {
 
 export default function AppFooter() {
   const pathname = usePathname() || "";
-  const toast = useToast();
+  const copy = useCopyable();
   const [info, setInfo] = useState<{
     canister: string;
     host: string;
@@ -54,15 +54,6 @@ export default function AppFooter() {
   if (HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return null;
   }
-
-  const copy = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.push({ kind: "success", title: `${label} copied` });
-    } catch {
-      toast.push({ kind: "error", title: "Clipboard blocked" });
-    }
-  };
 
   const sha = process.env.NEXT_PUBLIC_BUILD_SHA;
 
@@ -93,7 +84,7 @@ export default function AppFooter() {
           {/* Canister id */}
           {info && (
             <button
-              onClick={() => copy(info.canister, "Canister id")}
+              onClick={() => copy(info.canister, { label: "Canister id" })}
               className="font-mono text-gray-300 hover:text-white transition inline-flex items-center gap-1.5"
               title={`Click to copy · ${info.canister}`}
               aria-label={`Copy ledger canister id ${info.canister}`}

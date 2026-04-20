@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "./Toast";
+import { useCopyable } from "@/lib/clipboard";
 
 type Props = {
   error: string;
@@ -24,6 +25,7 @@ type Props = {
 
 export function LedgerErrorCard({ error, onRetry, scope = "Ledger" }: Props) {
   const toast = useToast();
+  const copy = useCopyable();
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -42,14 +44,7 @@ export function LedgerErrorCard({ error, onRetry, scope = "Ledger" }: Props) {
     }
   };
 
-  const copyError = async () => {
-    try {
-      await navigator.clipboard.writeText(error);
-      toast.push({ kind: "success", title: "Error copied" });
-    } catch {
-      toast.push({ kind: "error", title: "Clipboard blocked" });
-    }
-  };
+  const copyError = () => copy(error, { label: "Error" });
 
   return (
     <section

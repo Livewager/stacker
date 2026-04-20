@@ -7,6 +7,7 @@ import { formatLWP } from "@/lib/icp";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import ActivityFeed from "@/components/dunk/ActivityFeed";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
+import { useCopyable } from "@/lib/clipboard";
 
 function short(s: string, head = 10, tail = 10): string {
   if (s.length <= head + tail + 1) return s;
@@ -29,14 +30,12 @@ export default function AccountPage() {
 
   const shortPrincipal = useMemo(() => (principal ? short(principal) : ""), [principal]);
 
+  const copy = useCopyable();
   const copyPrincipal = async () => {
-    if (!principal) return;
-    try {
-      await navigator.clipboard.writeText(principal);
+    const ok = await copy(principal, { label: "Principal", silent: true });
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* clipboard unavailable */
     }
   };
 
