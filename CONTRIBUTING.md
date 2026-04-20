@@ -255,6 +255,28 @@ encode real tiers. Before "consolidating" one of these, check here:
   button → /lg, input → /md, pill → /full. Don't mix tiers on
   the same hierarchy level (e.g. a card with /xl buttons inside
   /2xl container — the button reads as a mini-card).
+- **Route-accent eyebrow colors** — each primary route has a
+  canonical accent (audited POLISH-301, all 10 routes clean):
+  - /wallet, /leaderboard, /account, /stacker, /settings →
+    `text-cyan-300`
+  - /send → `text-violet-300`
+  - /withdraw → `text-rose-300`
+  - /deposit → `text-orange-300`
+  - /dunk → `text-cyan-300` (plus in-game accents on specific
+    states — warm-up amber, pour-feedback greens)
+  Two intentional exceptions, NOT drift:
+  1. Generic `InfoTile` eyebrows app-wide use `text-cyan-300`
+     for neutral-informational content (trust strips,
+     explanatory tiles). Cyan reads as "just-info" rather than
+     a route accent here; don't swap to match the host route.
+  2. Cross-route reference chips use the *destination* route's
+     accent, not the host's — e.g. the "Recent recipients" chip
+     on /account uses `text-violet-300` because tapping it goes
+     to /send. This is deliberate visual grammar: "this tile
+     will take you somewhere violet."
+  Adding a new section to an existing route? Use that route's
+  accent. Adding an InfoTile? cyan. Cross-linking to another
+  route's action? Use the destination's accent.
 - **`font-mono`** — data-first tier (audited POLISH-295). Use only
   where the content is:
   - cryptographic strings (principals, canister ids, tx ids,
