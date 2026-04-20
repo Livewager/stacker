@@ -57,6 +57,14 @@ interface ToastEntry extends Required<Pick<ToastInput, "title">> {
  *  spawning a new entry. */
 const COLLAPSE_WINDOW_MS = 2000;
 
+/** Error-only throttle window. Error toasts with the same title that
+ *  arrive within this many ms of a previous error — even after the
+ *  first one has dismissed — are silently dropped. Protects against
+ *  re-throwing effects pumping "Fetch failed" into the stack eight
+ *  times in a row. Non-error kinds still flow normally so success
+ *  chimes stay responsive. */
+const ERROR_THROTTLE_MS = 10_000;
+
 interface ToastApi {
   push: (t: ToastInput) => string;
   dismiss: (id: string) => void;
@@ -81,6 +89,11 @@ interface TimerState {
 export function ToastHost({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
   const timers = useRef(new Map<string, TimerState>());
+  // Per-title timestamps of recent error pushes. Compared against
+  // ERROR_THROTTLE_MS so an error that's already surfaced within
+  // the last 10s doesn't spawn another entry — covers the case where
+  // the entry has dismissed but the underlying error is still firing.
+  const recentErrors = useRef(new Map<string, number>());
 
   const dismiss = useCallback((id: string) => {
     setToasts((xs) => xs.filter((t) => t.id !== id));
@@ -102,6 +115,27 @@ export function ToastHost({ children }: { children: ReactNode }) {
       const kind = input.kind ?? "info";
       const ttlMs = input.ttlMs ?? 4500;
       const now = Date.now();
+
+      // Error-only 10s throttle by title. The collapse path below
+      // handles the "within 2s and still visible" case; this one
+      // protects against re-throwing effects pumping the same error
+      // after the first toast has already dismissed. Silently drop
+      // — we'd rather the user miss one than get spammed with ten.
+      // Non-error kinds bypass; success/info chimes stay snappy.
+      if (kind === "error") {
+        const last = recentErrors.current.get(input.title);
+        if (last !== undefined && now - last < ERROR_THROTTLE_MS) {
+          return ""; // empty id signals "did not surface"
+        }
+        recentErrors.current.set(input.title, now);
+        // Prune stale entries so the Map doesn't leak when error
+        // titles change (e.g. Date-stamped messages).
+        for (const [title, ts] of recentErrors.current) {
+          if (now - ts >= ERROR_THROTTLE_MS) {
+            recentErrors.current.delete(title);
+          }
+        }
+      }
 
       // Collapse-into-last when an identical (kind + title) toast is
       // already on screen and within the collapse window. Avoids the
