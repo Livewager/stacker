@@ -23,6 +23,8 @@ import {
   pointsLedger,
 } from "@/lib/icp";
 import type { BlockEvent } from "@/lib/icp";
+import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
+import { usePrefs } from "@/lib/prefs";
 
 type Point = { ts: number; balance: number };
 
@@ -146,6 +148,29 @@ function SparklineSvg({ points }: { points: Point[] | null }) {
   const range = maxY - minY || 1;
   const W = 160;
   const H = 36;
+
+  // Draw-on entrance (POLISH-255 — mirrors /leaderboard RowSparkline).
+  // Stroke-dasharray/pathLength animates the outline on first paint,
+  // and the area fill fades in on the same curve. Reduced-motion jumps
+  // to the final state: systemReduced OR userReduced freezes the
+  // animation (transition: none) and renders the final rendered state
+  // from the first frame. Per-row stagger isn't needed here — this is
+  // a single sparkline, not a board.
+  const systemReduced = useReducedMotion();
+  const { reducedMotion: userReduced } = usePrefs();
+  const reduced = systemReduced || userReduced;
+  const [drawn, setDrawn] = useState(reduced);
+  useEffect(() => {
+    if (reduced) {
+      setDrawn(true);
+      return;
+    }
+    // rAF ensures the "undrawn" frame paints first so the browser has
+    // a before-state to animate from; without it the path can ship
+    // fully drawn on initial mount in some Safari/Firefox paths.
+    const id = window.requestAnimationFrame(() => setDrawn(true));
+    return () => window.cancelAnimationFrame(id);
+  }, [reduced, points]);
 
   // Pre-computed x/y per point — both for the polyline path and the
   // hover-snap math. One pass, no recompute on hover.
@@ -271,7 +296,14 @@ function SparklineSvg({ points }: { points: Point[] | null }) {
           <stop offset="100%" stopColor={tone} stopOpacity={0} />
         </linearGradient>
       </defs>
-      <path d={areaD} fill="url(#bal-spark-fill)" />
+      <path
+        d={areaD}
+        fill="url(#bal-spark-fill)"
+        opacity={drawn ? 1 : 0}
+        style={{
+          transition: reduced ? "none" : "opacity 620ms ease-out 80ms",
+        }}
+      />
       <path
         d={d}
         fill="none"
@@ -279,6 +311,12 @@ function SparklineSvg({ points }: { points: Point[] | null }) {
         strokeWidth={1.4}
         strokeLinecap="round"
         strokeLinejoin="round"
+        pathLength={1}
+        strokeDasharray={1}
+        strokeDashoffset={drawn ? 0 : 1}
+        style={{
+          transition: reduced ? "none" : "stroke-dashoffset 620ms ease-out",
+        }}
       />
       <circle cx={last.x} cy={last.y} r={1.8} fill={tone} />
       {hovered && (
