@@ -32,6 +32,13 @@ export function PrincipalQR({ principal }: Props) {
   // so it only runs when the user actually asks — saves a second
   // encoder call on every panel open. Filename includes a short
   // principal prefix so multiple saves stay distinguishable.
+  //
+  // iOS Safari caveat: <a download> on blob URLs is ignored on iOS
+  // ≤ 15 and inconsistent on 16+ for SVG (often navigates to the
+  // blob URL, stranding the user). Detect iOS and open in a new tab
+  // instead — the user then long-presses to "Save to Files" or
+  // "Save Image". Desktop + Android keep the native-download fast
+  // path, which is one tap.
   const downloadSvg = async () => {
     if (!principal || downloading) return;
     setDownloading(true);
@@ -48,15 +55,31 @@ export function PrincipalQR({ principal }: Props) {
       });
       const blob = new Blob([svg], { type: "image/svg+xml" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
       const tag = principal.slice(0, 6);
-      a.href = url;
-      a.download = `principal-${tag}.svg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      // Revoke after a beat so the browser can actually fetch the href.
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      // iOS / iPadOS / iPhone detection. Modern iPads identify as Mac
+      // in userAgent, so also probe for maxTouchPoints > 1 — the
+      // idiomatic "iPad in desktop mode" sniff.
+      const ua = navigator.userAgent || "";
+      const isIOS =
+        /iPhone|iPad|iPod/.test(ua) ||
+        (ua.includes("Mac") &&
+          typeof navigator.maxTouchPoints === "number" &&
+          navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        // Open in a new tab; user long-presses the rendered SVG to
+        // save. _blank + noopener so we don't leak window.opener.
+        window.open(url, "_blank", "noopener,noreferrer");
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } else {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `principal-${tag}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // Revoke after a beat so the browser can actually fetch the href.
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
