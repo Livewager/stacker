@@ -239,6 +239,123 @@ function mapLtcWithdrawError(raw: string): { title: string; description: string 
   return { title: "Withdraw failed", description: raw };
 }
 
+/**
+ * POLISH-268 — same contract as the deposit + withdraw mappers, for
+ * ICRC-1 transfer (/send). Ticket asked for "recipient-not-found"
+ * copy, but ICRC-1 has no account-creation concept — transferring to
+ * any valid principal implicitly creates the recipient's ledger
+ * account on first receive. So "recipient not found" doesn't exist
+ * at this layer; the cousin gap the ticket was reaching for is that
+ * the ICRC-1 Err variants (especially InsufficientFunds) land as
+ * "Send failed — Ledger rejected: InsufficientFunds", which reads as
+ * technical output and doesn't tell the user whose balance is short.
+ *
+ * Each branch walks the user to the right action (sign in, fix the
+ * principal, fund your account, drop the memo, wait and retry). Raw
+ * message still propagates to setError so the page-level error
+ * panel keeps the full detail for debugging.
+ */
+function mapTransferError(raw: string): { title: string; description: string } {
+  const e = raw.toLowerCase();
+  if (e.includes("sign in first")) {
+    return {
+      title: "Sign in first",
+      description: "Send requires an Internet Identity session. Connect to continue.",
+    };
+  }
+  if (e.includes("principal is malformed") || e.includes("invalid principal")) {
+    return {
+      title: "Recipient principal didn't parse",
+      description:
+        "Check the destination — ICP principals are lowercase letters, digits, and dashes (for example xkwrr-q77fr-aaaq-cai).",
+    };
+  }
+  if (e.includes("amount must be positive")) {
+    return {
+      title: "Enter an amount",
+      description: "Send amount must be a positive LWP value.",
+    };
+  }
+  if (e.includes("memo must be 32 bytes")) {
+    return {
+      title: "Memo is too long",
+      description:
+        "ICRC-1 caps memos at 32 bytes (about 32 ASCII characters, fewer for emoji or non-latin text). Shorten it and retry.",
+    };
+  }
+  if (e.includes("ledger rejected")) {
+    const variant = raw.match(/ledger rejected:\s*(\w+)/i)?.[1];
+    // The common ICRC-1 Err variants each have a distinct recovery
+    // path. Calling them out individually saves the user a round-
+    // trip through Candid docs.
+    if (variant === "InsufficientFunds") {
+      return {
+        title: "Your balance is below the send amount",
+        description:
+          "The ledger couldn't debit your account. Top up via /deposit, or reduce the amount. This is a sender-side check — the recipient's state doesn't affect it.",
+      };
+    }
+    if (variant === "BadFee") {
+      return {
+        title: "Fee mismatch",
+        description:
+          "The ledger's expected fee changed between quote and submit. Refresh the page and retry.",
+      };
+    }
+    if (variant === "TooOld") {
+      return {
+        title: "Request timed out",
+        description:
+          "The ledger rejected the transfer as stale (created_at_time is too far in the past). Retry; the client will attach a fresh timestamp.",
+      };
+    }
+    if (variant === "Duplicate") {
+      return {
+        title: "Looks like a duplicate",
+        description:
+          "The ledger matched this transfer against a recent one with the same parameters. Check /account activity — it may already have gone through.",
+      };
+    }
+    if (variant === "TemporarilyUnavailable") {
+      return {
+        title: "Ledger temporarily unavailable",
+        description:
+          "The canister rejected the call as busy. Wait a few seconds and retry; your LWP is untouched.",
+      };
+    }
+    if (variant === "GenericError") {
+      return {
+        title: "Ledger returned a generic error",
+        description:
+          "The ledger rejected the transfer without a specific variant. Check /account activity — your balance may already reflect the outcome.",
+      };
+    }
+    // Fallback for unknown/new variants — surface the name so a
+    // power user can look it up without the full raw prefix.
+    return {
+      title: "Ledger rejected the transfer",
+      description: variant
+        ? `The points ledger returned "${variant}". Your LWP is untouched unless /account activity shows otherwise.`
+        : "The points ledger rejected the transfer. Your LWP is untouched.",
+    };
+  }
+  if (e.includes("replica") || e.includes("dfx")) {
+    return {
+      title: "Replica not reachable",
+      description:
+        "The local IC replica isn't responding. Start it with `dfx start --background`, redeploy the ledger, and try again.",
+    };
+  }
+  if (e.includes("failed to fetch") || e.includes("networkerror") || e.includes("load failed")) {
+    return {
+      title: "Network unreachable",
+      description:
+        "Couldn't reach the ledger canister. Check your connection and retry — your LWP only moves on a confirmed transfer.",
+    };
+  }
+  return { title: "Send failed", description: raw };
+}
+
 const Ctx = createContext<WalletState | null>(null);
 
 export function useWalletState(): WalletState {
@@ -494,7 +611,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         const msg = (e as Error).message;
         setError(msg);
-        toast.push({ kind: "error", title: "Send failed", description: msg });
+        // Cause-specific copy (POLISH-268). Raw message still hits
+        // setError above so /send's error panel can render the full
+        // text for debugging.
+        const { title, description } = mapTransferError(msg);
+        toast.push({ kind: "error", title, description });
         throw e;
       } finally {
         setStatus("idle");
