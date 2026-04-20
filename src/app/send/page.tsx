@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Principal } from "@dfinity/principal";
 import AppHeader from "@/components/AppHeader";
@@ -55,7 +56,19 @@ export default function SendPage() {
   const { identity, principal, balance, status, login, transfer } = useWalletState();
   const toast = useToast();
 
-  const [to, setTo] = useState("");
+  // POLISH-371 — /send accepts a ?to=<principal> deep link so the
+  // /account recent-tip chips, CommandPalette "Send to last X",
+  // and any future "tip this player" affordance can hand off a
+  // prefilled recipient. Read once at mount via useSearchParams
+  // (Next.js client hook, reads the current URL's query string).
+  // We don't subscribe to changes: if the user edits the field
+  // after arrival, they own the value; the URL is an entry hint,
+  // not a live two-way binding. Principal validation happens in
+  // the existing `validTo` path below — a bad/corrupted param
+  // just shows as an invalid recipient, same as a typo.
+  const searchParams = useSearchParams();
+  const initialTo = searchParams?.get("to") ?? "";
+  const [to, setTo] = useState(initialTo);
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [stage, setStage] = useState<Stage>("compose");
