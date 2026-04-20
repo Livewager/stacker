@@ -180,6 +180,22 @@ export default function WithdrawPage() {
 
         {!identity ? (
           <SignInGate onLogin={login} loading={status === "loading"} />
+        ) : stage === "compose" && balance === 0n ? (
+          // Zero-balance empty state (POLISH-286). Before: the user
+          // typed "0" or left it blank, hit Review, and bounced off
+          // "Exceeds balance" / "Must be positive" from the field-
+          // level validator — which is technically correct but
+          // feels like the form is yelling at them instead of
+          // helping. Rendering a deliberate empty state before the
+          // form reframes the situation ("you don't have LWP yet;
+          // here's where to get some") and gives a single tap to
+          // the right next step.
+          //
+          // Gate on `balance === 0n` (exact zero, not falsy) so a
+          // still-loading balance (null) keeps rendering the form
+          // — network flicker shouldn't demote a returning user
+          // back to the empty state.
+          <EmptyBalance principal={principal} />
         ) : stage === "compose" ? (
           <form
             onSubmit={onReview}
@@ -403,6 +419,53 @@ function SignInGate({ onLogin, loading }: { onLogin: () => void; loading: boolea
       <Button onClick={onLogin} loading={loading} tone="cyan" size="lg">
         {loading ? "Connecting…" : "Connect Internet Identity"}
       </Button>
+    </div>
+  );
+}
+
+/**
+ * Rendered when the user is signed in but has zero LWP. Without this
+ * branch they'd land on the form, fill in an LTC address, hit
+ * Review, and bounce off "Exceeds balance" on a 0-LWP amount — which
+ * is technically correct but reads as the form yelling. This reframes
+ * "no LWP" as a next-step signal: go deposit, then come back.
+ *
+ * The principal badge on top mirrors the compose form's "From" strip
+ * so the transition between empty-state and form-after-deposit feels
+ * continuous — same anchor, different content.
+ */
+function EmptyBalance({ principal }: { principal: string }) {
+  const shortPrincipal =
+    principal.length > 24
+      ? `${principal.slice(0, 10)}…${principal.slice(-6)}`
+      : principal;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-10 text-center">
+      <div className="text-[11px] uppercase tracking-widest text-rose-300 mb-3">
+        Nothing to withdraw yet
+      </div>
+      <h2 className="text-2xl md:text-3xl font-black text-white mb-2">
+        Your balance is 0&nbsp;LWP.
+      </h2>
+      <p className="text-sm text-gray-300 max-w-md mx-auto mb-5 leading-snug">
+        Deposit first — the LTC demo rail mints instantly to your principal.
+        Once you have LWP, come back here to burn it out.
+      </p>
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <Link href="/deposit">
+          <Button tone="orange" size="lg">
+            Deposit LWP
+          </Button>
+        </Link>
+        <Link href="/play">
+          <Button variant="outline" size="lg">
+            Or play to win some
+          </Button>
+        </Link>
+      </div>
+      <div className="mt-6 text-[10px] uppercase tracking-widest text-gray-500 font-mono">
+        Principal · {shortPrincipal}
+      </div>
     </div>
   );
 }
