@@ -23,6 +23,7 @@ const TABS: Tab[] = [
   { href: "/play", label: "Play" },
   { href: "/wallet", label: "Wallet" },
   { href: "/deposit", label: "Deposit" },
+  { href: "/send", label: "Send" },
   { href: "/stacker", label: "Stacker" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/account", label: "Account" },

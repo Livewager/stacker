@@ -32,7 +32,26 @@ import {
 } from "@/lib/icp";
 import { useToast } from "./Toast";
 
-export type WalletStatus = "idle" | "loading" | "buying" | "depositing" | "error";
+export type WalletStatus =
+  | "idle"
+  | "loading"
+  | "buying"
+  | "depositing"
+  | "sending"
+  | "error";
+
+export interface TransferInput {
+  /** Recipient principal text (validated inside). */
+  to: string;
+  /** Amount in whole LWP (UI unit). Converted to base units. */
+  amountLwp: number;
+  /** Optional memo — max 32 bytes. */
+  memo?: string;
+}
+
+export interface TransferResult {
+  txId: bigint;
+}
 
 export interface WalletState {
   identity: Identity | null;
@@ -49,6 +68,8 @@ export interface WalletState {
   buy: (amountLwp: number) => Promise<void>;
   /** Demo LTC → LWP path (mock oracle). */
   depositLTC: (amountLtc: number) => Promise<void>;
+  /** Real ICRC-1 transfer signed by the II identity. */
+  transfer: (input: TransferInput) => Promise<TransferResult>;
   refresh: () => Promise<void>;
 }
 
@@ -237,6 +258,71 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     [refresh, toast],
   );
 
+  const transfer = useCallback<WalletState["transfer"]>(
+    async ({ to, amountLwp, memo }) => {
+      if (!idRef.current) throw new Error("Sign in first");
+      // Validate principal client-side so we can surface a clear error
+      // before bothering the canister.
+      let toPrincipal;
+      try {
+        const { Principal } = await import("@dfinity/principal");
+        toPrincipal = Principal.fromText(to.trim());
+      } catch {
+        throw new Error("Recipient principal is malformed");
+      }
+      if (!Number.isFinite(amountLwp) || amountLwp <= 0) {
+        throw new Error("Amount must be positive");
+      }
+      // 32-byte memo cap (matches the canister). Encode eagerly so we
+      // know the byte count, not just char count.
+      let memoBytes: Uint8Array | null = null;
+      if (memo && memo.length > 0) {
+        memoBytes = new TextEncoder().encode(memo);
+        if (memoBytes.byteLength > 32) {
+          throw new Error("Memo must be 32 bytes or fewer");
+        }
+      }
+
+      setError(null);
+      setLastTx(null);
+      setStatus("sending");
+      try {
+        const ledger = await pointsLedger({ identity: idRef.current });
+        const baseUnits = BigInt(Math.round(amountLwp * 1e8));
+        const res = await ledger.icrc1_transfer({
+          from_subaccount: [],
+          to: { owner: toPrincipal, subaccount: [] },
+          amount: baseUnits,
+          fee: [],
+          memo: memoBytes ? [Array.from(memoBytes)] : [],
+          created_at_time: [],
+        });
+        if ("Err" in res) {
+          // Surface the error variant in the message for callers.
+          const key = Object.keys(res.Err)[0] ?? "Unknown";
+          throw new Error(`Ledger rejected: ${key}`);
+        }
+        const txId = res.Ok;
+        setLastTx(txId.toString());
+        await refresh();
+        toast.push({
+          kind: "success",
+          title: `Sent ${formatLWP(baseUnits, 4)} LWP`,
+          description: `Tx #${txId.toString()}`,
+        });
+        return { txId };
+      } catch (e) {
+        const msg = (e as Error).message;
+        setError(msg);
+        toast.push({ kind: "error", title: "Send failed", description: msg });
+        throw e;
+      } finally {
+        setStatus("idle");
+      }
+    },
+    [refresh, toast],
+  );
+
   const value = useMemo<WalletState>(
     () => ({
       identity,
@@ -250,9 +336,24 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       logout,
       buy,
       depositLTC,
+      transfer,
       refresh,
     }),
-    [identity, principal, balance, supply, status, error, lastTx, login, logout, buy, depositLTC, refresh],
+    [
+      identity,
+      principal,
+      balance,
+      supply,
+      status,
+      error,
+      lastTx,
+      login,
+      logout,
+      buy,
+      depositLTC,
+      transfer,
+      refresh,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
