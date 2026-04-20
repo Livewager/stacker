@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { StackerWager, PAYOUT_MULTIPLIER } from "@/components/stacker/StackerWager";
 
@@ -27,12 +28,13 @@ export default function StackerPage() {
     <main className="min-h-screen bg-background text-white">
       <nav className="relative z-20 max-w-7xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-3">
         <Link href="/dunk" className="flex items-center" aria-label="Livewager Dunk home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/assets/logo43.png"
             alt="Livewager · Dunk"
             width={440}
             height={144}
+            priority
+            sizes="(max-width: 768px) 320px, 440px"
             style={{ height: 80, width: "auto", objectFit: "contain" }}
           />
         </Link>

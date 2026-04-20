@@ -14,6 +14,7 @@
  */
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { WalletNav } from "@/components/dunk/WalletNav";
 
@@ -45,12 +46,13 @@ export default function AppHeader() {
           aria-label="Livewager · Dunk home"
           className="inline-flex items-center shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/assets/logo43.png"
             alt="Livewager · Dunk"
             width={200}
             height={64}
+            priority
+            sizes="200px"
             style={{ height: 40, width: "auto", objectFit: "contain" }}
           />
         </Link>
