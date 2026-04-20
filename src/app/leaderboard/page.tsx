@@ -286,7 +286,52 @@ function LiveHourPanel({
       {board.length === 0 ? (
         <EmptyBoard tab={tab} />
       ) : (
-        <ol className="divide-y divide-white/5">
+        <ol
+          className="divide-y divide-white/5"
+          // Vim-style j/k row navigation. Handler walks the direct <li>
+          // children, finds the first interactive element inside each
+          // (handle button or tip link), and focuses relative to
+          // whatever the currently-focused row is. Enter on a row
+          // activates the most prominent action (tip link if present,
+          // else the handle-copy button). Inert inside inputs per the
+          // top-level listener conventions elsewhere.
+          onKeyDown={(e) => {
+            if (e.key !== "j" && e.key !== "k" && e.key !== "Enter") return;
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+            if (tag === "input" || tag === "textarea") return;
+            const ol = e.currentTarget as HTMLElement;
+            const rows = Array.from(ol.querySelectorAll<HTMLLIElement>(":scope > li"));
+            if (rows.length === 0) return;
+            const active = document.activeElement as HTMLElement | null;
+            const currentIdx = rows.findIndex((row) => row.contains(active));
+            if (e.key === "Enter") {
+              // Prefer the tip link (data-tip) when it exists; otherwise
+              // click whatever interactive is already focused.
+              if (currentIdx < 0) return;
+              const tip = rows[currentIdx].querySelector<HTMLElement>(
+                'a[data-row-action="tip"]',
+              );
+              if (tip) {
+                e.preventDefault();
+                tip.click();
+              }
+              return;
+            }
+            e.preventDefault();
+            const dir = e.key === "j" ? 1 : -1;
+            const nextIdx =
+              currentIdx < 0
+                ? dir > 0
+                  ? 0
+                  : rows.length - 1
+                : Math.max(0, Math.min(rows.length - 1, currentIdx + dir));
+            const target = rows[nextIdx].querySelector<HTMLElement>(
+              "button, a",
+            );
+            target?.focus();
+          }}
+        >
           {/* Podium treatment for the top 3 — different spacing + tint. */}
           {board.slice(0, 3).map((e, i) => (
             <PodiumRow key={e.id} entry={e} rank={i + 1} me={e.handle === myHandle} />
@@ -458,6 +503,7 @@ function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean
       {canTip && (
         <Link
           href={`/send?handle=${encodeURIComponent(entry.handle)}`}
+          data-row-action="tip"
           aria-label={`Tip @${entry.handle}`}
           className="opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-300/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-violet-200 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 focus-visible:opacity-100"
           title={`Open /send with @${entry.handle} pre-filled`}
