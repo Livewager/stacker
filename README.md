@@ -7,10 +7,12 @@ Extracted from the Livewager monorepo — just the Dunk tilt game + its ICRC poi
 ```bash
 npm install --legacy-peer-deps
 npm run dev
-# → http://localhost:3001/dunk
+# → http://localhost:3002/dunk
 ```
 
-`/` redirects to `/dunk`.
+`/` redirects to `/dunk`. See [CONTRIBUTING.md](./CONTRIBUTING.md) for
+the full local-dev workflow, commit style, and the
+polish/test/routes-200 gate every tick goes through.
 
 ## What's NOT in here
 
