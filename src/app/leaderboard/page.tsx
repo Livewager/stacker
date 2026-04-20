@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
+import { BackToTop } from "@/components/ui/BackToTop";
 import {
   getHourBoard,
   getPlayerHandle,
@@ -52,6 +53,12 @@ export default function LeaderboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, now, myHandle]);
 
+  // Only mount the back-to-top chip when either board has enough rows
+  // to justify it — avoids a random floating button on a near-empty
+  // leaderboard.
+  const showBackToTop =
+    dunkBoard.length > 10 || pourBoard.length > 10;
+
   return (
     <>
       <AppHeader />
@@ -66,6 +73,7 @@ export default function LeaderboardPage() {
           </div>
         </div>
       </div>
+      {showBackToTop && <BackToTop threshold={600} bottomOffset={84} />}
     </>
   );
 }
