@@ -87,6 +87,29 @@ export default function SendPage() {
 
   const formValid = Object.keys(validation).length === 0;
 
+  // Live UTF-8 byte count for the memo counter. Memoized so typing
+  // in unrelated fields doesn't re-encode. Matches the validation
+  // calc above (TextEncoder, byteLength) so the counter agrees with
+  // the error state on the byte boundary.
+  const memoBytes = useMemo(
+    () => (memo ? new TextEncoder().encode(memo).byteLength : 0),
+    [memo],
+  );
+  // Warn tier kicks in at 75% of the cap so the user sees the counter
+  // shift amber before they hit a hard error.
+  const memoTone: "ok" | "warn" | "over" =
+    memoBytes > MAX_MEMO_BYTES
+      ? "over"
+      : memoBytes >= Math.ceil(MAX_MEMO_BYTES * 0.75)
+        ? "warn"
+        : "ok";
+  const memoCounterCls =
+    memoTone === "over"
+      ? "text-red-300"
+      : memoTone === "warn"
+        ? "text-amber-300"
+        : "text-gray-500";
+
   // ----- handlers -----
   const setMax = () => {
     if (balance === null) return;
@@ -271,6 +294,11 @@ export default function SendPage() {
               label="Memo (optional)"
               error={validation.memo}
               hint={`Max ${MAX_MEMO_BYTES} bytes. Stored on the ICRC-3 block — publicly readable.`}
+              meta={
+                <span className={memoCounterCls} aria-live="polite">
+                  {memoBytes}/{MAX_MEMO_BYTES} B
+                </span>
+              }
             >
               <input
                 type="text"
@@ -278,7 +306,14 @@ export default function SendPage() {
                 placeholder="what's this for?"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
-                className="w-full rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm text-white focus:border-violet-300/60 focus:outline-none"
+                aria-describedby="memo-counter"
+                className={`w-full rounded-md bg-black/40 border px-3 py-2.5 text-sm text-white focus:outline-none ${
+                  memoTone === "over"
+                    ? "border-red-400/50 focus:border-red-300/70"
+                    : memoTone === "warn"
+                      ? "border-amber-400/40 focus:border-amber-300/70"
+                      : "border-white/10 focus:border-violet-300/60"
+                }`}
               />
             </Field>
 
@@ -331,18 +366,27 @@ function Field({
   label,
   error,
   hint,
+  meta,
   children,
 }: {
   label: string;
   error?: string;
   hint?: string;
+  /** Right-aligned slot next to the label — e.g. live character
+   *  counter. Hidden while `error` is set so we don't stack two
+   *  small lines of text on top of the input. */
+  meta?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <label className="block">
       <div className="flex items-baseline justify-between mb-1.5">
         <div className="text-[10px] uppercase tracking-widest text-gray-400">{label}</div>
-        {error && <div className="text-[10px] text-red-300">{error}</div>}
+        {error ? (
+          <div className="text-[10px] text-red-300">{error}</div>
+        ) : meta ? (
+          <div className="text-[10px] text-gray-500 font-mono tabular-nums">{meta}</div>
+        ) : null}
       </div>
       {children}
       {hint && !error && (
