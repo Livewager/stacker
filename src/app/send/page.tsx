@@ -8,6 +8,7 @@ import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
+import { PrincipalScanner } from "@/components/send/PrincipalScanner";
 
 // Must mirror canisters/points_ledger/src/lib.rs TRANSFER_FEE.
 const TRANSFER_FEE_BASE = 10_000n; // 0.0001 LWP at 8 decimals
@@ -27,6 +28,7 @@ export default function SendPage() {
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [stage, setStage] = useState<Stage>("compose");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [txId, setTxId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -162,18 +164,31 @@ export default function SendPage() {
             <Field
               label="Recipient principal"
               error={validation.to}
-              hint="Any Internet Identity principal. Ask the receiver to copy theirs from /account."
+              hint="Any Internet Identity principal. Ask the receiver to copy theirs from /account or scan their QR."
             >
-              <input
-                type="text"
-                inputMode="text"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="rrkah-fqaaa-aaaaa-aaaaq-cai"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="w-full rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-white focus:border-violet-300/60 focus:outline-none"
-              />
+              <div className="flex items-stretch gap-2">
+                <input
+                  type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="rrkah-fqaaa-aaaaa-aaaaq-cai"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="flex-1 min-w-0 rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-white focus:border-violet-300/60 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(true)}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/[0.03] px-3 py-2.5 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60"
+                  aria-label="Scan recipient principal QR code"
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden>
+                    <path d="M3 3h5v2H5v3H3V3Zm9 0h5v5h-2V5h-3V3ZM3 12h2v3h3v2H3v-5Zm14 0v5h-5v-2h3v-3h2ZM6 6h3v3H6V6Zm5 0h3v3h-3V6ZM6 11h3v3H6v-3Zm7 0h1v1h-1v-1Zm2 0h1v1h-1v-1Zm-2 2h1v2h-1v-2Zm2 2h1v1h-1v-1Z" />
+                  </svg>
+                  Scan
+                </button>
+              </div>
             </Field>
 
             {/* Amount: balance passed fee-reduced so "Max" chip auto-
@@ -240,6 +255,15 @@ export default function SendPage() {
           <ResultCard txId={txId!} to={to.trim()} amountLwp={Number(amount)} onAgain={reset} />
         )}
       </div>
+
+      <PrincipalScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onResult={(value) => {
+          setTo(value);
+          setScannerOpen(false);
+        }}
+      />
     </>
   );
 }
