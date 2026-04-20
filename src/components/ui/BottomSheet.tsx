@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 type Props = {
@@ -15,6 +15,14 @@ type Props = {
   ariaLabel?: string;
 };
 
+/**
+ * Drag-to-dismiss: below this Y delta the sheet snaps back; above it,
+ * or past the velocity threshold, we close. Only listened for in the
+ * mobile layout (drag handle is sm:hidden).
+ */
+const DRAG_DISMISS_PX = 100;
+const DRAG_VELOCITY_THRESHOLD = 0.8; // px/ms
+
 export function BottomSheet({
   open,
   onClose,
@@ -27,9 +35,15 @@ export function BottomSheet({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
+  // Drag state — lives in a ref during motion (no per-frame re-render)
+  // plus a display `dragY` state for the transform so the panel moves.
+  const dragStart = useRef<{ y: number; t: number } | null>(null);
+  const [dragY, setDragY] = useState(0);
+
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = (document.activeElement as HTMLElement) || null;
+    setDragY(0);
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -75,6 +89,51 @@ export function BottomSheet({
 
   if (!open) return null;
 
+  // --- drag-to-dismiss handlers (attached to the drag-handle row) ---
+  const onHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only track primary button / first touch, and only on mobile layout.
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    dragStart.current = { y: e.clientY, t: performance.now() };
+    // Capture so subsequent move/up fire even if the pointer slips out.
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onHandlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStart.current) return;
+    const dy = e.clientY - dragStart.current.y;
+    // Don't let the user drag the sheet *up* past its rest position —
+    // that would just pull it above the viewport.
+    setDragY(Math.max(0, dy));
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStart.current) {
+      setDragY(0);
+      return;
+    }
+    const dy = e.clientY - dragStart.current.y;
+    const dt = performance.now() - dragStart.current.t;
+    const velocity = dy / Math.max(1, dt); // px/ms
+    dragStart.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* no-op if already released */
+    }
+
+    if (dy > DRAG_DISMISS_PX || velocity > DRAG_VELOCITY_THRESHOLD) {
+      onClose();
+    } else {
+      setDragY(0);
+    }
+  };
+
+  const translateY = dragY > 0 ? `translate3d(0, ${dragY}px, 0)` : undefined;
+  // While actively dragging, we skip the snap transition so the panel
+  // tracks the finger 1:1. On release we re-enable it for the spring
+  // back (or fall off the screen if dismissing).
+  const transitionMs = dragStart.current ? 0 : 160;
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
@@ -87,16 +146,34 @@ export function BottomSheet({
         aria-label="Close dialog"
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-[fadeIn_120ms_ease-out]"
+        // Scrim fades with the drag so the visual ties together.
+        style={{
+          opacity: dragY > 0 ? Math.max(0.3, 1 - dragY / 320) : undefined,
+        }}
       />
       <div
         ref={panelRef}
         tabIndex={-1}
         className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-white/10 bg-[#0b1a2e] shadow-2xl outline-none animate-[slideUp_180ms_cubic-bezier(0.2,0.8,0.2,1)]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        style={{
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          transform: translateY,
+          transition: `transform ${transitionMs}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+          touchAction: "pan-y",
+        }}
       >
-        {/* Drag handle (decorative) */}
-        <div className="flex justify-center pt-2 pb-1 sm:hidden">
-          <span aria-hidden className="h-1.5 w-10 rounded-full bg-white/25" />
+        {/* Drag handle — mobile-only. Has the pointer listeners so the
+            gesture is scoped to the top strip; content inside the sheet
+            scrolls and interacts normally. */}
+        <div
+          className="flex justify-center pt-2 pb-1 sm:hidden cursor-grab active:cursor-grabbing touch-none"
+          onPointerDown={onHandlePointerDown}
+          onPointerMove={onHandlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          aria-hidden
+        >
+          <span className="h-1.5 w-10 rounded-full bg-white/25" />
         </div>
 
         {(title || description) && (
