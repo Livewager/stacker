@@ -13,6 +13,8 @@ import { BalanceSparkline } from "@/components/account/BalanceSparkline";
 import { shortenPrincipal } from "@/lib/principal";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { listRecentRecipients, type RecentRecipient } from "@/lib/recentRecipients";
+import { Button } from "@/components/ui/Button";
+import { ROUTES } from "@/lib/routes";
 
 export default function AccountPage() {
   const {
@@ -94,14 +96,46 @@ export default function AccountPage() {
               Sign in with Internet Identity. No password, no seed phrase — a passkey-backed
               anchor you control.
             </p>
-            <button
-              onClick={login}
-              disabled={status === "loading"}
-              className="px-6 py-3 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
-            >
-              {status === "loading" ? "Connecting…" : "Connect Internet Identity"}
-            </button>
+            {/* What-you-get preview. The empty state was just a CTA on
+                a wall; this hints at the payoff so first-time visitors
+                understand what signing in unlocks before they commit to
+                the II flow. Mirrors the /wallet SignedOutPrompt
+                quality bar. */}
+            <ul className="mb-6 mx-auto max-w-sm grid grid-cols-3 gap-2 text-[11px] text-gray-300">
+              <li className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-2.5 leading-snug">
+                <div className="text-cyan-300 text-[10px] uppercase tracking-widest mb-0.5">
+                  Balance
+                </div>
+                LWP + sparkline
+              </li>
+              <li className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-2.5 leading-snug">
+                <div className="text-cyan-300 text-[10px] uppercase tracking-widest mb-0.5">
+                  Principal
+                </div>
+                Copy / QR share
+              </li>
+              <li className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-2.5 leading-snug">
+                <div className="text-cyan-300 text-[10px] uppercase tracking-widest mb-0.5">
+                  Activity
+                </div>
+                ICRC-3 history
+              </li>
+            </ul>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button
+                onClick={login}
+                loading={status === "loading"}
+                tone="cyan"
+                size="lg"
+              >
+                {status === "loading" ? "Connecting…" : "Connect Internet Identity"}
+              </Button>
+              <Link href={ROUTES.play}>
+                <Button variant="outline" size="lg">
+                  Browse games instead
+                </Button>
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-[1fr_1.25fr]">
