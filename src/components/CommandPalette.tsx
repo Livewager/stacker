@@ -34,6 +34,18 @@ import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 export const OPEN_PALETTE_EVENT = "lw:open-palette";
 
 /**
+ * POLISH-360 — stable ids for the listbox + its options. Fixed
+ * strings (not useId()) because there's only ever one palette
+ * instance mounted at a time via AppShell, so collisions aren't
+ * a concern and the stability keeps `aria-activedescendant` from
+ * re-rendering with a new id every mount.
+ */
+const LISTBOX_ID = "lw-cmdp-listbox";
+function optionId(commandId: string): string {
+  return `lw-cmdp-option-${commandId}`;
+}
+
+/**
  * Rotating placeholder hints surfaced in the search input while the
  * palette is open + empty + unfocused. First entry is the canonical
  * prompt — it's also the only string shown to reduced-motion users
@@ -485,8 +497,31 @@ export default function CommandPalette() {
       title="Jump anywhere"
       description="Start typing to filter. Enter to open."
     >
+      {/* POLISH-360 — listbox semantics for SR users. The visible
+          affordances (bg-white/[0.05] highlight, ring, scroll-into-
+          view) already communicate the active row to sighted users.
+          The aria-activedescendant pattern wires the same info to
+          AT without moving DOM focus off the input (which would
+          break typing). Per the APG combobox-list pattern:
+            input  → role=combobox, aria-controls=LISTBOX_ID,
+                     aria-expanded=(has results),
+                     aria-activedescendant=(active option id)
+            ul     → role=listbox, id=LISTBOX_ID
+            button → role=option, id=OPTION_ID(c.id),
+                     aria-selected={isActive}
+          Option ids are derived from c.id so the mapping is stable
+          across rerenders; no useId needed. */}
       <input
         data-autofocus
+        role="combobox"
+        aria-controls={LISTBOX_ID}
+        aria-expanded={filtered.length > 0}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          filtered.length > 0 && filtered[activeIdx]
+            ? optionId(filtered[activeIdx].id)
+            : undefined
+        }
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => {
@@ -553,7 +588,12 @@ export default function CommandPalette() {
           Recent · this session
         </div>
       )}
-      <ul className="mt-2 max-h-60 overflow-y-auto divide-y divide-white/5 rounded-lg border border-white/10 bg-black/20">
+      <ul
+        id={LISTBOX_ID}
+        role="listbox"
+        aria-label="Commands"
+        className="mt-2 max-h-60 overflow-y-auto divide-y divide-white/5 rounded-lg border border-white/10 bg-black/20"
+      >
         {filtered.length === 0 ? (
           <li className="px-3 py-3 text-xs text-gray-500">No matches.</li>
         ) : (
@@ -569,6 +609,15 @@ export default function CommandPalette() {
                 }}
               >
                 <button
+                  id={optionId(c.id)}
+                  role="option"
+                  aria-selected={isActive}
+                  // tabIndex=-1 keeps the row out of the Tab order —
+                  // the combobox pattern wants keyboard focus to
+                  // stay on the input and move the *active
+                  // descendant* instead. Click still works for
+                  // mouse users.
+                  tabIndex={-1}
                   onClick={c.run}
                   onMouseEnter={() => setActiveIdx(i)}
                   aria-current={isCurrent ? "page" : undefined}
