@@ -139,6 +139,34 @@ test("clipboard API unavailable: error toast + false", async () => {
   assert.equal(toast._pushed[0].title, "Clipboard blocked");
 });
 
+test("navigator entirely undefined (SSR path): error toast + false", async () => {
+  // The source guards with `typeof navigator === "undefined"` to cover
+  // the Next.js RSC render path. The mirror's `!nav` branch models
+  // the same case — pass null explicitly so the falsy guard fires.
+  const toast = makeToast();
+  const copy = makeCopy({ nav: null, toast });
+  const ok = await copy("hi");
+  assert.equal(ok, false);
+  assert.equal(toast._pushed.length, 1);
+  assert.equal(toast._pushed[0].kind, "error");
+  assert.equal(toast._pushed[0].title, "Clipboard blocked");
+});
+
+test("clipboard exists but writeText is missing: error toast + false", async () => {
+  // Some older browsers exposed `navigator.clipboard` as a broader
+  // permissions object without writeText. Source guards on
+  // `?.writeText` specifically — pin that with an object that has
+  // clipboard but not the method.
+  const nav = { clipboard: {} };
+  const toast = makeToast();
+  const copy = makeCopy({ nav, toast });
+  const ok = await copy("hi");
+  assert.equal(ok, false);
+  assert.equal(toast._pushed.length, 1);
+  assert.equal(toast._pushed[0].kind, "error");
+  assert.equal(toast._pushed[0].title, "Clipboard blocked");
+});
+
 test("custom errorTitle: used in failure toast", async () => {
   const nav = {
     clipboard: {
