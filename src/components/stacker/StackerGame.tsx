@@ -111,7 +111,21 @@ const rgba = (c: readonly [number, number, number], a = 1) =>
 
 const LS_BEST = "livewager-stacker-best";
 
-export default function StackerGame() {
+type StackerGameProps = {
+  /** Demo-labeled stake, in whole LWP. 0 = free play. */
+  stake?: number;
+  /** Prize multiplier applied on "won". */
+  winMultiplier?: number;
+  /** Notify parent about phase transitions — lets the wager panel
+   *  re-open for the next round. */
+  onPhaseChange?: (phase: Phase) => void;
+};
+
+export default function StackerGame({
+  stake = 0,
+  winMultiplier = 3,
+  onPhaseChange,
+}: StackerGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState>(initialState());
   const rafRef = useRef(0);
@@ -169,7 +183,8 @@ export default function StackerGame() {
       level: 1,
       perfectStreak: 0,
     }));
-  }, []);
+    onPhaseChange?.("playing");
+  }, [onPhaseChange]);
 
   const lockRow = useCallback(() => {
     const s = stateRef.current;
@@ -209,6 +224,7 @@ export default function StackerGame() {
           perfectStreak: s.perfectStreak,
           best: newBest,
         });
+        onPhaseChange?.("over");
         return;
       }
     }
@@ -293,6 +309,7 @@ export default function StackerGame() {
         perfectStreak: s.perfectStreak,
         best: newBest,
       });
+      onPhaseChange?.("won");
       s.current = null;
       return;
     }
@@ -315,7 +332,7 @@ export default function StackerGame() {
       perfectStreak: s.perfectStreak,
       best: Math.max(h.best, s.score),
     }));
-  }, [hudState.best]);
+  }, [hudState.best, onPhaseChange]);
 
   const handleTap = useCallback(() => {
     unlockAudio();
@@ -580,26 +597,36 @@ export default function StackerGame() {
     if (hudState.phase === "idle") {
       return {
         title: "Stacker",
-        sub: "Tap / click / space to start. Stop the slider inside the stack.",
+        sub:
+          stake > 0
+            ? `Stake ${stake} LWP — reach the top for ${stake * winMultiplier} LWP (demo). Tap, click, or press space to start.`
+            : "Tap / click / space to start. Stop the slider inside the stack.",
         cta: "Start",
       };
     }
     if (hudState.phase === "won") {
+      const prize = stake * winMultiplier;
       return {
         title: "Top floor.",
-        sub: `You stacked clean. Final score ${hudState.score}.`,
+        sub:
+          stake > 0
+            ? `Final score ${hudState.score}. Demo prize: ${prize} LWP (not moved on-chain).`
+            : `You stacked clean. Final score ${hudState.score}.`,
         cta: "Play again",
       };
     }
     if (hudState.phase === "over") {
       return {
         title: "Stack collapsed.",
-        sub: `Best cell missed — score ${hudState.score}.`,
+        sub:
+          stake > 0
+            ? `Score ${hudState.score}. Demo stake ${stake} LWP lost (not moved on-chain).`
+            : `Best cell missed — score ${hudState.score}.`,
         cta: "Try again",
       };
     }
     return { title: "", sub: "", cta: "" };
-  }, [hudState.phase, hudState.score]);
+  }, [hudState.phase, hudState.score, stake, winMultiplier]);
 
   return (
     <div

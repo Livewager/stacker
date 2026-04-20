@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useState } from "react";
+import { StackerWager, PAYOUT_MULTIPLIER } from "@/components/stacker/StackerWager";
 
 const StackerGame = dynamic(() => import("@/components/stacker/StackerGame"), {
   ssr: false,
@@ -10,7 +12,17 @@ const StackerGame = dynamic(() => import("@/components/stacker/StackerGame"), {
   ),
 });
 
+type Phase = "idle" | "playing" | "won" | "over";
+
 export default function StackerPage() {
+  const [stake, setStake] = useState(0);
+  const [phase, setPhase] = useState<Phase>("idle");
+  // Increments on each confirm so the game remounts with the fresh
+  // stake even when the user picks the same chip twice in a row.
+  const [roundKey, setRoundKey] = useState(0);
+
+  const wagerDisabled = phase === "playing";
+
   return (
     <main className="min-h-screen bg-background text-white">
       <nav className="relative z-20 max-w-7xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-3">
@@ -47,12 +59,33 @@ export default function StackerPage() {
           </p>
         </div>
 
-        <StackerGame />
+        <div className="grid gap-4 md:grid-cols-[minmax(0,560px)_1fr] items-start">
+          <StackerGame
+            key={roundKey}
+            stake={stake}
+            winMultiplier={PAYOUT_MULTIPLIER.win}
+            onPhaseChange={(p) => setPhase(p)}
+          />
 
-        <div className="mt-6 grid gap-3 md:grid-cols-3 text-sm text-gray-300 max-w-3xl">
-          <Tip title="Controls">Space / Enter / Click / Tap locks the slider.</Tip>
-          <Tip title="Scoring">10 pts per row. Perfect stack adds 15 × streak.</Tip>
-          <Tip title="Win">Reach the top row without the stack hitting zero.</Tip>
+          <div className="space-y-4">
+            <StackerWager
+              disabled={wagerDisabled}
+              onStart={(s) => {
+                setStake(s);
+                setRoundKey((k) => k + 1);
+                setPhase("idle");
+              }}
+            />
+
+            <div className="grid gap-3 text-sm text-gray-300">
+              <Tip title="Controls">Space / Enter / Click / Tap locks the slider.</Tip>
+              <Tip title="Scoring">10 pts per row. Perfect stack adds 15 × streak.</Tip>
+              <Tip title="Prize (demo)">
+                Stake × {PAYOUT_MULTIPLIER.win} on a clean top floor. LWP does not
+                move on-chain in this demo round.
+              </Tip>
+            </div>
+          </div>
         </div>
       </section>
     </main>
