@@ -87,19 +87,30 @@ export function StackerWager({ onStart, disabled }: Props) {
               tabIndex={active ? 0 : -1}
               onClick={() => setMode(m)}
               disabled={disabled}
+              // Hierarchy tightening: Ranked active = gradient +
+              // emerald shadow so it reads as the premium choice at a
+              // glance. Practice active = tonal neutral, deliberately
+              // quieter. Inactive states preview the target tint on
+              // hover so the switch feels anticipatory, not abrupt.
               className={[
-                "rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-widest transition",
+                "rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60",
                 active
                   ? m === "ranked"
-                    ? "bg-emerald-400/15 text-emerald-200 border border-emerald-400/40"
-                    : "bg-white/10 text-white border border-white/20"
-                  : "text-gray-400 hover:text-white border border-transparent",
+                    ? "text-white border border-emerald-300/60 shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_8px_24px_-12px_rgba(16,185,129,0.6)] bg-[linear-gradient(135deg,rgba(16,185,129,0.35),rgba(5,150,105,0.22))]"
+                    : "bg-white/10 text-white border border-white/25"
+                  : m === "ranked"
+                    ? "text-gray-300 border border-transparent hover:text-emerald-100 hover:border-emerald-400/30 hover:bg-emerald-400/[0.05]"
+                    : "text-gray-400 hover:text-white border border-transparent",
                 disabled ? "opacity-60 cursor-not-allowed" : "",
               ].join(" ")}
             >
               {m === "unranked" ? "Practice" : "Ranked"}
               {m === "ranked" && (
-                <span className="ml-1.5 text-[9px] font-mono text-emerald-300/80">
+                <span
+                  className={`ml-1.5 text-[9px] font-mono ${
+                    active ? "text-emerald-100" : "text-emerald-300/70"
+                  }`}
+                >
                   · prize
                 </span>
               )}
