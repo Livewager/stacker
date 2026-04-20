@@ -4,6 +4,7 @@ import { useState } from "react";
 import { QRPlaceholder } from "./QRPlaceholder";
 import { ConfirmationRail, type ConfirmationStep } from "./ConfirmationRail";
 import { useWalletState } from "@/components/dunk/WalletContext";
+import { useCopyable } from "@/lib/clipboard";
 
 // Keep in sync with src/app/api/dunk/ltc-deposit/route.ts.
 const LWP_PER_LTC = 10_000_000;
@@ -22,13 +23,15 @@ export function LtcDepositPanel() {
       ? Number(amount) * LWP_PER_LTC
       : 0;
 
+  const clipboard = useCopyable();
   const copy = async (what: "addr" | "mem", value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
+    const label = what === "addr" ? "Address" : "Memo";
+    // `silent` keeps the local "copied ✓" checkmark as the success
+    // signal; we don't want a toast stacking on top of the inline UX.
+    const ok = await clipboard(value, { label, silent: true });
+    if (ok) {
       setCopied(what);
       setTimeout(() => setCopied(null), 1200);
-    } catch {
-      /* clipboard blocked */
     }
   };
 

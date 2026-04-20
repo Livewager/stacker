@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion, useMotionValue, useTransform
 import { getHourBoard, getPlayerHandle, postScore } from "./scoreboard";
 import { createCollector, type AntiCheatReport } from "./anticheat";
 import { addCredits, chargeForRound, ENTRY_USD, useWallet } from "./wallet";
+import { useCopyable } from "@/lib/clipboard";
 
 const CYAN = "#22d3ee";
 const HS_KEY = "livewager-dunk-pour-high-score";
@@ -46,6 +47,7 @@ const makeRound = (seed: number) => {
 // Deterministic bubble layout — stable across renders so browsers can cache the animation
 const ShareScoreButton = ({ score, perfectMs }: { score: number; perfectMs: number }) => {
   const [state, setState] = useState<"idle" | "copied" | "shared">("idle");
+  const clipboard = useCopyable();
   if (score <= 0) return null;
   const handleShare = async () => {
     if (typeof window === "undefined") return;
@@ -63,12 +65,13 @@ const ShareScoreButton = ({ score, perfectMs }: { score: number; perfectMs: numb
         /* cancelled */
       }
     }
-    try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
+    const ok = await clipboard(`${text} ${url}`, {
+      label: "Share link",
+      silent: true, // inline state pill is the signal
+    });
+    if (ok) {
       setState("copied");
       setTimeout(() => setState("idle"), 2000);
-    } catch {
-      /* ignore */
     }
   };
   return (

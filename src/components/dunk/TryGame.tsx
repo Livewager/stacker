@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { postScore } from "./scoreboard";
+import { useCopyable } from "@/lib/clipboard";
 
 const ACCENT = "#FF4D4D";
 
@@ -74,6 +75,7 @@ const playBeep = (ctx: AudioContext, freq: number, dur: number, type: Oscillator
 
 export const TryGame = () => {
   const reduceMotion = useReducedMotion();
+  const clipboard = useCopyable();
   const fieldRef = useRef<HTMLDivElement | null>(null);
   const [aim, setAim] = useState({ x: 50, y: 50 });
   const [shots, setShots] = useState<Shot[]>([]);
@@ -395,12 +397,13 @@ export const TryGame = () => {
         /* user cancelled — fall through to clipboard */
       }
     }
-    try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
+    const ok = await clipboard(`${text} ${url}`, {
+      label: "Share link",
+      silent: true, // inline "Copied" pill carries the feedback
+    });
+    if (ok) {
       setShareState("copied");
       setTimeout(() => setShareState("idle"), 2000);
-    } catch {
-      /* nothing else to do */
     }
   };
 

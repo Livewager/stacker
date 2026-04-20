@@ -16,6 +16,7 @@
 import { useState } from "react";
 import { formatLWP } from "@/lib/icp";
 import { useWalletState } from "./WalletContext";
+import { useCopyable } from "@/lib/clipboard";
 
 function shortenPrincipal(p: string): string {
   if (p.length <= 16) return p;
@@ -44,14 +45,15 @@ export default function DropWallet() {
   const [amountLtc, setAmountLtc] = useState("0.001");
   const [copied, setCopied] = useState(false);
 
+  const clipboard = useCopyable();
   const copyPrincipal = async () => {
-    if (!principal) return;
-    try {
-      await navigator.clipboard.writeText(principal);
+    const ok = await clipboard(principal, {
+      label: "Principal",
+      silent: true, // inline "✓ Copied" pill carries the success UX
+    });
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* clipboard blocked */
     }
   };
 
