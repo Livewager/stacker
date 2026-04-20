@@ -205,8 +205,18 @@ export function Livestream() {
               over the bottom of the video, matching how mobile
               stream UIs collapse side panels. Pointer-events-none
               so the placeholder doesn't steal taps from the eventual
-              real video. */}
-          <div className="md:hidden absolute inset-x-0 bottom-0 p-3 pt-10 pointer-events-none bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+              real video.
+
+              POLISH-378 — aria-hidden the entire overlay. These are
+              decorative fake messages that cycle on a timer with no
+              meaning; announcing them (even once) would plant
+              nonsense in an SR user's model of the page. Paired
+              with the desktop chat getting the same treatment
+              below, so neither viewport exposes the churn. */}
+          <div
+            aria-hidden="true"
+            className="md:hidden absolute inset-x-0 bottom-0 p-3 pt-10 pointer-events-none bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+          >
             <ul className="space-y-1 text-[12px] leading-snug">
               {feed.slice(-3).map((m) => (
                 <li key={m.id} className="truncate">
@@ -220,13 +230,31 @@ export function Livestream() {
           </div>
         </div>
 
-        {/* -------- chat panel (desktop) -------- */}
+        {/* -------- chat panel (desktop) --------
+            POLISH-378 — the <aside> stays as a complementary
+            landmark so an SR user scanning landmarks sees "Demo
+            stream chat placeholder" and knows what occupies the
+            right column. But the *content* (the cycling fake
+            message rows) is aria-hidden because it's placeholder
+            churn — real live-region announcements on every tick
+            would be hostile. aria-live was already "off" to
+            silence the polite-region announcement path; the
+            aria-hidden on the inner <ul> makes the rows invisible
+            to AT walking the subtree too, so VoiceOver/NVDA
+            rotor doesn't show 5 ghost list items.
+
+            Landmark label rewritten from "Stream chat" to spell
+            out the placeholder-ness — matches the dual-labeling
+            pattern we use elsewhere (POLISH-99 demo banner
+            audit). */}
         <aside
-          aria-label="Stream chat"
-          aria-live="off"
+          aria-label="Demo stream chat placeholder"
           className="hidden md:flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4"
         >
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/5">
+          <div
+            className="flex items-center justify-between pb-3 mb-3 border-b border-white/5"
+            aria-hidden="true"
+          >
             <div className="text-[10px] uppercase tracking-widest text-gray-400">
               Chat
             </div>
@@ -234,7 +262,10 @@ export function Livestream() {
               demo · static
             </div>
           </div>
-          <ul className="flex-1 min-h-0 space-y-2 text-[13px] leading-snug overflow-hidden">
+          <ul
+            aria-hidden="true"
+            className="flex-1 min-h-0 space-y-2 text-[13px] leading-snug overflow-hidden"
+          >
             {feed.map((m) => (
               <li key={m.id} className="flex gap-2">
                 <span
