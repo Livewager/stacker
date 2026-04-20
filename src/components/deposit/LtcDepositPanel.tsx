@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { WatchAddressQR } from "./WatchAddressQR";
 import { ConfirmationRail, type ConfirmationStep } from "./ConfirmationRail";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { useCopyable } from "@/lib/clipboard";
 import { AmountField } from "@/components/ui/AmountField";
 

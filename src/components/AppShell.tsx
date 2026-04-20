@@ -26,8 +26,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ToastHost } from "@/components/dunk/Toast";
-import { WalletProvider } from "@/components/dunk/WalletContext";
+import { ToastHost } from "@/components/shared/Toast";
+import { WalletProvider } from "@/components/shared/WalletContext";
 import { BottomNav } from "@/components/BottomNav";
 import CommandPalette from "@/components/CommandPalette";
 import AppFooter from "@/components/AppFooter";
@@ -61,7 +61,7 @@ function GlobalEscBackHandler() {
       // Root page (/) and the core game routes — staying put is
       // usually more useful than popping history. Game routes
       // have their own Esc handling for round resets.
-      const onRoot = pathname === "/" || pathname === ROUTES.dunk || pathname === ROUTES.stacker;
+      const onRoot = pathname === "/" || pathname === ROUTES.stacker || pathname === ROUTES.stacker;
       if (onRoot) return;
       // If history stack has an in-app ancestor, go back. The
       // referrer check avoids yanking a first-visit user out of

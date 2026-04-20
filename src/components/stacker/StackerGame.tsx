@@ -26,7 +26,7 @@ import { createRound, type Round, type RoundTranscript } from "@/lib/anticheat/t
 import { createRng, randomSeed, type SeededRng } from "@/lib/anticheat/rng";
 import { useCopyable } from "@/lib/clipboard";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
-import { postScore } from "@/components/dunk/scoreboard";
+import { postScore } from "@/lib/scoreboard";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
 // ------------------------------------------------------------------

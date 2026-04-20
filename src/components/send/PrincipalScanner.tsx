@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/dunk/Toast";
+import { useToast } from "@/components/shared/Toast";
 
 // BarcodeDetector isn't in lib.dom yet on older TS targets. Narrow
 // the surface we need here so strict mode is happy.

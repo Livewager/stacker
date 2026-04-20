@@ -19,10 +19,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ROUTES } from "@/lib/routes";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { writeRaw, PREF_KEYS, clearSessionState } from "@/lib/prefs";
 import { useCopyable } from "@/lib/clipboard";
-import { useToast } from "@/components/dunk/Toast";
+import { useToast } from "@/components/shared/Toast";
 import { formatLWP } from "@/lib/icp";
 import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
 
@@ -170,7 +170,7 @@ export default function CommandPalette() {
     const LEADER_MS = 1500;
     const LEADER_MAP: Record<string, string> = {
       p: ROUTES.play,
-      d: ROUTES.dunk,
+      d: ROUTES.stacker,
       s: ROUTES.stacker,
       w: ROUTES.wallet,
       a: ROUTES.account,
@@ -332,7 +332,7 @@ export default function CommandPalette() {
       authCommand,
       ...actionCommands,
       { id: "play", label: "Games hub", hint: ROUTES.play, run: () => go(ROUTES.play) },
-      { id: "dunk", label: "Tilt Pour", hint: ROUTES.dunk, run: () => go(ROUTES.dunk) },
+      { id: "dunk", label: "Tilt Pour", hint: ROUTES.stacker, run: () => go(ROUTES.stacker) },
       { id: "stacker", label: "Stacker", hint: ROUTES.stacker, run: () => go(ROUTES.stacker) },
       { id: "wallet", label: "Wallet", hint: ROUTES.wallet, run: () => go(ROUTES.wallet) },
       { id: "account", label: "Account", hint: ROUTES.account, run: () => go(ROUTES.account) },

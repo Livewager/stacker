@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import AppHeader from "@/components/AppHeader";
-import ActivityFeed from "@/components/dunk/ActivityFeed";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import ActivityFeed from "@/components/shared/ActivityFeed";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { formatLWP } from "@/lib/icp";
-import { useToast } from "@/components/dunk/Toast";
+import { useToast } from "@/components/shared/Toast";
 import { useCopyable } from "@/lib/clipboard";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
-import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
+import { LedgerErrorCard } from "@/components/shared/LedgerErrorCard";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { AmountField } from "@/components/ui/AmountField";

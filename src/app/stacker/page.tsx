@@ -89,7 +89,7 @@ function StackerPageInner() {
         aria-label="Site"
         className="relative z-20 max-w-7xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-3"
       >
-        <Link href={ROUTES.dunk} className="flex items-center" aria-label="Livewager Dunk home">
+        <Link href={ROUTES.stacker} className="flex items-center" aria-label="Livewager Dunk home">
           <Image
             src="/assets/logo43.png"
             alt="Livewager · Dunk"

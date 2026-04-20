@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AppHeader from "@/components/AppHeader";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
-import { useToast } from "@/components/dunk/Toast";
+import { useToast } from "@/components/shared/Toast";
 import { validateLtcAddress } from "@/lib/ltc";
 import { DEMO_USD_PER_LWP } from "@/lib/demoRates";
 

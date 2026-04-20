@@ -16,7 +16,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { ROUTES } from "@/lib/routes";
 

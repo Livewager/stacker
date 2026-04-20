@@ -17,7 +17,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { WalletNav } from "@/components/dunk/WalletNav";
+import { WalletNav } from "@/components/shared/WalletNav";
 import { ROUTES } from "@/lib/routes";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
 import { OPEN_PALETTE_EVENT } from "@/components/CommandPalette";
@@ -190,10 +190,10 @@ export default function AppHeader() {
     >
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 md:px-8">
         <Link
-          href={ROUTES.dunk}
+          href={ROUTES.stacker}
           onClick={onLogoClick}
           aria-label="Livewager · Dunk home (Alt-click for Games hub)"
-          aria-current={pathname === ROUTES.dunk ? "page" : undefined}
+          aria-current={pathname === ROUTES.stacker ? "page" : undefined}
           title="Home · Alt-click for Games hub"
           className="inline-flex items-center shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
         >

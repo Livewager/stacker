@@ -32,7 +32,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { useLocalPref, PREF_KEYS } from "@/lib/prefs";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { ROUTES } from "@/lib/routes";
 
 export default function OnboardingNudge() {

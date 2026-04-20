@@ -12,7 +12,7 @@ import {
   getPlayerHandle,
   useScoreboardVersion,
   type ScoreEntry,
-} from "@/components/dunk/scoreboard";
+} from "@/lib/scoreboard";
 
 const HOUR_MS = 60 * 60 * 1000;
 

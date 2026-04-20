@@ -8,9 +8,9 @@
  *                "muted"  on read-only / game routes.
  *   - secondary: the nearest sibling the user was likely heading to —
  *                NOT the marketing landing. Catch-all → /wallet,
- *                /wallet → /dunk (wallet itself crashed; get out),
+ *                /wallet → /stacker (wallet itself crashed; get out),
  *                /account → /wallet, /stacker → /play,
- *                /dunk → /play, /fair-play → /play, 404 → /wallet.
+ *                /fair-play → /play, 404 → /wallet.
  *   - autoRetry: autoRetrySeconds={5} on every error.tsx, NONE on 404
  *                (no retry for missing URLs).
  *   - primary:   always reset() via onClick on error.tsx; always an
@@ -96,7 +96,7 @@ const CATALOGUE = [
     file: "src/app/wallet/error.tsx",
     label: "/wallet",
     tone: "danger",
-    secondaryRoute: "dunk",
+    secondaryRoute: "stacker",
     autoRetry: 5,
     primaryIsReset: true,
   },
@@ -105,14 +105,6 @@ const CATALOGUE = [
     label: "/account",
     tone: "muted",
     secondaryRoute: "wallet",
-    autoRetry: 5,
-    primaryIsReset: true,
-  },
-  {
-    file: "src/app/dunk/error.tsx",
-    label: "/dunk",
-    tone: "muted",
-    secondaryRoute: "play",
     autoRetry: 5,
     primaryIsReset: true,
   },

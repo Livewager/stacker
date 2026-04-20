@@ -16,7 +16,7 @@
  */
 
 import { useCallback } from "react";
-import { useToast } from "@/components/dunk/Toast";
+import { useToast } from "@/components/shared/Toast";
 
 export interface CopyOptions {
   /** Noun used in the success toast — "Principal", "Canister id", etc. */

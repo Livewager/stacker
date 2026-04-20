@@ -12,8 +12,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useWalletState } from "@/components/dunk/WalletContext";
-import { useToast } from "@/components/dunk/Toast";
+import { useWalletState } from "@/components/shared/WalletContext";
+import { useToast } from "@/components/shared/Toast";
 import { ROUTES } from "@/lib/routes";
 
 // Routes that render their own error surface.

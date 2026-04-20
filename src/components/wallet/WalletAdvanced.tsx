@@ -18,7 +18,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { useCopyable } from "@/lib/clipboard";
 import { LWP_DECIMALS } from "@/lib/icp";
 import { resolveCanisterId, resolveHost } from "@/lib/icp/actor";

@@ -8,8 +8,10 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // DUNK-04: root redirects to the canonical game route.
-      { source: "/", destination: "/dunk", permanent: false },
+      // Root → games hub. Single-game site, but /play is the shared
+      // onboarding surface and keeps the "pick a game" affordance
+      // open for when we add a second mechanic.
+      { source: "/", destination: "/play", permanent: false },
     ];
   },
 };

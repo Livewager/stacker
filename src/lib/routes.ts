@@ -12,7 +12,6 @@
 
 export const ROUTES = {
   home: "/",
-  dunk: "/dunk",
   stacker: "/stacker",
   play: "/play",
   wallet: "/wallet",

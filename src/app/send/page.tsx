@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Principal } from "@dfinity/principal";
 import AppHeader from "@/components/AppHeader";
-import { useWalletState } from "@/components/dunk/WalletContext";
+import { useWalletState } from "@/components/shared/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
@@ -32,7 +32,7 @@ const PrincipalScanner = dynamic(
   { ssr: false },
 );
 import { useCopyable } from "@/lib/clipboard";
-import { useToast } from "@/components/dunk/Toast";
+import { useToast } from "@/components/shared/Toast";
 import {
   listRecentRecipients,
   rememberRecipient,
