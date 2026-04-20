@@ -508,9 +508,29 @@ export default function CommandPalette() {
                   >
                     {c.label}
                     {isCurrent && (
-                      <span className="text-[9px] uppercase tracking-widest text-cyan-300 border border-cyan-300/40 rounded-full px-1.5 py-[1px]">
-                        here
-                      </span>
+                      <>
+                        {/* POLISH-330 — aria-current="page" is set on
+                            the button above, but AT support on <button>
+                            elements outside a <nav> varies (VoiceOver
+                            announces it for <a> more reliably than
+                            <button>, NVDA+browser combos differ, JAWS
+                            is config-dependent). The visible "here"
+                            pill is aria-hidden because AT already
+                            reads the surrounding text; an sr-only
+                            suffix carries the announcement in a form
+                            every AT reliably reads. Appears as
+                            "Wallet, current page" in the row's
+                            accessible name, which is the same shape
+                            Linear / Raycast / GitHub use for their
+                            cmd-k palettes. */}
+                        <span
+                          aria-hidden
+                          className="text-[9px] uppercase tracking-widest text-cyan-300 border border-cyan-300/40 rounded-full px-1.5 py-[1px]"
+                        >
+                          here
+                        </span>
+                        <span className="sr-only">, current page</span>
+                      </>
                     )}
                   </span>
                   {c.hint && (
