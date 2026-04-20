@@ -201,6 +201,23 @@ encode real tiers. Before "consolidating" one of these, check here:
   treatment, distinct from `tone="rose"` (gradient-fill rose CTA
   like /withdraw "Send"). Don't merge them; they read as different
   affordances (POLISH-253).
+- **`text-gray-300/400/500/600`** — a 4-rung secondary-text ramp, not
+  drift (audited POLISH-277). Picks by role and usual font size:
+  - `text-gray-300` (~80 hits) — primary explanatory copy that's
+    still below the white-on-dark heading tier. Used at `text-sm`
+    and up.
+  - `text-gray-400` (~135) — secondary body text. Full size range
+    (`text-xs`/`text-sm`/`text-[10–11px]`). Default for info-dense
+    rows, secondary labels, supporting prose.
+  - `text-gray-500` (~140) — captions, hints, meta. Nearly always
+    paired with the tiny sizes (`text-[9–11px]`). De-emphasized so
+    tight type doesn't shout.
+  - `text-gray-600` (~6) — decorative / faint-only. Separators, the
+    hair-thin slash in the mobile breadcrumb, etc.
+  Writing new secondary text? Match by role: prose → /300 or /400,
+  captions/timestamps → /500. Don't collapse these — the ramp is
+  what keeps info-dense rows legible without over-emphasizing
+  every supporting line.
 
 ### The anti-patterns to watch for
 
