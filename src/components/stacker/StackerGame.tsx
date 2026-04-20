@@ -989,6 +989,16 @@ export default function StackerGame({
   return (
     <div
       className="relative mx-auto w-full max-w-[560px] aspect-[3/5] rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-2xl select-none"
+      // touchAction: "manipulation" suppresses the 300ms double-tap-
+      // to-zoom wait iOS Safari imposes on ad-hoc tappable elements
+      // that aren't obvious buttons. Without it, rhythm taps on the
+      // Stacker surface feel rubbery in the first third of a run.
+      // We don't use "none" here — the stake-chip row above can live
+      // just outside the canvas on smaller viewports and the page
+      // itself still needs scroll recovery if an overlay stacks
+      // weirdly. "manipulation" keeps scroll + pinch, kills the
+      // tap-delay timer.
+      style={{ touchAction: "manipulation" }}
       onPointerDown={(e) => {
         // Avoid double-firing on keyboard focus.
         (e.currentTarget as HTMLElement).focus();
