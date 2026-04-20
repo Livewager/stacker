@@ -202,3 +202,85 @@ test("non-L/M/3 prefix rejected with guidance", () => {
   assert.equal(v.ok, false);
   assert.match(v.reason, /L or M/);
 });
+
+// ------------------------------------------------------------------
+// Discriminator contract (POLISH-245). /withdraw's hint copy branches
+// on validation.kind, so the cross-kind uniqueness invariants below
+// guarantee "Bech32 detected" can never render for a legacy address
+// and vice versa. The failure cases also verify kind is absent so a
+// caller destructuring { kind } on an error result doesn't get a
+// stale value from a previous call.
+// ------------------------------------------------------------------
+
+test("kind is absent on every failure shape", () => {
+  const failures = [
+    "", // Required
+    "   ", // Required (post-trim)
+    "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", // BTC
+    "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", // EVM
+    "LTC1QZVCGMNTGLCUV4SMV3LZJ6K8SZCVSRMVK0PHRR9", // uppercase bech32
+    "ltc1qshort", // bech32 too short
+    "LShort", // legacy too short
+    "LAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", // legacy too long
+    "L0VgkJoFNowz9tSEp2LjdBQHqDAmSb", // invalid base58
+    "ltc1qbbbbbbbbbbbbbbbbbbbbbbbb", // invalid bech32 chars
+    "Xabcdefghijklmnopqrstuvwxyz12345", // wrong prefix
+  ];
+  for (const addr of failures) {
+    const v = validateLtcAddress(addr);
+    assert.equal(v.ok, false, `expected failure for ${JSON.stringify(addr)}`);
+    assert.equal(
+      v.kind,
+      undefined,
+      `expected kind to be absent on failure for ${JSON.stringify(addr)}, got ${JSON.stringify(v.kind)}`,
+    );
+  }
+});
+
+test("L-prefix never produces kind 'bech32' or 'p2sh'", () => {
+  const v = validateLtcAddress("LVg2kJoFNowz9tSEp2LjdBQHqDAmSbMLPW");
+  assert.equal(v.ok, true);
+  assert.notEqual(v.kind, "bech32");
+  assert.notEqual(v.kind, "p2sh");
+});
+
+test("M-prefix never produces kind 'bech32' or 'legacy'", () => {
+  const v = validateLtcAddress("MBuTKxJpXg6X5BgBDHrp8kCP6JLHrbKGpA");
+  assert.equal(v.ok, true);
+  assert.notEqual(v.kind, "bech32");
+  assert.notEqual(v.kind, "legacy");
+});
+
+test("3-prefix never produces kind 'bech32' or 'legacy'", () => {
+  // 3-prefix is the historical P2SH form — shared with BTC P2SH,
+  // but we honor it structurally. Must still kind as p2sh, not legacy.
+  const v = validateLtcAddress("3P14159f73E4gFr7JterCCQh9QjiTjiZrG");
+  assert.equal(v.ok, true);
+  assert.notEqual(v.kind, "bech32");
+  assert.notEqual(v.kind, "legacy");
+});
+
+test("ltc1-prefix never produces kind 'legacy' or 'p2sh'", () => {
+  const v = validateLtcAddress("ltc1qzvcgmntglcuv4smv3lzj6k8szcvsrmvk0phrr9");
+  assert.equal(v.ok, true);
+  assert.notEqual(v.kind, "legacy");
+  assert.notEqual(v.kind, "p2sh");
+});
+
+test("discriminator domain is exactly the three declared kinds", () => {
+  // If a future addition accidentally introduces a fourth kind,
+  // this assertion catches it at the test layer before a caller's
+  // exhaustive switch gets a surprise default.
+  const VALID = new Set(["legacy", "p2sh", "bech32"]);
+  const fixtures = [
+    "LVg2kJoFNowz9tSEp2LjdBQHqDAmSbMLPW",
+    "MBuTKxJpXg6X5BgBDHrp8kCP6JLHrbKGpA",
+    "3P14159f73E4gFr7JterCCQh9QjiTjiZrG",
+    "ltc1qzvcgmntglcuv4smv3lzj6k8szcvsrmvk0phrr9",
+  ];
+  for (const addr of fixtures) {
+    const v = validateLtcAddress(addr);
+    assert.equal(v.ok, true);
+    assert.ok(VALID.has(v.kind), `unknown kind ${JSON.stringify(v.kind)} for ${addr}`);
+  }
+});
