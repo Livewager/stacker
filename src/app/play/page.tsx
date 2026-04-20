@@ -11,6 +11,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import AppHeader from "@/components/AppHeader";
 import OnboardingNudge from "@/components/OnboardingNudge";
@@ -126,6 +127,7 @@ function formatRelative(tsMs: number, nowMs: number): string {
 export default function PlayHubPage() {
   const [bests, setBests] = useState<Record<string, number | null>>({});
   const [lastPlayed, setLastPlayed] = useState<Record<string, number | null>>({});
+  const router = useRouter();
 
   useEffect(() => {
     const bestNext: Record<string, number | null> = {};
@@ -137,6 +139,31 @@ export default function PlayHubPage() {
     setBests(bestNext);
     setLastPlayed(lpNext);
   }, []);
+
+  // Route-scoped number shortcuts: "1" → first game, "2" → second,
+  // etc. Only while /play is the active view. Inert inside any text
+  // input or when a modifier is held — the user might legitimately
+  // be composing a form or using a leader-key sequence.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      const typing =
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select" ||
+        (e.target as HTMLElement | null)?.isContentEditable;
+      if (typing) return;
+      const digit = Number.parseInt(e.key, 10);
+      if (!Number.isInteger(digit) || digit < 1 || digit > GAMES.length) return;
+      const target = GAMES[digit - 1];
+      if (!target) return;
+      e.preventDefault();
+      router.push(target.href);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [router]);
 
   return (
     <>
@@ -159,7 +186,7 @@ export default function PlayHubPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {GAMES.map((g) => {
+            {GAMES.map((g, i) => {
               const best = g.bestKey ? bests[g.bestKey] : null;
               const lp = g.lastPlayedKey ? lastPlayed[g.lastPlayedKey] : null;
               const lastPlayedLabel =
@@ -203,12 +230,22 @@ export default function PlayHubPage() {
                         </span>
                       )}
                     </div>
-                    {best !== null && best !== undefined && (
-                      <div className="rounded-md bg-black/50 px-2 py-1 text-[10px] font-mono uppercase tracking-widest">
-                        <span className="text-gray-400">Best </span>
-                        <span className="text-yellow-300 tabular-nums">{best}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {best !== null && best !== undefined && (
+                        <div className="rounded-md bg-black/50 px-2 py-1 text-[10px] font-mono uppercase tracking-widest">
+                          <span className="text-gray-400">Best </span>
+                          <span className="text-yellow-300 tabular-nums">{best}</span>
+                        </div>
+                      )}
+                      {/* Keyboard shortcut hint — desktop only (hover
+                          devices), mobile hides via hidden md:flex. The
+                          numeric key matches this card's position in
+                          GAMES. Pure hint; the listener above is what
+                          actually navigates. */}
+                      <kbd className="hidden md:inline-flex items-center rounded border border-white/15 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-mono text-gray-400">
+                        {i + 1}
+                      </kbd>
+                    </div>
                   </div>
 
                   <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
