@@ -71,6 +71,25 @@
     outline-offset: 2px;
   }
 
+  /* Smooth anchor scrolling + comfortable landing offset. On mobile,
+     page-level scroll-snap proximity helps long landings like /stacker
+     feel less lurchy without forcing hard snaps that fight free
+     scroll. Desktop leaves free-scroll alone. */
+  html {
+    scroll-behavior: smooth;
+  }
+  .lw-section {
+    scroll-margin-top: 72px;
+  }
+  @media (max-width: 767px) {
+    html.lw-snap-page {
+      scroll-snap-type: y proximity;
+    }
+    .lw-snap-page .lw-section {
+      scroll-snap-align: start;
+    }
+  }
+
   /* Shared CTA micro-interactions. Kept in global CSS so the Button
      primitive stays dep-free and any custom button can opt in by
      adding the class. */

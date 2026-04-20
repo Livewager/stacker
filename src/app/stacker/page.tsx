@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { StackerWager, PAYOUT_MULTIPLIER } from "@/components/stacker/StackerWager";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +24,15 @@ export default function StackerPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [roundKey, setRoundKey] = useState(0);
   const wagerDisabled = phase === "playing";
+
+  // Scope the scroll-snap behavior to this page only. <html> is the
+  // scroll container, so we add/remove a class there. No regression
+  // risk because the CSS hides behind a mobile media query.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("lw-snap-page");
+    return () => root.classList.remove("lw-snap-page");
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-white relative overflow-x-hidden">
@@ -76,7 +85,7 @@ export default function StackerPage() {
       {/* -------------- PLAY -------------- */}
       <section
         id="play"
-        className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-8 pb-16 scroll-mt-20"
+        className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-8 pb-16 scroll-mt-20"
       >
         <div className="mb-6">
           <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
@@ -150,7 +159,7 @@ function AmbientBackdrop() {
 
 function Hero() {
   return (
-    <section className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-4 pb-12 md:pt-10 md:pb-20">
+    <section className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-4 pb-12 md:pt-10 md:pb-20">
       <div className="grid gap-8 md:grid-cols-[1.15fr_1fr] items-center">
         <div>
           <motion.div
@@ -400,7 +409,7 @@ function HeroTower() {
 function DifficultyLadder() {
   const reduced = useReducedMotion();
   return (
-    <section className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
+    <section className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
       <div className="mb-6 max-w-xl">
         <div className="text-[10px] uppercase tracking-widest text-orange-300 mb-2">
           The climb
@@ -563,7 +572,7 @@ function HowItWorks() {
   ];
 
   return (
-    <section id="how" className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10 scroll-mt-20">
+    <section id="how" className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10 scroll-mt-20">
       <div className="mb-6 max-w-xl">
         <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
           How it works
@@ -714,7 +723,7 @@ function WagerPrimer() {
     { label: "100 LWP", sub: "→ 300" },
   ];
   return (
-    <section className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
+    <section className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
       <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.02] p-6 md:p-8">
         <div className="grid gap-6 md:grid-cols-[1fr_1.1fr] items-center">
           <div>
@@ -768,7 +777,7 @@ function WagerPrimer() {
 
 function FairPlay() {
   return (
-    <section className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
+    <section className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
       <div className="mb-6 max-w-2xl">
         <div className="flex items-center gap-2 mb-2">
           <Pill status="live">fair play</Pill>
