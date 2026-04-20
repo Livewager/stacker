@@ -234,6 +234,7 @@ export default function SettingsPage() {
           {/* ---- Account ---- */}
           <Section
             title="Account"
+            eyebrow="Session"
             subtitle="Your Internet Identity session. The principal itself is unaffected by anything on this page."
           >
             {identity ? (
@@ -343,15 +344,20 @@ function Section({
   title,
   subtitle,
   tone = "default",
+  eyebrow,
   children,
 }: {
   title: string;
   subtitle?: string;
   tone?: "default" | "danger";
+  /** Override the kicker label above the title. Defaults to
+   *  "Preference" for neutral tone and "Danger zone" for danger. */
+  eyebrow?: string;
   children: React.ReactNode;
 }) {
   const tonedHeader =
     tone === "danger" ? "text-red-300" : "text-cyan-300";
+  const label = eyebrow ?? (tone === "danger" ? "Danger zone" : "Preference");
   return (
     <section
       className={`rounded-2xl border bg-white/[0.02] p-5 md:p-6 ${
@@ -360,7 +366,7 @@ function Section({
     >
       <div className="mb-3">
         <div className={`text-[10px] uppercase tracking-widest mb-1 ${tonedHeader}`}>
-          {tone === "danger" ? "Danger zone" : "Preference"}
+          {label}
         </div>
         <h2 className="text-lg md:text-xl font-bold text-white">{title}</h2>
         {subtitle && (
