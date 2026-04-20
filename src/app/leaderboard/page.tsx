@@ -301,7 +301,7 @@ function LiveHourPanel({
                 role="tab"
                 aria-selected={active}
                 onClick={() => setTab(g)}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
                   active ? `bg-white/10 ${activeTone}` : "text-gray-400 hover:text-white"
                 }`}
               >

@@ -292,6 +292,30 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Tab-strip primitives** (audited POLISH-307). The app has
+  *three* tab-strip shapes and they are intentionally different —
+  each encodes a different semantic, so a future audit should
+  resist unifying them:
+  1. **Nav tabs** (`rounded-xl` + accent border): "pick a
+     destination" — /deposit payment-method tabs. One-of-N where
+     each option is a separate flow.
+  2. **Segmented control** (`rounded-md` inside a `rounded-lg`
+     container): "pick one of a small N" — /leaderboard game
+     tabs. Tight compound control; the outer radius groups them.
+  3. **Filter pills** (`rounded-full` with accent-outline fill):
+     "apply/remove a filter" — ActivityFeed kind filters. Filter
+     semantics are pill-shaped across the industry and the
+     fully-round shape signals "removable tag," not "destination."
+  Two other `role="tablist"` attachments exist for a11y reasons but
+  are not tab strips visually: /wallet quick-action rail is a
+  4-tile grid (W3C tablist pattern for arrow-key shuffling only,
+  POLISH-252), GamesHub is a large-card grid. Don't migrate either
+  toward one of the three shapes above.
+  Focus-visible ring tokens: all five attachments use
+  `focus-visible:ring-2 focus-visible:ring-cyan-300/60` — this IS
+  a consistency contract, pin it. /leaderboard was missing this
+  token until the POLISH-307 audit; if a new tab strip lands,
+  verify the ring token is present before closing the ticket.
 - **Error-boundary copy contract** (audited POLISH-304). Every
   `error.tsx` should answer three questions in its body, in this
   order:
