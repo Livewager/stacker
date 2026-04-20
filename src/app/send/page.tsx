@@ -292,17 +292,43 @@ export default function SendPage() {
               hint="Any Internet Identity principal. Ask the receiver to copy theirs from /account or scan their QR."
             >
               <div className="flex items-stretch gap-2">
-                <input
-                  ref={toInputRef}
-                  type="text"
-                  inputMode="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="rrkah-fqaaa-aaaaa-aaaaq-cai"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  className="flex-1 min-w-0 rounded-md bg-black/40 border border-white/10 px-3 py-2.5 text-sm font-mono text-white focus:border-violet-300/60 focus:outline-none"
-                />
+                <div className="relative flex-1 min-w-0">
+                  <input
+                    ref={toInputRef}
+                    type="text"
+                    inputMode="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="rrkah-fqaaa-aaaaa-aaaaq-cai"
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    // pr-9 reserves space for the absolute × button so
+                    // a long principal doesn't slide under it. Added
+                    // focus-visible ring for keyboard parity with the
+                    // Scan + amount inputs (POLISH-203 pattern).
+                    className="w-full rounded-md bg-black/40 border border-white/10 pl-3 pr-9 py-2.5 text-sm font-mono text-white focus:border-violet-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50"
+                  />
+                  {/* Clear-recipient × button. Only renders when the
+                      field has content — touch-safe 28px hit target
+                      (p-1.5 around a 14px svg = 24px + padding), sits
+                      inside the right padding reserved above. */}
+                  {to.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTo("");
+                        toInputRef.current?.focus();
+                      }}
+                      aria-label="Clear recipient"
+                      title="Clear recipient"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/[0.06] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60"
+                    >
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
+                        <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => setScannerOpen(true)}
