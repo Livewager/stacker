@@ -236,6 +236,13 @@ function ArrivingMethod({
             "done" the input + button lock so the user sees the
             decision stuck, and the copy swaps to a confirmation. */}
         <form onSubmit={submit} className="mt-5 flex items-stretch gap-2 max-w-sm">
+          {/* h-11 to match Button's default (md) size — flex
+              items-stretch would otherwise auto-stretch the input to
+              the button's 44px height while its padding + text-size
+              were calibrated for ~36px, leaving the cursor and
+              placeholder drifting above the visual center of the
+              field. POLISH-283 audit pairs inputs + buttons at the
+              same explicit height rather than relying on stretch. */}
           <input
             type="email"
             required
@@ -244,7 +251,7 @@ function ArrivingMethod({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={status === "sending" || status === "done"}
-            className="flex-1 min-w-0 rounded-md border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-white/30 disabled:opacity-60"
+            className="flex-1 min-w-0 rounded-md border border-white/15 bg-black/40 h-11 px-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-white/30 disabled:opacity-60"
             aria-label={`Email address for ${label} notification`}
           />
           <Button
