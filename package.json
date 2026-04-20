@@ -6,7 +6,8 @@
     "dev": "next dev -p 3002",
     "build": "next build",
     "start": "next start -p 3002",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "analyze": "next build && du -ch .next/static/chunks/*.js | sort -hr | head -20"
   },
   "dependencies": {
     "@dfinity/agent": "^2.4.1",
