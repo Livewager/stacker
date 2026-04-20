@@ -58,6 +58,17 @@ export default function ActivityFeed({
   title,
 }: ActivityFeedProps) {
   const [events, setEvents] = useState<BlockEvent[] | null>(null);
+  // Pagination: start with the caller-provided `limit`, bump by
+  // SHOW_MORE_STEP each "Show more" click. load() fetches the full
+  // decode window (up to 100) regardless — pagination is a render
+  // cap, not a refetch — so expanding is instant.
+  const [shown, setShown] = useState(limit);
+  const SHOW_MORE_STEP = 20;
+  // Re-sync shown to limit when the caller changes it (e.g. switching
+  // between /account and /wallet which pass different limits).
+  useEffect(() => {
+    setShown(limit);
+  }, [limit]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [rawFilter, setRawFilter] = useLocalPref<ActivityFilter>(
@@ -70,11 +81,18 @@ export default function ActivityFeed({
   // Filtered view of the fetched events. Applied client-side so the
   // fetch cost doesn't change when the user flips pills — the canister
   // still returns the full window; we just render a subset.
-  const visibleEvents = useMemo(() => {
+  const filteredEvents = useMemo(() => {
     if (!events) return null;
     if (filter === "all") return events;
     return events.filter((e) => e.kind === filter);
   }, [events, filter]);
+  // Pagination applies AFTER filter so "Show more" advances the
+  // visible slice within the currently-selected kind.
+  const visibleEvents = useMemo(() => {
+    if (!filteredEvents) return null;
+    return filteredEvents.slice(0, shown);
+  }, [filteredEvents, shown]);
+  const hasMore = !!filteredEvents && filteredEvents.length > shown;
 
   const ownerBytes = useMemo<Uint8Array | null>(() => {
     if (!principal) return null;
@@ -108,11 +126,14 @@ export default function ActivityFeed({
         decoded.push(e);
       }
       decoded.sort((a, b) => Number(b.txId - a.txId));
-      if (mounted.current) setEvents(decoded.slice(0, limit));
+      // Keep the full decoded window in state; the render layer
+      // slices to `shown`. Lets "Show more" expand instantly
+      // without another canister round-trip.
+      if (mounted.current) setEvents(decoded);
     } catch (e) {
       if (mounted.current) setError((e as Error).message);
     }
-  }, [limit, ownerBytes]);
+  }, [ownerBytes]);
 
   // Click-driven refresh: shows the spinner for the full request duration
   // (but never less than 450ms so a fast local replica still registers
@@ -224,7 +245,29 @@ export default function ActivityFeed({
           <FilteredEmpty filter={filter} onClear={() => setRawFilter("all")} />
         )
       ) : (
-        <GroupedEvents events={visibleEvents} compact={compact} />
+        <>
+          <GroupedEvents events={visibleEvents} compact={compact} />
+          {/* Show-more pagination. Render cap only — load() already
+              fetched the full decoded window, so clicking expands
+              without another canister round-trip. Count reflects the
+              currently-filtered rows, not the raw fetch length, so
+              the hint stays accurate under a kind filter. */}
+          {hasMore && (
+            <div className="border-t border-white/5 px-4 py-3 flex items-center justify-between gap-3">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-gray-500">
+                Showing {visibleEvents.length} of {filteredEvents!.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShown((n) => n + SHOW_MORE_STEP)}
+                className="rounded-md border border-white/15 px-3 py-1.5 text-[11px] uppercase tracking-widest text-gray-200 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                aria-label={`Show ${SHOW_MORE_STEP} more activity entries`}
+              >
+                Show more
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
