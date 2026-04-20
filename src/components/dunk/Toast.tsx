@@ -356,8 +356,21 @@ export function ToastHost({ children }: { children: ReactNode }) {
         ref={hostRef}
         role="region"
         aria-label="Notifications"
-        className="pointer-events-none fixed top-4 right-4 z-[1000] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2 max-h-[calc(100vh-2rem)] overflow-y-auto"
-        style={{ scrollbarWidth: "none" }}
+        // POLISH-232 audit: Toast stack anchors top-right, not bottom —
+        // ticket's original "safe-area-inset-bottom" premise didn't
+        // apply. What DID bite was the top/right edges on iOS with
+        // viewport-fit=cover (layout.tsx:100): `top-4` + `right-4`
+        // alone can clip the top-most toast under the status bar /
+        // notch, or under the landscape side bezel. Inline style
+        // pads from the env() insets while keeping the 1rem
+        // visual gap via a max(...) so devices without insets
+        // still see the same breathing room.
+        className="pointer-events-none fixed right-0 top-0 z-[1000] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2 max-h-[calc(100vh-2rem)] overflow-y-auto"
+        style={{
+          scrollbarWidth: "none",
+          paddingTop: "max(1rem, env(safe-area-inset-top))",
+          paddingRight: "max(1rem, env(safe-area-inset-right))",
+        }}
       >
         {hiddenCount > 0 && (
           <button
