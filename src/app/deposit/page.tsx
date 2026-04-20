@@ -75,7 +75,7 @@ function DepositInner() {
                 aria-selected={active}
                 aria-controls={`tab-${t.id}`}
                 onClick={() => setTab(t.id)}
-                className={`shrink-0 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                className={`shrink-0 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
                   active
                     ? "bg-white/10 text-white"
                     : "text-gray-300 hover:text-white bg-white/[0.02] hover:bg-white/[0.05]"
