@@ -174,6 +174,14 @@ export default function StackerGame({
   initialSeed = null,
 }: StackerGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Wrapper ref so we can snap SR focus to the game region when a
+  // round ends, triggering the updated aria-label ("You cleared the
+  // tower!" / "Game over.") to be announced and making the wrapper
+  // the keyboard target for Space/Enter/R without requiring a prior
+  // tab. Only bump focus when the wrapper isn't already focused;
+  // otherwise we'd steal it from a legitimately interactive overlay
+  // child (Share Run button, Seed copy).
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef<GameState>(initialState());
   const rafRef = useRef(0);
   const lastTRef = useRef<number>(0);
@@ -277,6 +285,31 @@ export default function StackerGame({
     return () => {
       root.classList.remove("lw-hide-bottomnav");
     };
+  }, [hudState.phase]);
+
+  // End-of-round SR hand-off: when phase flips to "won"/"over",
+  // programmatically focus the game wrapper so the updated
+  // aria-label (e.g. "Game over. Score 42.") gets announced and
+  // Space/Enter/R land on a focused target without requiring the
+  // user to tab. Skip when focus is inside the wrapper already
+  // (user was keyboard-playing, or clicking an overlay control
+  // like "Share run" / Seed copy — we don't want to steal focus
+  // from their active interaction). preventScroll so the page
+  // doesn't jump during the lw-reveal-pop.
+  useEffect(() => {
+    if (hudState.phase !== "won" && hudState.phase !== "over") return;
+    const el = wrapperRef.current;
+    if (!el) return;
+    const active = typeof document !== "undefined" ? document.activeElement : null;
+    if (active && el.contains(active)) return;
+    const id = requestAnimationFrame(() => {
+      try {
+        el.focus({ preventScroll: true });
+      } catch {
+        /* focus may race with a rapid unmount — safe to ignore */
+      }
+    });
+    return () => cancelAnimationFrame(id);
   }, [hudState.phase]);
 
   // ----------------------------------------------------------------
@@ -998,6 +1031,7 @@ export default function StackerGame({
       // itself still needs scroll recovery if an overlay stacks
       // weirdly. "manipulation" keeps scroll + pinch, kills the
       // tap-delay timer.
+      ref={wrapperRef}
       style={{ touchAction: "manipulation" }}
       onPointerDown={(e) => {
         // Avoid double-firing on keyboard focus.
@@ -1007,6 +1041,11 @@ export default function StackerGame({
       tabIndex={0}
       role="button"
       aria-label={statusCopy.title}
+      // Round-end announcements: the phase-transition effect above
+      // pulls focus to this wrapper, and aria-live="polite" makes
+      // the SR re-announce the updated aria-label even when focus
+      // was already here (keyboard player finishing a run).
+      aria-live="polite"
     >
       <canvas ref={canvasRef} className="absolute inset-0" />
 
