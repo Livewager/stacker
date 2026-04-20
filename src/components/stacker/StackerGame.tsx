@@ -107,6 +107,11 @@ interface GameState {
   score: number;
   level: number;
   perfectStreak: number;
+  /** Running high-water mark of perfectStreak for this round. perfectStreak
+   *  itself resets to 0 on any non-perfect lock; this one never resets
+   *  mid-round. Used at end-of-round to decide whether to bump the
+   *  persisted best. */
+  runMaxStreak: number;
   /** Last perfect-lock row — used to draw an expanding ring on that block. */
   perfectAt: { row: number; col: number; width: number; at: number } | null;
 }
@@ -119,6 +124,7 @@ const initialState = (): GameState => ({
   score: 0,
   level: 1,
   perfectStreak: 0,
+  runMaxStreak: 0,
   perfectAt: null,
 });
 
@@ -139,6 +145,7 @@ const rgba = (c: readonly [number, number, number], a = 1) =>
 // ------------------------------------------------------------------
 
 const LS_BEST = "livewager-stacker-best";
+const LS_BEST_STREAK = "livewager-stacker-best-streak";
 const LS_LAST_PLAYED = "livewager-pref:stackerLastPlayed";
 
 type StackerGameProps = {
@@ -169,7 +176,21 @@ export default function StackerGame({
     level: number;
     perfectStreak: number;
     best: number;
-  }>({ phase: "idle", score: 0, level: 1, perfectStreak: 0, best: 0 });
+    bestStreak: number;
+    /** Set to the new best-streak value when the just-finished round
+     *  beat the persisted record. The overlay reads this flag on
+     *  won/over to render a "new best streak" flourish. Cleared on
+     *  the next start. */
+    newBestStreak: number | null;
+  }>({
+    phase: "idle",
+    score: 0,
+    level: 1,
+    perfectStreak: 0,
+    best: 0,
+    bestStreak: 0,
+    newBestStreak: null,
+  });
 
   // Transient difficulty-ramp flare: renders "Random spawn" when
   // entering row RANDOM_DIR_ROW and "Jitter on" at JITTER_ROW. Cleared
@@ -192,14 +213,19 @@ export default function StackerGame({
   const [lastSeed, setLastSeed] = useState<number | null>(null);
   const copy = useCopyable();
 
-  // Restore best score once on mount.
+  // Restore best score + best streak once on mount.
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(LS_BEST);
       const best = raw ? Number(raw) : 0;
-      if (Number.isFinite(best) && best > 0) {
-        setHudState((h) => ({ ...h, best }));
-      }
+      const rawStreak = window.localStorage.getItem(LS_BEST_STREAK);
+      const bestStreak = rawStreak ? Number(rawStreak) : 0;
+      setHudState((h) => ({
+        ...h,
+        best: Number.isFinite(best) && best > 0 ? best : h.best,
+        bestStreak:
+          Number.isFinite(bestStreak) && bestStreak > 0 ? bestStreak : h.bestStreak,
+      }));
     } catch {
       /* ignore */
     }
@@ -255,6 +281,7 @@ export default function StackerGame({
       score: 0,
       level: 1,
       perfectStreak: 0,
+      runMaxStreak: 0,
       perfectAt: null,
     };
     flashRef.current = 0;
@@ -278,6 +305,10 @@ export default function StackerGame({
       score: 0,
       level: 1,
       perfectStreak: 0,
+      // Fresh round — clear any leftover "new best" flash from the
+      // previous end-of-round card. bestStreak itself stays as-is so
+      // the player can see what they're chasing.
+      newBestStreak: null,
     }));
     onPhaseChange?.("playing");
   }, [onPhaseChange]);
@@ -344,8 +375,13 @@ export default function StackerGame({
         haptics.over();
         s.phase = "over";
         const newBest = Math.max(hudState.best, s.score);
+        const newBestStreak = Math.max(hudState.bestStreak, s.runMaxStreak);
+        const streakBeaten = newBestStreak > hudState.bestStreak;
         try {
           window.localStorage.setItem(LS_BEST, String(newBest));
+          if (streakBeaten) {
+            window.localStorage.setItem(LS_BEST_STREAK, String(newBestStreak));
+          }
         } catch {
           /* ignore */
         }
@@ -355,6 +391,8 @@ export default function StackerGame({
           level: s.level,
           perfectStreak: s.perfectStreak,
           best: newBest,
+          bestStreak: newBestStreak,
+          newBestStreak: streakBeaten ? newBestStreak : null,
         });
         const t = roundRef.current?.finalize() ?? null;
         if (t) setLastTranscript(t);
@@ -411,6 +449,10 @@ export default function StackerGame({
     // Scoring: base 10 per row + 15 streak bonus per consecutive perfect.
     if (perfect) {
       s.perfectStreak += 1;
+      // Running high-water for the round — persisted at end-of-round
+      // so "longest streak" survives reload even if the run itself
+      // ended below the previous best score.
+      if (s.perfectStreak > s.runMaxStreak) s.runMaxStreak = s.perfectStreak;
       s.score += 10 + 15 * s.perfectStreak;
       flashRef.current = performance.now();
       s.perfectAt = {
@@ -435,8 +477,16 @@ export default function StackerGame({
       haptics.win();
       s.phase = "won";
       const newBest = Math.max(hudState.best, s.score);
+      // Streak best is orthogonal — a long perfect streak in a run
+      // that ends below the score record still counts as a new best
+      // streak. Both persist independently.
+      const newBestStreak = Math.max(hudState.bestStreak, s.runMaxStreak);
+      const streakBeaten = newBestStreak > hudState.bestStreak;
       try {
         window.localStorage.setItem(LS_BEST, String(newBest));
+        if (streakBeaten) {
+          window.localStorage.setItem(LS_BEST_STREAK, String(newBestStreak));
+        }
       } catch {
         /* ignore */
       }
@@ -454,6 +504,8 @@ export default function StackerGame({
         level: s.level,
         perfectStreak: s.perfectStreak,
         best: newBest,
+        bestStreak: newBestStreak,
+        newBestStreak: streakBeaten ? newBestStreak : null,
       });
       const t = roundRef.current?.finalize() ?? null;
       if (t) setLastTranscript(t);
@@ -1017,6 +1069,24 @@ export default function StackerGame({
               Press space or tap to {statusCopy.cta.toLowerCase()}
             </div>
 
+            {/* "New best streak!" flourish — only when the round
+                just beat the persisted record. Rendered above the
+                transcript block so it lands in the celebratory beat
+                of the end-of-round read. Pulses via the shared
+                lw-reveal keyframe so it doesn't fight the card's
+                own entrance animation. */}
+            {hudState.newBestStreak !== null &&
+              (hudState.phase === "won" || hudState.phase === "over") && (
+                <div
+                  className="lw-reveal mt-4 inline-flex items-center gap-2 rounded-full border border-yellow-300/60 bg-yellow-300/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-yellow-200"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span aria-hidden>★</span>
+                  New best streak · ×{hudState.newBestStreak}
+                </div>
+              )}
+
             {/* Fair-play transparency: show the transcript stats on
                 won/over so players can see what was captured. No upload,
                 local only until ANTICHEAT-T1 ships. */}
@@ -1028,6 +1098,9 @@ export default function StackerGame({
                     {lastTranscript.stats.meanDt > 0
                       ? `μ Δt ${Math.round(lastTranscript.stats.meanDt)}ms`
                       : "—"}
+                    {hudState.bestStreak > 0 && (
+                      <> · streak best ×{hudState.bestStreak}</>
+                    )}
                   </div>
                   {lastSeed !== null && (
                     <div className="text-[10px] font-mono text-gray-600 uppercase tracking-widest">
