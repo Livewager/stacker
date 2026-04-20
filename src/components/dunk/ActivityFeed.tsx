@@ -21,6 +21,7 @@ import {
   type BlockEventKind,
 } from "@/lib/icp";
 import { Principal } from "@dfinity/principal";
+import { useCopyable } from "@/lib/clipboard";
 
 export interface ActivityFeedProps {
   principal?: string;
@@ -213,9 +214,7 @@ function GroupedEvents({
           </div>
           <ul className="divide-y divide-white/5">
             {g.items.map((e) => (
-              <li key={`${e.txId}-${e.kind}`} className="px-4 py-3">
-                <ActivityRow event={e} compact={compact} />
-              </li>
+              <ActivityListItem key={`${e.txId}-${e.kind}`} event={e} compact={compact} />
             ))}
           </ul>
         </section>
@@ -227,6 +226,32 @@ function GroupedEvents({
 // ------------------------------------------------------------------
 // Row
 // ------------------------------------------------------------------
+
+function ActivityListItem({
+  event,
+  compact,
+}: {
+  event: BlockEvent;
+  compact: boolean;
+}) {
+  const copy = useCopyable();
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() =>
+          copy(event.txId.toString(), {
+            label: `Tx #${event.txId.toString()}`,
+          })
+        }
+        className="w-full text-left px-4 py-3 hover:bg-white/[0.02] transition focus:outline-none focus-visible:bg-white/[0.04]"
+        title={`Copy tx id #${event.txId.toString()}`}
+      >
+        <ActivityRow event={event} compact={compact} />
+      </button>
+    </li>
+  );
+}
 
 function ActivityRow({ event, compact }: { event: BlockEvent; compact: boolean }) {
   const icon = iconFor(event.kind);
