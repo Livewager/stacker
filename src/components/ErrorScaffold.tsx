@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/Button";
 
 /**
  * Visual shell shared by not-found + error + global-error pages.
@@ -83,37 +84,27 @@ export function ErrorScaffold({
 
         <div className="flex items-center justify-center gap-3 flex-wrap">
           {primary.href ? (
-            <Link
-              href={primary.href}
-              className="px-5 py-2.5 rounded-xl font-bold text-black transition hover:brightness-110"
-              style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
-            >
-              {primary.label}
+            <Link href={primary.href}>
+              <Button tone="cyan" size="lg">
+                {primary.label}
+              </Button>
             </Link>
           ) : (
-            <button
-              onClick={primary.onClick}
-              className="px-5 py-2.5 rounded-xl font-bold text-black transition hover:brightness-110"
-              style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
-            >
+            <Button onClick={primary.onClick} tone="cyan" size="lg">
               {primary.label}
-            </button>
+            </Button>
           )}
           {secondary ? (
             secondary.href ? (
-              <Link
-                href={secondary.href}
-                className="px-4 py-2.5 rounded-xl border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition"
-              >
-                {secondary.label}
+              <Link href={secondary.href}>
+                <Button variant="outline" size="lg">
+                  {secondary.label}
+                </Button>
               </Link>
             ) : (
-              <button
-                onClick={secondary.onClick}
-                className="px-4 py-2.5 rounded-xl border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition"
-              >
+              <Button onClick={secondary.onClick} variant="outline" size="lg">
                 {secondary.label}
-              </button>
+              </Button>
             )
           ) : null}
         </div>
