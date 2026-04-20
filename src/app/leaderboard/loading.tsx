@@ -8,10 +8,22 @@ import {
 export default function LeaderboardLoading() {
   return (
     <SkeletonPage>
-      {/* Hero-right: You pill + hour clock */}
-      <div className="mb-8 flex items-end justify-end gap-3">
-        <SkeletonBlock className="h-16 w-48 rounded-xl" />
-        <SkeletonBlock className="h-16 w-36 rounded-xl" />
+      {/* Hero: matches the two-column HeroHeader layout — left-
+          side title + subtitle + descriptive copy, right-side You
+          badge + HourClock. The previous skeleton only reserved
+          the right column, so the heading appeared on hydration
+          and pushed the board grid below it down ~130px (CLS). */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <SkeletonLine className="w-28" />
+          <SkeletonBlock className="h-8 md:h-10 w-80 max-w-full mt-2 rounded-md" />
+          <SkeletonLine className="w-full max-w-xl mt-3" />
+          <SkeletonLine className="w-72 max-w-full mt-2" />
+        </div>
+        <div className="flex items-center gap-3">
+          <SkeletonBlock className="h-16 w-48 rounded-xl" />
+          <SkeletonBlock className="h-16 w-36 rounded-xl" />
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
