@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { QRPlaceholder } from "./QRPlaceholder";
+import { WatchAddressQR } from "./WatchAddressQR";
 import { ConfirmationRail, type ConfirmationStep } from "./ConfirmationRail";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { useCopyable } from "@/lib/clipboard";
@@ -85,17 +85,19 @@ export function LtcDepositPanel() {
 
   return (
     <div className="grid gap-6 md:grid-cols-[260px_1fr]">
-      {/* Left: QR preview */}
+      {/* Left: QR of the watch address. Real scannable BIP-21 litecoin:
+          URI so a phone wallet opens with the address prefilled — but
+          the address itself is the demo watch string, so nothing real
+          moves. Demo caption stays prominent. */}
       <div className="flex flex-col items-center gap-3">
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
-          <QRPlaceholder
-            seed={signedIn ? principal : "anon-demo-address"}
-            size={224}
-            className="rounded-xl"
-          />
+          <WatchAddressQR address={DEMO_WATCH_ADDRESS} size={224} />
         </div>
-        <div className="text-[10px] uppercase tracking-widest text-gray-500">
+        <div className="text-[10px] uppercase tracking-widest text-gray-500 text-center leading-snug">
           Demo address · do not send real LTC
+          <div className="mt-0.5 normal-case tracking-normal text-[10px] text-gray-600">
+            Scan with any LTC wallet to see the prefill flow
+          </div>
         </div>
       </div>
 
