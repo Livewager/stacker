@@ -20,7 +20,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ROUTES } from "@/lib/routes";
 import { useWalletState } from "@/components/dunk/WalletContext";
-import { writeRaw, PREF_KEYS } from "@/lib/prefs";
+import { writeRaw, PREF_KEYS, clearSessionState } from "@/lib/prefs";
+import { useCopyable } from "@/lib/clipboard";
+import { useToast } from "@/components/dunk/Toast";
+import { formatLWP } from "@/lib/icp";
 
 /**
  * Global event name other components can dispatch to open the palette
@@ -92,7 +95,9 @@ const GAME_SHORTCUTS: Shortcut[] = [
 export default function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname() || "";
-  const { identity, login, logout } = useWalletState();
+  const { identity, principal, balance, login, logout } = useWalletState();
+  const copy = useCopyable();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
@@ -229,9 +234,56 @@ export default function CommandPalette() {
     };
   }, [identity, login, logout, authBusy]);
 
+  // In-place verb commands. Distinct from the navigation entries
+  // below: these act on the current session instead of routing. Each
+  // one closes the palette before running so the toast lands on the
+  // actual page context, not behind the sheet.
+  const actionCommands: Command[] = useMemo(() => {
+    const out: Command[] = [];
+    if (identity && principal) {
+      out.push({
+        id: "action-copy-principal",
+        label: "Copy principal",
+        hint: "Clipboard · your II principal",
+        run: () => {
+          setOpen(false);
+          copy(principal, { label: "Principal" });
+        },
+      });
+    }
+    if (identity && balance !== null) {
+      out.push({
+        id: "action-copy-balance",
+        label: "Copy balance",
+        hint: `Clipboard · ${formatLWP(balance, 4)} LWP`,
+        run: () => {
+          setOpen(false);
+          copy(`${formatLWP(balance, 4)} LWP`, { label: "Balance" });
+        },
+      });
+    }
+    out.push({
+      id: "action-clear-session",
+      label: "Clear session state",
+      hint: "Reset cap, recent recipients, calibration · preferences kept",
+      run: () => {
+        setOpen(false);
+        clearSessionState();
+        toast.push({
+          kind: "success",
+          title: "Session cleared",
+          description:
+            "Session cap, recent recipients, last-played, and calibration reset. Preferences kept.",
+        });
+      },
+    });
+    return out;
+  }, [identity, principal, balance, copy, toast]);
+
   const commands: Command[] = useMemo(
     () => [
       authCommand,
+      ...actionCommands,
       { id: "play", label: "Games hub", hint: ROUTES.play, run: () => go(ROUTES.play) },
       { id: "dunk", label: "Tilt Pour", hint: ROUTES.dunk, run: () => go(ROUTES.dunk) },
       { id: "stacker", label: "Stacker", hint: ROUTES.stacker, run: () => go(ROUTES.stacker) },
@@ -249,7 +301,7 @@ export default function CommandPalette() {
       { id: "settings-diagnostics", label: "Settings · Diagnostics", hint: `${ROUTES.settings}#diagnostics`, run: () => go(`${ROUTES.settings}#diagnostics`) },
       { id: "settings-data", label: "Settings · Device data", hint: `${ROUTES.settings}#data`, run: () => go(`${ROUTES.settings}#data`) },
     ],
-    [go, authCommand],
+    [go, authCommand, actionCommands],
   );
 
   const filtered = useMemo(() => {
