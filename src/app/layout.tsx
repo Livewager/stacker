@@ -1,11 +1,103 @@
 import "@/css/satoshi.css";
 import "@/css/style.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import AppShell from "@/components/AppShell";
 
+/**
+ * Root metadata. `metadataBase` is required for relative OG/Twitter
+ * image URLs to resolve to absolute URLs when a crawler visits.
+ *
+ * We don't yet know the production origin, so:
+ *   - use NEXT_PUBLIC_SITE_URL when it's set (Vercel previews, prod)
+ *   - fall back to the dev port locally so cURL + scrapers still get
+ *     working absolute URLs
+ */
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://dunk.local"
+    : "http://localhost:3002");
+
+const OG_TITLE = "Dunk · Tilt. Pour. Don't spill.";
+const OG_DESCRIPTION =
+  "A 20-second skill game played with your phone's gyroscope. Non-custodial wallet, ICRC-1 points on the Internet Computer.";
+
 export const metadata: Metadata = {
-  title: "Dunk",
-  description: "Steady Pour — a 20-second tilt game.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Dunk",
+    // Each page's metadata.title ('Wallet', 'Account', ...) slots into
+    // this template so the browser tab always reads "<page> · Dunk".
+    template: "%s · Dunk",
+  },
+  description: OG_DESCRIPTION,
+  applicationName: "Dunk",
+  keywords: [
+    "livewager",
+    "dunk",
+    "steady pour",
+    "icp",
+    "icrc-1",
+    "internet computer",
+    "skill game",
+    "tilt game",
+  ],
+  authors: [{ name: "Livewager" }],
+  creator: "Livewager",
+  publisher: "Livewager",
+  // Block robots while we're in demo mode. Flip when a real deploy ships.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false },
+  },
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Dunk",
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+    // Next's file-based OG image (src/app/opengraph-image.tsx) is
+    // auto-added here; keep explicit fallback for crawlers that prefer
+    // an absolute asset URL.
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Dunk — tilt, pour, don't spill.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    creator: "@livewager",
+    images: ["/opengraph-image"],
+  },
+  icons: {
+    icon: [{ url: "/assets/logo43.png", type: "image/png" }],
+    apple: [{ url: "/assets/logo43.png", type: "image/png" }],
+    shortcut: ["/assets/logo43.png"],
+  },
+  category: "games",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#020b18" },
+    { media: "(prefers-color-scheme: light)", color: "#020b18" },
+  ],
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -13,9 +105,6 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark">
-      <head>
-        <meta name="viewport" content="width=device-width, user-scalable=no" />
-      </head>
       <body className="bg-background text-white antialiased">
         <AppShell>{children}</AppShell>
       </body>
