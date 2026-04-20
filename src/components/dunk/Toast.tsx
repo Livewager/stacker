@@ -63,22 +63,28 @@ export function useToast(): ToastApi {
   return ctx;
 }
 
+interface TimerState {
+  handle: ReturnType<typeof setTimeout>;
+  startedAt: number;
+  remainingMs: number;
+}
+
 export function ToastHost({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastEntry[]>([]);
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const timers = useRef(new Map<string, TimerState>());
 
   const dismiss = useCallback((id: string) => {
     setToasts((xs) => xs.filter((t) => t.id !== id));
-    const h = timers.current.get(id);
-    if (h) {
-      clearTimeout(h);
+    const st = timers.current.get(id);
+    if (st) {
+      clearTimeout(st.handle);
       timers.current.delete(id);
     }
   }, []);
 
   const dismissAll = useCallback(() => {
     setToasts([]);
-    timers.current.forEach((h) => clearTimeout(h));
+    timers.current.forEach((st) => clearTimeout(st.handle));
     timers.current.clear();
   }, []);
 
@@ -99,10 +105,50 @@ export function ToastHost({ children }: { children: ReactNode }) {
       };
       setToasts((xs) => [...xs, entry]);
       if (entry.ttlMs > 0) {
-        const h = setTimeout(() => dismiss(id), entry.ttlMs);
-        timers.current.set(id, h);
+        const handle = setTimeout(() => dismiss(id), entry.ttlMs);
+        timers.current.set(id, {
+          handle,
+          startedAt: performance.now(),
+          remainingMs: entry.ttlMs,
+        });
       }
       return id;
+    },
+    [dismiss],
+  );
+
+  // Pause the auto-dismiss timer for a toast and keep track of how
+  // much TTL is still owed. Called from ToastCard on mouse enter /
+  // keyboard focus.
+  const pause = useCallback((id: string) => {
+    const st = timers.current.get(id);
+    if (!st) return;
+    clearTimeout(st.handle);
+    const elapsed = performance.now() - st.startedAt;
+    const remaining = Math.max(0, st.remainingMs - elapsed);
+    timers.current.set(id, {
+      // handle is replaced below on resume; stash the current noop
+      // reference here so the shape stays valid.
+      handle: st.handle,
+      startedAt: 0,
+      remainingMs: remaining,
+    });
+  }, []);
+
+  const resume = useCallback(
+    (id: string) => {
+      const st = timers.current.get(id);
+      if (!st || st.startedAt !== 0) return; // already running
+      if (st.remainingMs <= 0) {
+        dismiss(id);
+        return;
+      }
+      const handle = setTimeout(() => dismiss(id), st.remainingMs);
+      timers.current.set(id, {
+        handle,
+        startedAt: performance.now(),
+        remainingMs: st.remainingMs,
+      });
     },
     [dismiss],
   );
@@ -111,7 +157,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
   useEffect(() => {
     const t = timers.current;
     return () => {
-      t.forEach((h) => clearTimeout(h));
+      t.forEach((st) => clearTimeout(st.handle));
       t.clear();
     };
   }, []);
@@ -144,7 +190,13 @@ export function ToastHost({ children }: { children: ReactNode }) {
           </button>
         )}
         {visible.map((t) => (
-          <ToastCard key={t.id} t={t} onDismiss={() => dismiss(t.id)} />
+          <ToastCard
+            key={t.id}
+            t={t}
+            onDismiss={() => dismiss(t.id)}
+            onPause={() => pause(t.id)}
+            onResume={() => resume(t.id)}
+          />
         ))}
       </div>
     </ToastCtx.Provider>
@@ -177,12 +229,26 @@ const KIND_STYLES: Record<
   },
 };
 
-function ToastCard({ t, onDismiss }: { t: ToastEntry; onDismiss: () => void }) {
+function ToastCard({
+  t,
+  onDismiss,
+  onPause,
+  onResume,
+}: {
+  t: ToastEntry;
+  onDismiss: () => void;
+  onPause: () => void;
+  onResume: () => void;
+}) {
   const s = KIND_STYLES[t.kind];
 
   return (
     <div
       role="status"
+      onMouseEnter={onPause}
+      onMouseLeave={onResume}
+      onFocusCapture={onPause}
+      onBlurCapture={onResume}
       className={`lw-reveal pointer-events-auto rounded-xl border backdrop-blur-md px-4 py-3 shadow-xl ${s.shell}`}
     >
       <div className="flex items-start gap-3">
