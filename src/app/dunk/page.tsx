@@ -1178,7 +1178,11 @@ export default function DunkPage() {
       <section
         id="top"
         ref={heroRef}
-        className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-6 md:pt-12 pb-16 md:pb-24"
+        /* min-h guard: on short viewports (landscape phone ~375x667)
+           the parallax-driven heroY transform can pull the hero grid
+           underneath the sticky nav. Pin a floor so the content + CTA
+           always have room to breathe. */
+        className="relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-6 md:pt-12 pb-16 md:pb-24 min-h-[640px] md:min-h-[560px]"
       >
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
           <motion.div style={{ y: heroY }} initial="hidden" animate="show" variants={fadeUp}>
