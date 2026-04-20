@@ -144,23 +144,52 @@ export function StackerWager({ onStart, disabled }: Props) {
         >
           {CHIPS.map((c) => {
             const active = stake === c;
+            // Per-chip affordability: a chip is muted when the user
+            // is signed in with a known balance below that stake. The
+            // chip stays clickable so the user can still see the
+            // warning copy below if they pick it — we're nudging,
+            // not blocking.
+            const chipShort =
+              c > 0 &&
+              identity !== null &&
+              balanceLwp !== null &&
+              balanceLwp < c;
             return (
               <button
                 key={c}
                 type="button"
                 role="radio"
                 aria-checked={active}
+                aria-disabled={chipShort ? "true" : undefined}
                 onClick={() => setStake(c)}
                 disabled={disabled}
+                title={
+                  chipShort
+                    ? `Need ${c} LWP — current balance ${balanceLwp?.toFixed(
+                        2,
+                      )} LWP`
+                    : undefined
+                }
                 className={[
-                  "rounded-xl border px-2 py-3 text-sm font-bold transition",
+                  "rounded-xl border px-2 py-3 text-sm font-bold transition relative",
                   active
-                    ? "border-cyan-300/60 bg-cyan-300/15 text-white"
-                    : "border-white/10 bg-white/[0.03] text-gray-300 hover:text-white hover:border-white/20",
+                    ? chipShort
+                      ? "border-orange-300/60 bg-orange-300/10 text-orange-100"
+                      : "border-cyan-300/60 bg-cyan-300/15 text-white"
+                    : chipShort
+                      ? "border-white/10 bg-white/[0.02] text-gray-500 hover:text-gray-300 hover:border-orange-300/25"
+                      : "border-white/10 bg-white/[0.03] text-gray-300 hover:text-white hover:border-white/20",
                   disabled ? "opacity-60 cursor-not-allowed" : "",
                 ].join(" ")}
               >
-                {c === 0 ? "Free" : `${c} LWP`}
+                <span className={chipShort ? "line-through decoration-orange-300/60" : undefined}>
+                  {c === 0 ? "Free" : `${c} LWP`}
+                </span>
+                {chipShort && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-orange-400/90 text-black text-[9px] font-mono grid place-items-center border border-orange-200/60">
+                    !
+                  </span>
+                )}
               </button>
             );
           })}
