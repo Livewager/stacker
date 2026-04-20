@@ -436,7 +436,7 @@ export default function CommandPalette() {
         // reducedMotion === null (pre-hydrate) falls through to the
         // canonical first hint so SSR + first paint match.
         placeholder={PALETTE_HINTS[hintIndex] ?? PALETTE_HINTS[0]}
-        className="w-full rounded-lg border border-white/10 bg-black/40 px-3 h-11 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-300/60"
+        className="w-full rounded-lg border border-white/10 bg-black/40 px-3 h-11 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-300/60 focus-visible:ring-2 focus-visible:ring-cyan-300/50"
         aria-label="Search commands"
       />
 

@@ -175,7 +175,7 @@ export default function DropWallet() {
                   value={amountLwp}
                   onChange={(e) => setAmountLwp(e.target.value)}
                   disabled={status === "buying"}
-                  className="w-24 px-2 py-2 rounded-md bg-black/40 border border-white/10 text-white text-sm font-mono text-right focus:outline-none focus:border-cyan-300/60"
+                  className="w-24 px-2 py-2 rounded-md bg-black/40 border border-white/10 text-white text-sm font-mono text-right focus:outline-none focus:border-cyan-300/60 focus-visible:ring-2 focus-visible:ring-cyan-300/50"
                 />
                 <span className="text-[11px] text-gray-400 font-mono">LWP</span>
               </div>
@@ -214,7 +214,7 @@ export default function DropWallet() {
                   value={amountLtc}
                   onChange={(e) => setAmountLtc(e.target.value)}
                   disabled={status === "depositing"}
-                  className="w-28 px-2 py-2 rounded-md bg-black/40 border border-white/10 text-white text-sm font-mono text-right focus:outline-none focus:border-orange-300/60"
+                  className="w-28 px-2 py-2 rounded-md bg-black/40 border border-white/10 text-white text-sm font-mono text-right focus:outline-none focus:border-orange-300/60 focus-visible:ring-2 focus-visible:ring-orange-300/50"
                 />
                 <span className="text-[11px] text-gray-400 font-mono">LTC</span>
                 <span className="text-[10px] text-gray-500 ml-auto">
