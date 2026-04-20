@@ -292,6 +292,24 @@ encode real tiers. Before "consolidating" one of these, check here:
   "Share run" stay proportional; mono there reads as cargo-cult
   drift. Pair `font-mono` with `tabular-nums` when the content is
   numeric and will re-render (keeps digits from jumping width).
+- **Skeleton shimmer layering** (audited POLISH-313). The
+  `animate-pulse` utility modulates opacity — and that's the
+  footgun. If a parent *and* its children both animate-pulse, the
+  two opacity tweens compose multiplicatively and produce a
+  double-time flicker (child opacity × parent opacity, each at
+  2s cubic-bezier). The rule: `animate-pulse` goes on either the
+  **single-element placeholder** (dynamic-import fallbacks like
+  /dunk's DropWallet loading slot, /stacker's game canvas slot —
+  filled cards with no children) OR on the **individual
+  SkeletonBlock children inside a static card container** — never
+  both. The Skeleton primitive in `src/components/ui/Skeleton.tsx`
+  follows this: `SkeletonCard` is a plain static border+bg, only
+  the inner `SkeletonBlock` shimmers. If you're building a new
+  loading.tsx, reach for the primitive and don't layer a pulse on
+  the outer wrapper. When you need a single-element "something
+  heavy is loading here" block (dynamic-import fallback), the
+  single animate-pulse on the outer div is correct because there
+  are no children to compound against.
 - **Tab-strip primitives** (audited POLISH-307). The app has
   *three* tab-strip shapes and they are intentionally different —
   each encodes a different semantic, so a future audit should

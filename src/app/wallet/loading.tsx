@@ -10,8 +10,16 @@ export default function WalletLoading() {
     <SkeletonPage>
       <div className="grid gap-6 md:grid-cols-[1.2fr_1fr]">
         <div className="space-y-6">
-          {/* Balance hero */}
-          <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-6 md:p-8 animate-pulse">
+          {/* Balance hero. POLISH-313: no animate-pulse on this
+              outer card — every SkeletonBlock inside already has
+              its own animate-pulse, and a pulse on the parent
+              compounds with the children's pulses to create a
+              double-time flicker (parent opacity + child opacity
+              modulate independently). Every *other* skeleton card
+              in wallet/loading.tsx already follows this rule
+              (SkeletonCard, the tokens list, the activity feed
+              strip below). This one was the outlier. */}
+          <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-6 md:p-8">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <SkeletonLine className="w-24" />
