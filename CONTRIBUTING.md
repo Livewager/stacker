@@ -495,6 +495,31 @@ encode real tiers. Before "consolidating" one of these, check here:
   "fix" the false negatives by hoisting the h1 above the Suspense
   boundary — the fallback is intentional and the lazy boundary
   exists to keep initial JS small.
+- **Page-level eyebrow shape contract** (audited POLISH-343).
+  Two shapes, picked by surface type — do not blend.
+  1. **Flat text eyebrow** (utility routes): `text-xs uppercase
+     tracking-widest text-{tone}-300 mb-2`, tone = the route
+     accent (cyan for neutral/info, orange for deposit, rose for
+     withdraw, violet for send). No border, no background, no
+     dot. Used by /wallet, /send, /withdraw, /deposit, /account,
+     /settings, /leaderboard, /play. If the route is
+     money-touching (/send, /account, etc.) pair the eyebrow with
+     an inline `<Pill size="xs" mono>demo</Pill>` — do NOT encode
+     "demo" inside a pill-with-dot eyebrow, keep the demo
+     disclosure as its own token beside the flat text.
+  2. **Pill-with-dot eyebrow** (marketing/landing routes):
+     `inline-flex rounded-full border border-{tone}-300/30
+     bg-{tone}-300/[0.05] px-3 py-1` with a leading
+     `h-1.5 w-1.5 rounded-full bg-{tone}-300` dot (animate-pulse
+     if "live"). Used by /dunk (live pulse), /fair-play (static),
+     /stacker (Pill primitive variant). These routes want heavier
+     hierarchy because the hero is longer and the eyebrow reads
+     as a signpost, not a section header.
+  ErrorScaffold's eyebrow is deliberately flat text (no pill) —
+  matches Shape 1 so error boundaries don't accidentally compete
+  with landing eyebrows for visual weight. If a new route needs
+  an eyebrow: pick utility vs landing from the surface type, not
+  from the tone you want. Don't invent a third shape.
 
 ### The anti-patterns to watch for
 
