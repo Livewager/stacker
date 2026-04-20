@@ -1004,8 +1004,29 @@ export default function StackerGame({
       rafRef.current = requestAnimationFrame(frame);
     };
     rafRef.current = requestAnimationFrame(frame);
+
+    // Visibility-gate the render loop. Background tabs throttle rAF to
+    // ~1 Hz but still tick: the frame fn runs clearRect + gradient +
+    // grid-dots + shard sim + HUD draws every tick, which is pure
+    // waste on an invisible canvas and keeps the GPU warm on battery.
+    // Cancel the rAF when the tab goes hidden and restart on show.
+    // Also zero lastTRef on resume so the first post-resume frame's dt
+    // is 0, not multi-second — the simulate branch already guards
+    // with pausedRef (POLISH-82), but belts-and-braces: background
+    // canvas re-arm should not jump any animation forward.
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      } else if (rafRef.current === 0) {
+        lastTRef.current = 0;
+        rafRef.current = requestAnimationFrame(frame);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelAnimationFrame(rafRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
       ro.disconnect();
     };
   }, []);
