@@ -105,6 +105,31 @@ export function ErrorScaffold({
       .filter(Boolean)
       .join("\n") || undefined;
 
+  // POLISH-274 — focus the primary CTA on mount so keyboard users
+  // arriving at the error boundary can hit Enter to retry without
+  // having to Tab-hunt. Only focus when the primary action is a
+  // retry (onClick-backed) — a link-based primary doesn't need
+  // forced focus, the user may have already pressed Enter to get
+  // here in a successful reset. preventScroll keeps the page
+  // anchored; without it the button can jump the viewport when
+  // the error block is below the fold on a long error detail.
+  // Skip the grab if something else was scripted to focus first
+  // (document.activeElement moved off body before this effect).
+  const primaryBtnRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (primary.href) return;
+    const el = primaryBtnRef.current;
+    if (!el) return;
+    const active =
+      typeof document !== "undefined" ? document.activeElement : null;
+    if (active && active !== document.body) return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      /* focus may race with rapid unmount — ignore */
+    }
+  }, [primary.href]);
+
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     if (!fullDetail) return;
@@ -183,7 +208,12 @@ export function ErrorScaffold({
               </Button>
             </Link>
           ) : (
-            <Button onClick={primary.onClick} tone="cyan" size="lg">
+            <Button
+              ref={primaryBtnRef}
+              onClick={primary.onClick}
+              tone="cyan"
+              size="lg"
+            >
               {primary.label}
             </Button>
           )}
