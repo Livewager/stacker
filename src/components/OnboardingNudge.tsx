@@ -27,6 +27,12 @@ import { ROUTES } from "@/lib/routes";
 export default function OnboardingNudge() {
   const [seen, setSeen] = useLocalPref<boolean>(PREF_KEYS.hasSeenOnboarding, false);
   const [mounted, setMounted] = useState(false);
+  // Dismiss lives in two phases: a local dismissing flag flips the
+  // sheet's open prop false (triggering BottomSheet unmount), and a
+  // 220ms tail lets the outgoing animation breathe before we flip
+  // the persistent `seen` pref. Without this the component
+  // unmounts instantly on click — feels cut, not decided.
+  const [dismissing, setDismissing] = useState(false);
   const { identity } = useWalletState();
 
   // Two-render pattern: avoid popping the modal during hydration.
@@ -40,7 +46,16 @@ export default function OnboardingNudge() {
     if (identity && !seen) setSeen(true);
   }, [identity, seen, setSeen]);
 
+  // Keep the sheet open during dismiss so the exit animation on the
+  // inner content can play; setSeen fires after the tail so the
+  // BottomSheet unmounts with finalised state, not mid-animation.
   const open = mounted && !seen && !identity;
+
+  const close = () => {
+    if (dismissing) return;
+    setDismissing(true);
+    window.setTimeout(() => setSeen(true), 220);
+  };
 
   // Ambient auto-dismiss after 15s. The user who landed via a share
   // link can scroll past without actively closing — we persist the
@@ -48,17 +63,27 @@ export default function OnboardingNudge() {
   // again next visit.
   useEffect(() => {
     if (!open) return;
-    const id = window.setTimeout(() => setSeen(true), 15_000);
+    const id = window.setTimeout(close, 15_000);
     return () => window.clearTimeout(id);
-  }, [open, setSeen]);
+    // `close` is stable enough (only reads dismissing via setState)
+    // that we don't need it in the deps; omitting avoids the timer
+    // resetting every dismissing flip.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
     <BottomSheet
       open={open}
-      onClose={() => setSeen(true)}
+      onClose={close}
       title="Welcome to Dunk."
       description="Two skill games, one non-custodial wallet. Thirty-second rounds. Real ledger, demo prizes."
     >
+      {/* Wrap content in an exit-animating container. When
+          `dismissing` is true we apply lw-dismiss which fades +
+          slides the card down over 220ms before the parent sets
+          seen and BottomSheet unmounts. Uses GPU-composited props
+          only. */}
+      <div className={dismissing ? "lw-dismiss" : undefined}>
       <ul className="space-y-3 mb-6">
         <Bullet
           icon={
@@ -98,7 +123,7 @@ export default function OnboardingNudge() {
         <Link href={ROUTES.account} className="inline-flex">
           <Button
             variant="outline"
-            onClick={() => setSeen(true)}
+            onClick={close}
             fullWidth
             className="sm:w-auto"
           >
@@ -107,13 +132,14 @@ export default function OnboardingNudge() {
         </Link>
         <Button
           data-autofocus
-          onClick={() => setSeen(true)}
+          onClick={close}
           tone="cyan"
           fullWidth
           className="sm:w-auto"
         >
           Let&apos;s play
         </Button>
+      </div>
       </div>
     </BottomSheet>
   );
