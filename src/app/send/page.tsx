@@ -2,13 +2,25 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Principal } from "@dfinity/principal";
 import AppHeader from "@/components/AppHeader";
 import { useWalletState } from "@/components/dunk/WalletContext";
 import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
-import { PrincipalScanner } from "@/components/send/PrincipalScanner";
+// Defer the scanner chunk until the user actually opens the sheet.
+// PrincipalScanner pulls in the BottomSheet + camera boot path, and
+// the BarcodeDetector-using code runs inside its effect only on
+// `open`. Splitting it out drops /send's initial JS for the common
+// case where a user pastes or types the principal.
+const PrincipalScanner = dynamic(
+  () =>
+    import("@/components/send/PrincipalScanner").then((m) => ({
+      default: m.PrincipalScanner,
+    })),
+  { ssr: false },
+);
 import { useCopyable } from "@/lib/clipboard";
 import { useToast } from "@/components/dunk/Toast";
 import {
@@ -418,14 +430,20 @@ export default function SendPage() {
         )}
       </div>
 
-      <PrincipalScanner
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onResult={(value) => {
-          setTo(value);
-          setScannerOpen(false);
-        }}
-      />
+      {/* Scanner chunk is fetched lazily on first open — before that,
+          this branch renders nothing and the dynamic() import hasn't
+          fired. Returning-visitors who never tap Scan never download
+          the camera / BottomSheet code. */}
+      {scannerOpen && (
+        <PrincipalScanner
+          open={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onResult={(value) => {
+            setTo(value);
+            setScannerOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }
