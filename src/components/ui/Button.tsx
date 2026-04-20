@@ -32,6 +32,17 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   trailing?: ReactNode;
   /** Increment this key to flash the success pulse (ring out + fade). */
   successPulse?: number;
+  /**
+   * Square icon-only button. Children should be a single icon (svg /
+   * emoji / text glyph). The button still needs an accessible name —
+   * callers MUST pass either `aria-label` or `title`; we assert in
+   * dev if both are missing since an icon alone doesn't announce.
+   *
+   * Width/height match the size-token height so the hit target stays
+   * 36/44/48px (thumb-reach compliant). No padding-x override needed;
+   * base already sets items-center/justify-center.
+   */
+  iconOnly?: boolean;
 };
 
 const TONE_GRADIENTS: Record<ButtonTone, string> = {
@@ -50,6 +61,14 @@ const SIZE_CLS: Record<ButtonSize, string> = {
   lg: "h-12 px-5 text-base",
 };
 
+// Square variants for iconOnly — same heights as SIZE_CLS, no px,
+// width clamped to match height so the target stays square.
+const ICON_SIZE_CLS: Record<ButtonSize, string> = {
+  sm: "h-9 w-9 text-xs",
+  md: "h-11 w-11 text-sm",
+  lg: "h-12 w-12 text-base",
+};
+
 export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
   {
     variant = "primary",
@@ -60,6 +79,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
     leading,
     trailing,
     successPulse = 0,
+    iconOnly = false,
     className = "",
     disabled,
     children,
@@ -68,6 +88,20 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
   },
   ref,
 ) {
+  // Dev-only guard: icon-only buttons must carry an accessible name.
+  // A warning here catches the "I forgot the aria-label on the new
+  // copy button" regression before it ships.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    iconOnly &&
+    !rest["aria-label"] &&
+    !rest.title
+  ) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[Button] iconOnly requires aria-label or title for accessibility",
+    );
+  }
   const [pulseVer, setPulseVer] = useState(0);
   useEffect(() => {
     if (successPulse > 0) {
@@ -100,9 +134,9 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       disabled={disabled || loading}
       className={[
         base,
-        SIZE_CLS[size],
+        iconOnly ? ICON_SIZE_CLS[size] : SIZE_CLS[size],
         variantCls,
-        fullWidth ? "w-full" : "",
+        fullWidth && !iconOnly ? "w-full" : "",
         pulsing ? "lw-btn-success" : "",
         className,
       ]
@@ -119,8 +153,15 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       ) : (
         leading
       )}
-      <span className={loading ? "opacity-60" : undefined}>{children}</span>
-      {!loading && trailing}
+      {iconOnly ? (
+        // Icon-only renders children directly — no span wrapper so
+        // the SVG sizes cleanly against the button's line-height and
+        // hit-target math stays square.
+        !loading && children
+      ) : (
+        <span className={loading ? "opacity-60" : undefined}>{children}</span>
+      )}
+      {!loading && !iconOnly && trailing}
     </button>
   );
 });
