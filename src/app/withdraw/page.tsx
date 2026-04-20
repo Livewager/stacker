@@ -271,7 +271,7 @@ export default function WithdrawPage() {
                     }
                     // pr-9 reserves space for the absolute × button
                     // so a long address doesn't slide under it.
-                    className={`w-full rounded-md bg-black/40 border pl-3 pr-9 py-2.5 text-sm font-mono text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/50 ${
+                    className={`w-full rounded-md bg-black/40 border pl-3 pr-9 py-2.5 text-sm font-mono text-white placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/50 ${
                       ltcAddress.length === 0
                         ? "border-white/10 focus:border-rose-300/60"
                         : addrCheck.ok

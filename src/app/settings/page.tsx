@@ -459,7 +459,7 @@ export default function SettingsPage() {
                     }
                   }}
                   placeholder="e.g. 45"
-                  className="w-24 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm font-mono text-white focus:outline-none focus:border-cyan-300/60"
+                  className="w-24 rounded-md bg-black/40 border border-white/10 px-2 py-1 text-sm font-mono text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-300/60"
                 />
                 <button
                   type="button"

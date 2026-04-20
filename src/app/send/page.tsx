@@ -360,7 +360,7 @@ export default function SendPage() {
                     // a long principal doesn't slide under it. Added
                     // focus-visible ring for keyboard parity with the
                     // Scan + amount inputs (POLISH-203 pattern).
-                    className="w-full rounded-md bg-black/40 border border-white/10 pl-3 pr-9 py-2.5 text-sm font-mono text-white focus:border-violet-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50"
+                    className="w-full rounded-md bg-black/40 border border-white/10 pl-3 pr-9 py-2.5 text-sm font-mono text-white placeholder:text-gray-500 focus:border-violet-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50"
                   />
                   {/* Clear-recipient × button. Only renders when the
                       field has content — touch-safe 28px hit target
@@ -581,7 +581,7 @@ export default function SendPage() {
                     ? "send-memo-error send-memo-hint send-memo-counter"
                     : "send-memo-hint send-memo-counter"
                 }
-                className={`w-full rounded-md bg-black/40 border px-3 py-2.5 text-sm text-white focus:outline-none ${
+                className={`w-full rounded-md bg-black/40 border px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none ${
                   memoTone === "over"
                     ? "border-red-400/50 focus:border-red-300/70"
                     : memoTone === "warn"

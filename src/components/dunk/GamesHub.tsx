@@ -375,7 +375,7 @@ const HandleEditor = () => {
           onBlur={save}
           onKeyDown={(e) => e.key === "Enter" && save()}
           placeholder="your_handle"
-          className="bg-black/40 border rounded px-2 py-1 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60 w-32"
+          className="bg-black/40 border rounded px-2 py-1 text-sm font-semibold text-white placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60 w-32"
           style={{
             borderColor: isEmpty ? "rgba(250,204,21,0.6)" : "rgba(255,255,255,0.15)",
             boxShadow: isEmpty ? "0 0 12px rgba(250,204,21,0.25)" : undefined,
