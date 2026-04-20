@@ -94,13 +94,13 @@ export function BottomNav() {
           (56px) + safe-area inset. */}
       <div
         aria-hidden
-        className="md:hidden"
+        className="lw-bottom-nav md:hidden"
         style={{ height: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
       />
 
       <nav
         aria-label="Primary"
-        className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-background/90 backdrop-blur-md"
+        className="lw-bottom-nav md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-background/90 backdrop-blur-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <ul className="flex items-stretch justify-around">

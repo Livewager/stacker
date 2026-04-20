@@ -71,6 +71,13 @@
     outline-offset: 2px;
   }
 
+  /* Transient bottom-nav hide. Toggled by StackerGame via <html>
+     class when a round is active, so fingers near the bottom of the
+     screen don't accidentally tap Wallet / Account mid-stack. */
+  html.lw-hide-bottomnav .lw-bottom-nav {
+    display: none;
+  }
+
   /* Smooth anchor scrolling + comfortable landing offset. On mobile,
      page-level scroll-snap proximity helps long landings like /stacker
      feel less lurchy without forcing hard snaps that fight free

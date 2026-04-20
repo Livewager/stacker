@@ -196,6 +196,22 @@ export default function StackerGame({
     }
   }, []);
 
+  // Hide the mobile BottomNav while a round is live. Fingers near
+  // the bottom of the screen were misfiring into Wallet / Account
+  // mid-stack. Class is cleaned on unmount in case the component
+  // goes away mid-round.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (hudState.phase === "playing") {
+      root.classList.add("lw-hide-bottomnav");
+    } else {
+      root.classList.remove("lw-hide-bottomnav");
+    }
+    return () => {
+      root.classList.remove("lw-hide-bottomnav");
+    };
+  }, [hudState.phase]);
+
   // ----------------------------------------------------------------
   // Game mechanics
   // ----------------------------------------------------------------
