@@ -519,17 +519,40 @@ function iconFor(kind: BlockEventKind): React.ReactNode {
 // ------------------------------------------------------------------
 
 function ActivitySkeleton({ rows = 4, compact }: { rows?: number; compact: boolean }) {
+  // Structural mirror of ActivityRow (icon tile + two baseline-
+  // justified rows). Matching the post-load geometry means the
+  // hydration handoff has zero layout shift — the placeholder
+  // blocks sit where the real title / tx id / time / amount
+  // will land. Widths randomized per row so the skeleton doesn't
+  // look stamped.
+  const widthsTop = ["w-1/3", "w-2/5", "w-1/2", "w-1/3"];
+  const widthsBot = ["w-1/4", "w-1/5", "w-1/3", "w-1/4"];
   return (
     <ul className="divide-y divide-white/5" aria-hidden>
       {Array.from({ length: rows }, (_, i) => (
         <li key={i} className="px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-white/5 animate-pulse" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="h-3 w-1/3 rounded bg-white/5 animate-pulse" />
-              <div className="h-3 w-1/4 rounded bg-white/5 animate-pulse" />
+          <div className="flex items-start gap-3">
+            {/* Icon tile — mt-0.5 matches the real row. */}
+            <div className="mt-0.5 h-8 w-8 shrink-0 rounded-lg bg-white/5 animate-pulse" />
+            <div className="min-w-0 flex-1">
+              {/* Title row: bold title + right-aligned tx id */}
+              <div className="flex items-baseline justify-between gap-2">
+                <div
+                  className={`h-4 rounded bg-white/5 animate-pulse ${widthsTop[i % widthsTop.length]}`}
+                />
+                <div className="h-3 w-12 shrink-0 rounded bg-white/5 animate-pulse" />
+              </div>
+              {/* Time + amount row — same baseline justification as
+                  live; mt-1 to match the 0.5 gap from mt-0.5 up top. */}
+              <div className="flex items-baseline justify-between gap-2 mt-1">
+                <div
+                  className={`h-3 rounded bg-white/5 animate-pulse ${widthsBot[i % widthsBot.length]}`}
+                />
+                {!compact && (
+                  <div className="h-4 w-16 shrink-0 rounded bg-white/5 animate-pulse" />
+                )}
+              </div>
             </div>
-            {!compact && <div className="h-4 w-16 rounded bg-white/5 animate-pulse" />}
           </div>
         </li>
       ))}
