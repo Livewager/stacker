@@ -994,9 +994,37 @@ export default function StackerGame({
       }
 
       // Perfect flash (full-board warm tint). Brief, gentle.
+      // POLISH-273 decay audit. Previous shape was a hard onset
+      // (peak at frame 1) + linear fall over 420ms — read as a
+      // thump rather than a flash because the canvas jumped
+      // from no-tint to full-peak in a single frame. New curve:
+      //   0–80ms   rise: linear 0→1 (brief but not instantaneous,
+      //                  so the eye reads an arrival, not a pop)
+      //   80–500ms fall: ease-out 1→0 (lingers just enough to
+      //                  feel celebratory; still out of the way
+      //                  before the next stack request)
+      // Total duration bumped 420→500ms; the extended tail gives
+      // the fall visible room without raising the peak opacity
+      // (still 9% gold — the flash should read as a confirmation,
+      // not a distraction). Matches the rise/fall philosophy
+      // POLISH-261 used on lw-btn-success.
+      // Reduced motion: the render loop is rAF-driven, not a CSS
+      // animation, so the global motion clamp doesn't apply. The
+      // visibility-gate below still cancels rAF in background
+      // tabs, which is the main power-saving concern; this
+      // celebratory flash is subtle enough (peak 9%) that a
+      // reduced-motion hard-skip isn't warranted.
       const since = t - flashRef.current;
-      if (flashRef.current > 0 && since < 420) {
-        const a = 1 - since / 420;
+      if (flashRef.current > 0 && since < 500) {
+        let a: number;
+        if (since < 80) {
+          // Rise: linear 0 → 1 over 80ms.
+          a = since / 80;
+        } else {
+          // Fall: ease-out cubic over 420ms.
+          const p = (since - 80) / 420; // 0 → 1
+          a = 1 - p * p * p;
+        }
         ctx.fillStyle = rgba(GOLD, 0.09 * a);
         ctx.fillRect(0, 0, W, H);
       }
