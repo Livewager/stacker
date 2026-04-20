@@ -228,6 +228,15 @@ function LiveHourPanel({
   const setTab = (next: "dunk" | "pour" | "stacker") => setRawTab(next);
   const board =
     tab === "dunk" ? dunkBoard : tab === "pour" ? pourBoard : stackerBoard;
+  // "All three games empty" signal. When true, every tab renders an
+  // EmptyBoard and clicking between them is low-information; a single
+  // line in the header prevents the user from thinking only their
+  // current tab is quiet. Not a full hero — the per-tab EmptyBoard
+  // already has the CTA, this just tells them it's the whole house.
+  const allBoardsEmpty =
+    dunkBoard.length === 0 &&
+    pourBoard.length === 0 &&
+    stackerBoard.length === 0;
 
   // Surface a "you're at #N" callout above the list so the signed-in
   // player doesn't have to scroll the board looking for the cyan row.
@@ -253,7 +262,9 @@ function LiveHourPanel({
             Live · this hour
           </div>
           <div className="text-sm text-gray-400 mt-0.5">
-            Top {board.length || "—"} scores, refreshed every round.
+            {allBoardsEmpty
+              ? "All three boards are quiet — play a round to open the hour."
+              : `Top ${board.length || "—"} scores, refreshed every round.`}
           </div>
         </div>
         <div
