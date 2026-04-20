@@ -37,14 +37,11 @@ import {
   forgetRecipient,
   type RecentRecipient,
 } from "@/lib/recentRecipients";
+import { DEMO_USD_PER_LWP } from "@/lib/demoRates";
 
 // Must mirror canisters/points_ledger/src/lib.rs TRANSFER_FEE.
 const TRANSFER_FEE_BASE = 10_000n; // 0.0001 LWP at 8 decimals
 const MAX_MEMO_BYTES = 32;
-// Demo peg only — same literal used on /wallet and /withdraw. Third
-// copy-paste here; next addition should consolidate into
-// src/lib/demoRates.ts (rule of three).
-const DEMO_USD_PER_LWP = 1;
 
 type Stage = "compose" | "review" | "sent";
 

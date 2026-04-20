@@ -9,14 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
 import { useToast } from "@/components/dunk/Toast";
 import { validateLtcAddress } from "@/lib/ltc";
+import { DEMO_USD_PER_LWP } from "@/lib/demoRates";
 
 // Mirror the deposit side's fixed rate: 10M LWP per 1 LTC.
 const LWP_PER_LTC = 10_000_000;
-// Demo USD peg — same value used by /wallet's AmountField. Strictly
-// informational (the LTC oracle doesn't quote USD); confirming both
-// denominations at review time reduces the "wait, how much was that?"
-// moment before signing.
-const DEMO_USD_PER_LWP = 1;
 
 type Stage = "compose" | "review" | "queued";
 

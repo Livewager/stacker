@@ -14,15 +14,10 @@ import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { AmountField } from "@/components/ui/AmountField";
 import { shortenPrincipal } from "@/lib/principal";
+import { DEMO_USD_PER_LWP } from "@/lib/demoRates";
 import { WalletAdvanced } from "@/components/wallet/WalletAdvanced";
 
 const short = (s: string) => shortenPrincipal(s, { head: 8, tail: 8 });
-
-// Demo fiat rate for the Buy panel. LWP is non-fungible for real
-// money; this $1 ≈ 1 LWP stand-in is a readability aid only. Keep
-// the hint copy explicit that it's a demo rate so nobody mistakes
-// it for a live oracle.
-const DEMO_USD_PER_LWP = 1;
 
 // Must stay in sync with MAX_AMOUNT_BASE_UNITS in
 // src/app/api/dunk/buy/route.ts (10_000_000_000n base units with 8
