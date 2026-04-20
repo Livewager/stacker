@@ -13,7 +13,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const LS_PREFIX = "livewager-pref:";
+// Exposed for tests that need to inspect the namespaced keys
+// that writeRaw / clearSessionState operate on. Runtime callers
+// should not reach for this — always go through the hook / raw
+// helpers so refactors of the layout stay central here.
+export const LS_PREFIX = "livewager-pref:";
 
 // Cross-tab + cross-hook notifications so two <Settings /> components
 // (or a game + the settings page) stay in sync without a provider.
@@ -23,7 +27,13 @@ function publish(key: string, v: unknown) {
   listeners[key]?.forEach((l) => l(v));
 }
 
-function readRaw<T>(key: string, dflt: T): T {
+/**
+ * Storage read. Exported so tests can verify the round-trip
+ * behaviour (write → read, clearSessionState → read → dflt)
+ * without depending on React. Runtime call sites still read
+ * through useLocalPref; this is a verification seam.
+ */
+export function readRaw<T>(key: string, dflt: T): T {
   if (typeof window === "undefined") return dflt;
   try {
     const raw = window.localStorage.getItem(LS_PREFIX + key);

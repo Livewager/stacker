@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3002",
     "typecheck": "tsc --noEmit",
-    "analyze": "next build && du -ch .next/static/chunks/*.js | sort -hr | head -20"
+    "analyze": "next build && du -ch .next/static/chunks/*.js | sort -hr | head -20",
+    "test": "node --test test/**/*.test.mjs"
   },
   "dependencies": {
     "@dfinity/agent": "^2.4.1",
