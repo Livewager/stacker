@@ -470,12 +470,21 @@ function Field({
 }) {
   return (
     <label className="block">
-      <div className="flex items-baseline justify-between mb-1.5">
-        <div className="text-[10px] uppercase tracking-widest text-gray-400">{label}</div>
+      {/* Label row stays single-line even on <340px viewports or
+          large user font scales: the label truncates (it's short,
+          so ellipsis is cosmetic) and the counter / error slot
+          never shrinks. Prevents a two-line label from pushing
+          the counter off the right edge on memo fields. */}
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <div className="text-[10px] uppercase tracking-widest text-gray-400 min-w-0 truncate">
+          {label}
+        </div>
         {error ? (
-          <div className="text-[10px] text-red-300">{error}</div>
+          <div className="text-[10px] text-red-300 shrink-0">{error}</div>
         ) : meta ? (
-          <div className="text-[10px] text-gray-500 font-mono tabular-nums">{meta}</div>
+          <div className="text-[10px] text-gray-500 font-mono tabular-nums shrink-0">
+            {meta}
+          </div>
         ) : null}
       </div>
       {children}
