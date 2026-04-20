@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/Button";
+import { shortenPrincipal } from "@/lib/principal";
 
 type Props = {
   principal: string;
@@ -55,7 +56,13 @@ export function PrincipalQR({ principal }: Props) {
       });
       const blob = new Blob([svg], { type: "image/svg+xml" });
       const url = URL.createObjectURL(blob);
-      const tag = principal.slice(0, 6);
+      // Identity tag for the filename. Uses shortenPrincipal's
+      // head/tail shape (xkwrr-q77fr…-qaaaq-cai → "xkwrr-q77fr-aaaq-cai")
+      // so the file is recognisable on disk even when a user has
+      // saved QRs from multiple identities. ASCII-safe: principals
+      // are already [a-z0-9-] so no filesystem escaping needed; just
+      // swap the ellipsis for a plain dash separator.
+      const tag = shortenPrincipal(principal, { head: 6, tail: 4, ellipsis: "-" });
       // iOS / iPadOS / iPhone detection. Modern iPads identify as Mac
       // in userAgent, so also probe for maxTouchPoints > 1 — the
       // idiomatic "iPad in desktop mode" sniff.
@@ -73,7 +80,7 @@ export function PrincipalQR({ principal }: Props) {
       } else {
         const a = document.createElement("a");
         a.href = url;
-        a.download = `principal-${tag}.svg`;
+        a.download = `livewager-principal-${tag}.svg`;
         document.body.appendChild(a);
         a.click();
         a.remove();
