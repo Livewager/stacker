@@ -420,9 +420,15 @@ function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
 
 function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean }) {
   const copy = useCopyable();
+  // Tip button appears on hover (desktop) or focus-within (keyboard)
+  // for any non-self row. Demo entries ("sim-…") include it too —
+  // the URL just carries the handle forward; /send can wire
+  // handle→principal resolution in a later pass without touching
+  // this component.
+  const canTip = !me;
   return (
     <li
-      className={`flex items-center gap-3 px-4 py-2.5 transition ${
+      className={`group/row relative flex items-center gap-3 px-4 py-2.5 transition ${
         me ? "bg-cyan-300/[0.04]" : "hover:bg-white/[0.02]"
       }`}
     >
@@ -449,6 +455,19 @@ function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean
       </div>
       <RowSparkline entry={entry} me={me} />
       <div className="font-mono text-sm tabular-nums text-gray-200">{entry.score}</div>
+      {canTip && (
+        <Link
+          href={`/send?handle=${encodeURIComponent(entry.handle)}`}
+          aria-label={`Tip @${entry.handle}`}
+          className="opacity-0 pointer-events-none group-hover/row:opacity-100 group-hover/row:pointer-events-auto group-focus-within/row:opacity-100 group-focus-within/row:pointer-events-auto inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-300/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-violet-200 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 focus-visible:opacity-100"
+          title={`Open /send with @${entry.handle} pre-filled`}
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden>
+            <path d="M3.4 9.1l13-5.6a.8.8 0 0 1 1.1 1l-5.6 13a.8.8 0 0 1-1.4 0l-2-4.6-4.6-2a.8.8 0 0 1 0-1.4Z" />
+          </svg>
+          Tip
+        </Link>
+      )}
     </li>
   );
 }
