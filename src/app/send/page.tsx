@@ -9,6 +9,7 @@ import { formatLWP } from "@/lib/icp";
 import { Button } from "@/components/ui/Button";
 import { AmountField } from "@/components/ui/AmountField";
 import { PrincipalScanner } from "@/components/send/PrincipalScanner";
+import { useCopyable } from "@/lib/clipboard";
 import {
   listRecentRecipients,
   rememberRecipient,
@@ -527,6 +528,29 @@ function ResultCard({
   amountLwp: number;
   onAgain: () => void;
 }) {
+  const copy = useCopyable();
+  // "Sent N LWP · tx #X · livewager.io" — fixed order so screenshots
+  // stay legible. Native share sheet when available (mobile + some
+  // desktop browsers); clipboard fallback everywhere else. Never
+  // references the recipient — that's their business, not the
+  // screenshotter's.
+  const shareLine = `Sent ${amountLwp} LWP · tx #${txId} · livewager.io`;
+  const onShare = async () => {
+    const nav = typeof navigator !== "undefined" ? navigator : null;
+    // Web Share API requires a user gesture and a secure context;
+    // safe to feature-test at call time.
+    if (nav && typeof nav.share === "function") {
+      try {
+        await nav.share({ title: "Livewager", text: shareLine });
+        return;
+      } catch {
+        // User cancelled or share rejected — silently fall through to
+        // the clipboard path so the gesture still yields something
+        // useful.
+      }
+    }
+    await copy(shareLine, { label: "Send receipt" });
+  };
   return (
     <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.05] p-5 md:p-7 text-center">
       <div
@@ -547,7 +571,15 @@ function ResultCard({
         Ledger tx <span className="font-mono text-white">#{txId}</span> · recipient{" "}
         <span className="font-mono text-white">{short(to, 8, 8)}</span>
       </p>
-      <div className="flex items-center justify-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Button
+          onClick={onShare}
+          variant="outline"
+          size="sm"
+          aria-label="Share or copy send receipt"
+        >
+          Share
+        </Button>
         <Link
           href="/account"
           className="px-4 py-2 rounded-lg border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition text-sm"
