@@ -10,6 +10,7 @@ import { useToast } from "@/components/dunk/Toast";
 import { LedgerErrorCard } from "@/components/dunk/LedgerErrorCard";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
+import { AmountField } from "@/components/ui/AmountField";
 
 function short(s: string, h = 8, t = 8): string {
   if (s.length <= h + t + 1) return s;
@@ -198,21 +199,17 @@ export default function WalletPage() {
                       </div>
                       <Pill status="demo">demo</Pill>
                     </div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={buyAmount}
-                        onChange={(e) => setBuyAmount(e.target.value)}
-                        disabled={status === "buying"}
-                        className="w-28 px-3 py-2 rounded-md bg-black/50 border border-white/10 text-white text-sm font-mono text-right focus:outline-none focus:border-cyan-300/60"
-                      />
-                      <span className="text-[11px] text-gray-400 font-mono">LWP</span>
-                      <div className="ml-auto text-[11px] text-gray-500 font-mono">
-                        per-request cap 100 LWP
-                      </div>
-                    </div>
+                    <AmountField
+                      id="wallet-buy-amount"
+                      label="Buy amount"
+                      value={buyAmount}
+                      onChange={setBuyAmount}
+                      tone="cyan"
+                      hint="Local demo mint · per-request cap 100 LWP"
+                      disabled={status === "buying"}
+                      className="mb-3"
+                      hideChips
+                    />
                     <Button
                       onClick={onBuy}
                       loading={status === "buying"}
