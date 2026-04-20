@@ -19,6 +19,12 @@ function short(s: string, h = 8, t = 8): string {
   return `${s.slice(0, h)}…${s.slice(-t)}`;
 }
 
+// Demo fiat rate for the Buy panel. LWP is non-fungible for real
+// money; this $1 ≈ 1 LWP stand-in is a readability aid only. Keep
+// the hint copy explicit that it's a demo rate so nobody mistakes
+// it for a live oracle.
+const DEMO_USD_PER_LWP = 1;
+
 type QuickTab = "buy" | "deposit" | "send" | "withdraw";
 const QUICK_TABS: readonly QuickTab[] = ["buy", "deposit", "send", "withdraw"];
 
@@ -210,7 +216,8 @@ export default function WalletPage() {
                       value={buyAmount}
                       onChange={setBuyAmount}
                       tone="cyan"
-                      hint="Local demo mint · per-request cap 100 LWP"
+                      hint="Local demo mint · per-request cap 100 LWP · demo rate, not market"
+                      rate={DEMO_USD_PER_LWP}
                       disabled={status === "buying"}
                       className="mb-3"
                       hideChips
