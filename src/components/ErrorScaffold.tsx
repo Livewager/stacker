@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -18,6 +18,7 @@ export function ErrorScaffold({
   primary,
   secondary,
   detail,
+  autoRetrySeconds,
 }: {
   tone?: "muted" | "danger";
   eyebrow: string;
@@ -26,10 +27,46 @@ export function ErrorScaffold({
   primary: { href?: string; label: string; onClick?: () => void };
   secondary?: { href?: string; label: string; onClick?: () => void };
   detail?: string;
+  /**
+   * When set alongside an onClick primary, starts a visible countdown
+   * and fires primary.onClick automatically at zero. Any interaction
+   * with the primary button or hover over the card cancels the timer
+   * — the idea is to self-heal transient errors without trapping the
+   * user in a forced refresh loop if they're reading the detail.
+   * Ignored when primary is a plain href (nothing to retry).
+   */
+  autoRetrySeconds?: number;
 }) {
   const accent = tone === "danger" ? "#f87171" : "#22d3ee";
+  const canAutoRetry =
+    typeof autoRetrySeconds === "number" &&
+    autoRetrySeconds > 0 &&
+    typeof primary.onClick === "function";
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(
+    canAutoRetry ? (autoRetrySeconds as number) : null,
+  );
+  useEffect(() => {
+    if (secondsLeft === null) return;
+    if (secondsLeft <= 0) {
+      // Defer firing to a microtask so state + layout settle first.
+      const h = setTimeout(() => primary.onClick?.(), 0);
+      return () => clearTimeout(h);
+    }
+    const id = window.setTimeout(() => {
+      setSecondsLeft((s) => (s === null ? null : s - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [secondsLeft, primary]);
+  const cancelAutoRetry = () => {
+    if (secondsLeft !== null) setSecondsLeft(null);
+  };
   return (
-    <main className="min-h-screen bg-background text-white flex items-center justify-center px-5 py-16">
+    <main
+      className="min-h-screen bg-background text-white flex items-center justify-center px-5 py-16"
+      onMouseMove={cancelAutoRetry}
+      onFocusCapture={cancelAutoRetry}
+      onKeyDownCapture={cancelAutoRetry}
+    >
       <div className="max-w-xl w-full text-center">
         {/* Droplet / error sigil — SVG, scales with the text. */}
         <div className="relative mx-auto mb-8 h-28 w-28">
@@ -108,6 +145,23 @@ export function ErrorScaffold({
             )
           ) : null}
         </div>
+
+        {secondsLeft !== null && secondsLeft > 0 && (
+          <div
+            className="mt-4 text-[11px] font-mono uppercase tracking-widest text-gray-500"
+            aria-live="polite"
+          >
+            Auto-retrying in{" "}
+            <span className="text-white tabular-nums">{secondsLeft}</span>s ·{" "}
+            <button
+              type="button"
+              onClick={cancelAutoRetry}
+              className="underline-offset-2 hover:underline text-gray-400 hover:text-white"
+            >
+              cancel
+            </button>
+          </div>
+        )}
 
         {detail && (
           <details className="mt-8 text-left rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 text-xs">

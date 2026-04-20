@@ -32,6 +32,7 @@ export default function WalletError({
       primary={{ label: "Reload wallet", onClick: reset }}
       secondary={{ label: "Go home", href: ROUTES.dunk }}
       detail={error.digest ? `digest ${error.digest}\n${error.message}` : error.message}
+      autoRetrySeconds={5}
     />
   );
 }

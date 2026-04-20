@@ -32,6 +32,7 @@ export default function AccountError({
       primary={{ label: "Reload account", onClick: reset }}
       secondary={{ label: "Wallet", href: ROUTES.wallet }}
       detail={error.digest ? `digest ${error.digest}\n${error.message}` : error.message}
+      autoRetrySeconds={5}
     />
   );
 }

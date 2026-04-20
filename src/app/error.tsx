@@ -49,6 +49,7 @@ export default function RouteError({
       primary={{ onClick: () => reset(), label: "Try again" }}
       secondary={{ href: "/dunk", label: "Back to the game" }}
       detail={detail}
+      autoRetrySeconds={5}
     />
   );
 }

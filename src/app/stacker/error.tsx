@@ -31,6 +31,7 @@ export default function StackerError({
       primary={{ label: "Reset board", onClick: reset }}
       secondary={{ label: "All games", href: ROUTES.play }}
       detail={error.digest ? `digest ${error.digest}\n${error.message}` : error.message}
+      autoRetrySeconds={5}
     />
   );
 }
