@@ -130,15 +130,36 @@ export default function WalletPage() {
                     <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
                       Available
                     </div>
-                    <div
-                      className="text-5xl md:text-6xl font-black tabular-nums leading-none"
-                      aria-hidden
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (balance === null) return;
+                        copy(`${formatLWP(balance, 4)} LWP`, { label: "Balance" });
+                      }}
+                      disabled={balance === null}
+                      title={balance !== null ? "Copy balance" : undefined}
+                      aria-label={
+                        balance !== null
+                          ? `Copy balance ${formatLWP(balance, 4)} LWP`
+                          : "Balance unavailable"
+                      }
+                      className="group/bal text-left rounded-md -mx-1 px-1 py-0.5 transition hover:bg-white/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 disabled:cursor-default"
                     >
-                      {balance !== null ? formatLWP(balance, 4) : "—"}
-                    </div>
-                    <div className="mt-2 text-sm font-mono text-gray-400" aria-hidden>
-                      LWP
-                    </div>
+                      <div
+                        className="text-5xl md:text-6xl font-black tabular-nums leading-none"
+                        aria-hidden
+                      >
+                        {balance !== null ? formatLWP(balance, 4) : "—"}
+                      </div>
+                      <div className="mt-2 text-sm font-mono text-gray-400 flex items-center gap-2" aria-hidden>
+                        <span>LWP</span>
+                        {balance !== null && (
+                          <span className="text-[9px] uppercase tracking-widest text-gray-500 opacity-0 group-hover/bal:opacity-100 group-focus-visible/bal:opacity-100 transition">
+                            · tap to copy
+                          </span>
+                        )}
+                      </div>
+                    </button>
                     {/* Screen-reader-friendly announcement. aria-live
                         fires when balance changes (buy, deposit).
                         Visual block is aria-hidden so SR only reads
