@@ -250,7 +250,23 @@ export function BottomSheet({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-white/10 bg-[#0b1a2e] shadow-2xl outline-none animate-[slideUp_180ms_cubic-bezier(0.2,0.8,0.2,1)]"
+        // POLISH-320 — panel height cap. Previously the panel had
+        // no max-height, so a sheet with ~500+ px of natural
+        // content (OnboardingNudge w/ 3+ bullets, CommandPalette
+        // expanded route list, a long settings subsheet) would
+        // grow past the viewport on iPhone SE (568px) — pushing
+        // the drag handle behind the OS status bar and clipping
+        // content off the top with no scroll recovery.
+        //
+        // 85dvh leaves ~15% at the top for the status bar + a
+        // visual "this is a sheet" gap that confirms the sheet
+        // doesn't own the whole screen. dvh (dynamic viewport
+        // height) instead of vh so Safari's URL-bar collapse
+        // doesn't break the cap mid-scroll. flex-col so the
+        // content area can scroll internally while the handle
+        // stays pinned up top and the footer (if any) stays
+        // anchored at the bottom — see the child classes below.
+        className="relative w-full sm:max-w-md max-h-[85dvh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-white/10 bg-[#0b1a2e] shadow-2xl outline-none animate-[slideUp_180ms_cubic-bezier(0.2,0.8,0.2,1)]"
         style={{
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
           transform: translateY,
@@ -269,7 +285,7 @@ export function BottomSheet({
             is ~28px tall (matches iOS native sheet handle region)
             even though the visible pill stays 6px. */}
         <div
-          className="group/handle flex justify-center pt-3 pb-2 sm:hidden cursor-grab active:cursor-grabbing touch-none"
+          className="group/handle shrink-0 flex justify-center pt-3 pb-2 sm:hidden cursor-grab active:cursor-grabbing touch-none"
           onPointerDown={onHandlePointerDown}
           onPointerMove={onHandlePointerMove}
           onPointerUp={endDrag}
@@ -280,7 +296,7 @@ export function BottomSheet({
         </div>
 
         {(title || description) && (
-          <div className="px-6 pt-4 pb-2">
+          <div className="shrink-0 px-6 pt-4 pb-2">
             {title && (
               <h2 id={titleId} className="text-lg font-semibold text-white">
                 {title}
@@ -294,10 +310,20 @@ export function BottomSheet({
           </div>
         )}
 
-        <div className="px-6 pb-6 pt-2">{children}</div>
+        {/* Children scroll when the panel hits its max-h cap.
+            min-h-0 is required on flex children to allow shrinking
+            below their intrinsic min-content size (common flex
+            scroll footgun). overflow-y-auto + overscroll-contain
+            keeps the scroll inside the sheet rather than bouncing
+            the underlying page. Chrome/Safari momentum scroll
+            behaves naturally with touch-action: pan-y inherited
+            from the panel. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6 pt-2">
+          {children}
+        </div>
 
         {footer && (
-          <div className="border-t border-white/10 px-6 py-4">{footer}</div>
+          <div className="shrink-0 border-t border-white/10 px-6 py-4">{footer}</div>
         )}
       </div>
 
