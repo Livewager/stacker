@@ -42,6 +42,16 @@ export default function OnboardingNudge() {
 
   const open = mounted && !seen && !identity;
 
+  // Ambient auto-dismiss after 15s. The user who landed via a share
+  // link can scroll past without actively closing — we persist the
+  // flag the same way an explicit close would so they don't see it
+  // again next visit.
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setTimeout(() => setSeen(true), 15_000);
+    return () => window.clearTimeout(id);
+  }, [open, setSeen]);
+
   return (
     <BottomSheet
       open={open}
