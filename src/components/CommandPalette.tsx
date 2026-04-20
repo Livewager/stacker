@@ -105,7 +105,6 @@ const GLOBAL_SHORTCUTS: Shortcut[] = [
   { keys: ["?"], what: "Open command palette" },
   { keys: ["Esc"], what: "Close dialogs" },
   { keys: ["g", "p"], what: "Go to Play" },
-  { keys: ["g", "d"], what: "Go to Tilt Pour" },
   { keys: ["g", "s"], what: "Go to Stacker" },
   { keys: ["g", "w"], what: "Go to Wallet" },
   { keys: ["g", "a"], what: "Go to Account" },
@@ -117,7 +116,7 @@ const GLOBAL_SHORTCUTS: Shortcut[] = [
 const GAME_SHORTCUTS: Shortcut[] = [
   { keys: ["Space"], what: "Stacker: lock the slider" },
   { keys: ["Enter"], what: "Stacker: lock the slider" },
-  { keys: ["←", "→"], what: "Tilt Pour: tilt (desktop fallback)" },
+  { keys: ["Click"], what: "Stacker: lock the slider" },
 ];
 
 export default function CommandPalette() {
