@@ -266,10 +266,13 @@ export function ToastHost({ children }: { children: ReactNode }) {
   return (
     <ToastCtx.Provider value={api}>
       {children}
+      {/* Container is just a landmark — each ToastCard declares its
+          own aria-live role (status/alert) so the SR announces per
+          card with the right urgency. Leaving an aria-live here
+          would double-up on every error. */}
       <div
         role="region"
         aria-label="Notifications"
-        aria-live="polite"
         className="pointer-events-none fixed top-4 right-4 z-[1000] flex w-[min(380px,calc(100vw-2rem))] flex-col gap-2 max-h-[calc(100vh-2rem)] overflow-y-auto"
         style={{ scrollbarWidth: "none" }}
       >
@@ -375,9 +378,18 @@ function ToastCard({
   const transform = dragX !== 0 ? `translate3d(${dragX}px, 0, 0)` : undefined;
   const opacity = Math.max(0.3, 1 - Math.abs(dragX) / 280);
 
+  // Error and warning kinds announce via role=alert (implicit
+  // aria-live=assertive) so screen readers interrupt whatever they
+  // were saying — a failed transfer or ledger rejection needs the
+  // SR to pay attention now, not queue behind a polite read of the
+  // page. Success/info keep role=status (polite) so a chime doesn't
+  // trample an ongoing narration. Matches the visual hierarchy:
+  // error/warning already have louder accent colors.
+  const assertive = t.kind === "error" || t.kind === "warning";
   return (
     <div
-      role="status"
+      role={assertive ? "alert" : "status"}
+      aria-live={assertive ? "assertive" : "polite"}
       onMouseEnter={onPause}
       onMouseLeave={onResume}
       onFocusCapture={onPause}
