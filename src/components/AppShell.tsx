@@ -22,6 +22,7 @@
  * route during POLISH-54.
  */
 
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { ToastHost } from "@/components/dunk/Toast";
 import { WalletProvider } from "@/components/dunk/WalletContext";
@@ -30,11 +31,31 @@ import CommandPalette from "@/components/CommandPalette";
 import AppFooter from "@/components/AppFooter";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { ANCHORS } from "@/lib/routes";
+import { usePrefs } from "@/lib/prefs";
+
+/**
+ * Mirrors the in-app `reducedMotion` pref onto <html>.lw-reduce-motion
+ * so CSS rules can kill animation uniformly — including server-rendered
+ * skeleton shimmer that has no client hook. The OS prefers-reduced-motion
+ * query is honored independently via a @media block in style.css.
+ */
+function ReducedMotionBridge() {
+  const { reducedMotion } = usePrefs();
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.toggle("lw-reduce-motion", reducedMotion);
+    return () => {
+      el.classList.remove("lw-reduce-motion");
+    };
+  }, [reducedMotion]);
+  return null;
+}
 
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <ToastHost>
       <WalletProvider>
+        <ReducedMotionBridge />
         <a href={ANCHORS.content} className="skip-link">
           Skip to main content
         </a>

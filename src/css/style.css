@@ -125,6 +125,33 @@
       transition-duration: 0.001ms !important;
       scroll-behavior: auto !important;
     }
+    /* Tailwind's animate-pulse is a looping opacity tween — without
+       explicitly disabling it we land on whatever intermediate frame
+       the clamped duration+iteration left us on, which reads as
+       "the skeleton is half-dead" on some browsers. Freeze to a
+       static dim tint so loading states still look deliberate. */
+    .animate-pulse {
+      animation: none !important;
+      opacity: 1 !important;
+    }
+  }
+
+  /* In-app "Reduce motion" pref — mirrored onto <html> by
+     ReducedMotionBridge in AppShell. Mirrors the OS-query rules so
+     users who toggle the Settings knob get the same behavior even
+     when the OS hasn't opted in. Narrower selector (html.X) so it
+     still beats Tailwind's generated utility specificity. */
+  html.lw-reduce-motion *,
+  html.lw-reduce-motion *::before,
+  html.lw-reduce-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  html.lw-reduce-motion .animate-pulse {
+    animation: none !important;
+    opacity: 1 !important;
   }
 
   :root {

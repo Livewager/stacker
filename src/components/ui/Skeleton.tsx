@@ -6,6 +6,14 @@
  * every loading.tsx so the whole app's loading state looks like
  * one thing, not fourteen things.
  *
+ * Reduced motion
+ * --------------
+ * The pulse is frozen to a static dim tint when either the OS
+ * prefers-reduced-motion query matches, or the in-app "Reduce motion"
+ * pref is on (mirrored onto html.lw-reduce-motion via AppShell). Rule
+ * lives in src/css/style.css so these primitives stay hook-free and
+ * SSR-friendly.
+ *
  * Usage in a loading.tsx:
  *   <SkeletonCard><SkeletonLine className="w-1/3" /></SkeletonCard>
  */
