@@ -123,8 +123,8 @@ export default function OnboardingNudge() {
               <path d="M6.3 3.7a1 1 0 0 1 1.5-.87l8 5.3a1 1 0 0 1 0 1.74l-8 5.3A1 1 0 0 1 6.3 14.3v-10.6Z" />
             </svg>
           }
-          title="Two games, one wallet"
-          body="Tilt Pour is gyroscope. Stacker is arcade. Both pay out from the same LWP balance."
+          title="Arcade skill, live ledger"
+          body="Stacker rounds pay out from a non-custodial LWP balance — same wallet across /play, /send, and /withdraw."
         />
         <Bullet
           icon={
