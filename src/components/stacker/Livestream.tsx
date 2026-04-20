@@ -99,6 +99,13 @@ export function Livestream() {
   // Monotonic counter so every pushed entry has a unique React key,
   // even if the same pool row is re-picked across many cycles.
   const seqRef = useRef<number>(POOL.length);
+  // POLISH-381 — threshold dividing "this row was in the initial
+  // paint" from "this row was pushed in mid-session." Initial feed
+  // carries POOL ids (1..POOL.length); every subsequent cycle bumps
+  // seqRef and mints a strictly-larger id. Newly pushed rows get
+  // the .lw-chat-slide entrance; the first 5 skip it so the column
+  // doesn't slide-in-all-at-once on page load.
+  const initialIdMax = POOL.length;
 
   useEffect(() => {
     if (reducedMotion) return;
@@ -248,7 +255,10 @@ export function Livestream() {
                 on .sm:inline hides the first <li> until sm+. */}
             <ul className="space-y-1 text-[12px] leading-snug [&>li:first-child]:hidden sm:[&>li:first-child]:list-item">
               {feed.slice(-3).map((m) => (
-                <li key={m.id} className="truncate">
+                <li
+                  key={m.id}
+                  className={`truncate ${m.id > initialIdMax ? "lw-chat-slide" : ""}`}
+                >
                   <span className={`font-semibold ${toneClasses(m.tone)}`}>
                     {m.user}
                   </span>
@@ -296,7 +306,10 @@ export function Livestream() {
             className="flex-1 min-h-0 space-y-2 text-[13px] leading-snug overflow-hidden"
           >
             {feed.map((m) => (
-              <li key={m.id} className="flex gap-2">
+              <li
+                key={m.id}
+                className={`flex gap-2 ${m.id > initialIdMax ? "lw-chat-slide" : ""}`}
+              >
                 <span
                   className={`shrink-0 font-semibold ${toneClasses(m.tone)}`}
                 >
