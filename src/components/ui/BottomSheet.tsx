@@ -208,16 +208,23 @@ export function BottomSheet({
       >
         {/* Drag handle — mobile-only. Has the pointer listeners so the
             gesture is scoped to the top strip; content inside the sheet
-            scrolls and interacts normally. */}
+            scrolls and interacts normally.
+            POLISH-238: bumped opacity from /25 → /40 for discoverability
+            against the dark #0b1a2e panel background, added a group
+            hover/active brighten so a user who taps-without-dragging
+            gets a visible "yes this is grabbable" acknowledgement.
+            Increased vertical padding to pt-3 pb-2 so the hit target
+            is ~28px tall (matches iOS native sheet handle region)
+            even though the visible pill stays 6px. */}
         <div
-          className="flex justify-center pt-2 pb-1 sm:hidden cursor-grab active:cursor-grabbing touch-none"
+          className="group/handle flex justify-center pt-3 pb-2 sm:hidden cursor-grab active:cursor-grabbing touch-none"
           onPointerDown={onHandlePointerDown}
           onPointerMove={onHandlePointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           aria-hidden
         >
-          <span className="h-1.5 w-10 rounded-full bg-white/25" />
+          <span className="h-1.5 w-10 rounded-full bg-white/40 transition-colors group-active/handle:bg-white/70" />
         </div>
 
         {(title || description) && (
