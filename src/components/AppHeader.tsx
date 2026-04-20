@@ -17,18 +17,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { WalletNav } from "@/components/dunk/WalletNav";
+import { ROUTES } from "@/lib/routes";
 
 type Tab = { href: string; label: string };
 
 const TABS: Tab[] = [
-  { href: "/play", label: "Play" },
-  { href: "/wallet", label: "Wallet" },
-  { href: "/deposit", label: "Deposit" },
-  { href: "/send", label: "Send" },
-  { href: "/withdraw", label: "Withdraw" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/account", label: "Account" },
-  { href: "/settings", label: "Settings" },
+  { href: ROUTES.play, label: "Play" },
+  { href: ROUTES.wallet, label: "Wallet" },
+  { href: ROUTES.deposit, label: "Deposit" },
+  { href: ROUTES.send, label: "Send" },
+  { href: ROUTES.withdraw, label: "Withdraw" },
+  { href: ROUTES.leaderboard, label: "Leaderboard" },
+  { href: ROUTES.account, label: "Account" },
+  { href: ROUTES.settings, label: "Settings" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -42,7 +43,7 @@ export default function AppHeader() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-2.5 md:px-8">
         <Link
-          href="/dunk"
+          href={ROUTES.dunk}
           aria-label="Livewager · Dunk home"
           className="inline-flex items-center shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
         >

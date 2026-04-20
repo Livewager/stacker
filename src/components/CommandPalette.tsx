@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { ROUTES } from "@/lib/routes";
 
 type Command = {
   id: string;
@@ -81,16 +82,16 @@ export default function CommandPalette() {
 
   const commands: Command[] = useMemo(
     () => [
-      { id: "play", label: "Games hub", hint: "/play", run: () => go("/play") },
-      { id: "dunk", label: "Tilt Pour", hint: "/dunk", run: () => go("/dunk") },
-      { id: "stacker", label: "Stacker", hint: "/stacker", run: () => go("/stacker") },
-      { id: "wallet", label: "Wallet", hint: "/wallet", run: () => go("/wallet") },
-      { id: "account", label: "Account", hint: "/account", run: () => go("/account") },
-      { id: "deposit", label: "Deposit", hint: "/deposit", run: () => go("/deposit") },
-      { id: "send", label: "Send", hint: "/send", run: () => go("/send") },
-      { id: "withdraw", label: "Withdraw", hint: "/withdraw", run: () => go("/withdraw") },
-      { id: "leaderboard", label: "Leaderboard", hint: "/leaderboard", run: () => go("/leaderboard") },
-      { id: "settings", label: "Settings", hint: "/settings", run: () => go("/settings") },
+      { id: "play", label: "Games hub", hint: ROUTES.play, run: () => go(ROUTES.play) },
+      { id: "dunk", label: "Tilt Pour", hint: ROUTES.dunk, run: () => go(ROUTES.dunk) },
+      { id: "stacker", label: "Stacker", hint: ROUTES.stacker, run: () => go(ROUTES.stacker) },
+      { id: "wallet", label: "Wallet", hint: ROUTES.wallet, run: () => go(ROUTES.wallet) },
+      { id: "account", label: "Account", hint: ROUTES.account, run: () => go(ROUTES.account) },
+      { id: "deposit", label: "Deposit", hint: ROUTES.deposit, run: () => go(ROUTES.deposit) },
+      { id: "send", label: "Send", hint: ROUTES.send, run: () => go(ROUTES.send) },
+      { id: "withdraw", label: "Withdraw", hint: ROUTES.withdraw, run: () => go(ROUTES.withdraw) },
+      { id: "leaderboard", label: "Leaderboard", hint: ROUTES.leaderboard, run: () => go(ROUTES.leaderboard) },
+      { id: "settings", label: "Settings", hint: ROUTES.settings, run: () => go(ROUTES.settings) },
     ],
     [go],
   );

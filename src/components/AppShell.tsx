@@ -15,15 +15,16 @@ import { ToastHost } from "@/components/dunk/Toast";
 import { WalletProvider } from "@/components/dunk/WalletContext";
 import { BottomNav } from "@/components/BottomNav";
 import CommandPalette from "@/components/CommandPalette";
+import { ANCHORS } from "@/lib/routes";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <ToastHost>
       <WalletProvider>
-        <a href="#content" className="skip-link">
+        <a href={ANCHORS.content} className="skip-link">
           Skip to main content
         </a>
-        <main id="content" tabIndex={-1} className="outline-none">
+        <main id={ANCHORS.content.slice(1)} tabIndex={-1} className="outline-none">
           {children}
         </main>
         <BottomNav />

@@ -18,6 +18,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { ROUTES } from "@/lib/routes";
 
 type Item = {
   href: string;
@@ -33,7 +34,7 @@ const NO_BOTTOM_NAV_PATHS: readonly string[] = [];
 
 const ITEMS: Item[] = [
   {
-    href: "/play",
+    href: ROUTES.play,
     label: "Play",
     icon: (
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
@@ -42,7 +43,7 @@ const ITEMS: Item[] = [
     ),
   },
   {
-    href: "/wallet",
+    href: ROUTES.wallet,
     label: "Wallet",
     icon: (
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
@@ -51,7 +52,7 @@ const ITEMS: Item[] = [
     ),
   },
   {
-    href: "/deposit",
+    href: ROUTES.deposit,
     label: "Deposit",
     emphasize: true,
     icon: (
@@ -61,7 +62,7 @@ const ITEMS: Item[] = [
     ),
   },
   {
-    href: "/account",
+    href: ROUTES.account,
     label: "Account",
     icon: (
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
@@ -70,7 +71,7 @@ const ITEMS: Item[] = [
     ),
   },
   {
-    href: "/stacker",
+    href: ROUTES.stacker,
     label: "Stacker",
     icon: (
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">

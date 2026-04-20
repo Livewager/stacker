@@ -12,6 +12,7 @@ import { useState } from "react";
 import { formatLWP } from "@/lib/icp";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
+import { ANCHORS } from "@/lib/routes";
 import { useWalletState } from "./WalletContext";
 
 export function WalletNav() {
@@ -115,7 +116,7 @@ export function WalletNav() {
       </div>
       {/* Deposit CTA — scrolls to the wallet card. */}
       <a
-        href="#drop-wallet"
+        href={ANCHORS.dropWallet}
         className="text-xs md:text-sm px-3 md:px-4 py-2 md:py-2 h-9 md:h-auto inline-flex items-center rounded-lg text-black font-bold transition hover:brightness-110 shrink-0"
         style={{ background: "linear-gradient(90deg,#fdba74,#f97316)" }}
       >
