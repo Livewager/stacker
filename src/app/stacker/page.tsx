@@ -1655,7 +1655,17 @@ function WagerPrimer() {
               Wager · demo mode
             </div>
             <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-              Skin in the game, without the risk.
+              Skin in the game,{" "}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+                }}
+              >
+                without the risk
+              </span>
+              .
             </h2>
             <p className="text-sm text-gray-300 leading-snug mb-4 max-w-md">
               Pick a chip before you start. Reach the top and you&apos;d win{" "}
