@@ -160,8 +160,11 @@ function StackerPageInner() {
                 Deposit now
               </Button>
             </Link>
-            <a href="#play">
-              <Button tone="cyan" size="sm">
+            <a
+              href="#play"
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Button tone="cyan" size="sm" tabIndex={-1}>
                 Play
               </Button>
             </a>
@@ -403,8 +406,11 @@ function Hero() {
             transition={{ duration: 0.5, delay: 0.18 }}
             className="flex flex-wrap items-center gap-3"
           >
-            <a href="#play">
-              <Button tone="cyan" size="lg">
+            <a
+              href="#play"
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Button tone="cyan" size="lg" tabIndex={-1}>
                 Play now
               </Button>
             </a>
@@ -413,8 +419,11 @@ function Hero() {
                 Deposit LWP
               </Button>
             </Link>
-            <a href="#how">
-              <Button variant="outline" size="lg">
+            <a
+              href="#how"
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Button variant="outline" size="lg" tabIndex={-1}>
                 How it works
               </Button>
             </a>
