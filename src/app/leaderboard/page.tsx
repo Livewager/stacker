@@ -173,13 +173,39 @@ function HourClock({ msToReset }: { msToReset: number }) {
   const s = Math.max(0, Math.floor(msToReset / 1000));
   const mm = String(Math.floor(s / 60)).padStart(2, "0");
   const ss = String(s % 60).padStart(2, "0");
+  // SUPER-21 — urgency tiers. Last 60s = amber, last 5 min = yellow,
+  // baseline = white. Colon separator blinks once per second in the
+  // last 60s to communicate 'time is nearly up' without needing the
+  // user to read the tenths. Border also warms as the hour closes.
+  const isLast60s = s < 60;
+  const isLast5m = s < 300;
+  const numeralColor = isLast60s
+    ? "text-amber-300"
+    : isLast5m
+      ? "text-yellow-300"
+      : "text-white";
+  const borderCls = isLast60s
+    ? "border-amber-400/40 bg-amber-400/[0.05]"
+    : isLast5m
+      ? "border-yellow-400/30 bg-yellow-400/[0.03]"
+      : "border-white/10 bg-white/[0.03]";
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-right">
+    <div className={`rounded-xl border px-4 py-3 text-right transition-colors ${borderCls}`}>
       <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
         Hour resets in
       </div>
-      <div className="font-mono text-lg tabular-nums text-white">
-        {mm}:{ss}
+      <div
+        className={`font-mono text-lg tabular-nums transition-colors ${numeralColor}`}
+        aria-live="off"
+      >
+        {mm}
+        <span
+          aria-hidden
+          className={isLast60s ? "animate-pulse" : ""}
+        >
+          :
+        </span>
+        {ss}
       </div>
     </div>
   );
