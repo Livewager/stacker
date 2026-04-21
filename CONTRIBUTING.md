@@ -98,7 +98,7 @@ POLISH-<N> <area>: <one-line summary>
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 ```
 
-Use `ANTICHEAT-T<n>`, `ICP-<n>`, `STACKER-<n>`, or `STACKER-<n>` prefixes
+Use `ANTICHEAT-T<n>`, `ICP-<n>`, or `STACKER-<n>` prefixes
 for non-polish work. When a tick discovers new follow-ups, queue them
 as fresh tickets rather than expanding the one you're shipping —
 keeps each commit reviewable in isolation.
