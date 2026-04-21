@@ -153,15 +153,17 @@ export default function OnboardingNudge() {
             Learn more
           </Button>
         </Link>
-        <Button
-          data-autofocus
-          onClick={close}
-          tone="cyan"
-          fullWidth
-          className="sm:w-auto"
-        >
-          Let&apos;s play
-        </Button>
+        <Link href={ROUTES.stacker} className="inline-flex">
+          <Button
+            data-autofocus
+            onClick={close}
+            tone="cyan"
+            fullWidth
+            className="sm:w-auto"
+          >
+            Let&apos;s play
+          </Button>
+        </Link>
       </div>
       </div>
     </BottomSheet>
