@@ -134,7 +134,7 @@ export const PREF_KEYS = {
   // Flow / UI state
   walletQuickTab: "walletQuickTab", // "buy" | "deposit" | "send" | "withdraw"
   stackerWager: "stackerWager", // 0 | 5 | 25 | 100 (LWP)
-  stackerMode: "stackerMode", // "ranked" | "unranked"
+  stackerMode: "stackerMode", // "practice" | "real" (legacy: "ranked" | "unranked")
   stackerLastPlayed: "stackerLastPlayed", // epoch ms | null
   leaderboardTab: "leaderboardTab", // legacy three-tab days; Stacker-only today
   hasSeenOnboarding: "hasSeenOnboarding", // boolean

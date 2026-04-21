@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { StackerWager, PAYOUT_MULTIPLIER } from "@/components/stacker/StackerWager";
@@ -181,6 +181,13 @@ function StackerPageInner() {
   const [roundKey, setRoundKey] = useState(0);
   const [entryBusy, setEntryBusy] = useState(false);
   const [chargeStep, setChargeStep] = useState<ChargeStep>("idle");
+  // Live mode reference. The wager component owns the persisted
+  // value; we mirror it into a ref so chargeEntryFee (called from
+  // every tap inside the game) can read the latest without becoming
+  // a dependency of every memo'd handler. Updated by handleStart and
+  // also pre-warmed on mount via the localStorage value the wager
+  // component restores.
+  const modeRef = useRef<"practice" | "real">("practice");
   const wagerDisabled = phase === "playing" || entryBusy;
   const toast = useToast();
 
@@ -198,6 +205,34 @@ function StackerPageInner() {
    * <StackerGame> below. No duplicate burns.
    */
   const chargeEntryFee = useCallback(async (): Promise<boolean> => {
+    // Read the most recent mode the user picked. The wager
+    // component persists this to localStorage on every toggle so
+    // we can pick up the latest even if the user changed mode
+    // without re-clicking Start.
+    let liveMode: "practice" | "real" = modeRef.current;
+    try {
+      const raw = window.localStorage.getItem("livewager-pref:stackerMode");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed === "real" || parsed === "ranked") liveMode = "real";
+        else if (parsed === "practice" || parsed === "unranked") {
+          liveMode = "practice";
+        }
+      }
+    } catch {
+      /* fall through to modeRef */
+    }
+    modeRef.current = liveMode;
+
+    // Practice mode is a pure local round — no ledger call, no
+    // identity required. Flash a quick "starting practice" frame so
+    // the tap still feels like it did something, then go.
+    if (liveMode === "practice") {
+      setChargeStep("done");
+      window.setTimeout(() => setChargeStep("idle"), 280);
+      return true;
+    }
+
     // 1/ auth — check the roster has an active identity. Fast
     // (synchronous localStorage read); the step still flashes so a
     // signed-out user's error path doesn't jump-cut to the toast.
@@ -207,9 +242,9 @@ function StackerPageInner() {
       setChargeStep("error");
       toast.push({
         kind: "error",
-        title: "Sign in to play",
+        title: "Sign in to play Real mode",
         description:
-          "Stacker requires a signed-in key. Head to /icrc to log in.",
+          "Real mode burns 1 LWP per round. Switch to Practice for a free round, or sign in via /icrc.",
       });
       // Let the error frame show for ~1.4s, then clear.
       window.setTimeout(() => setChargeStep("idle"), 1400);
@@ -281,15 +316,16 @@ function StackerPageInner() {
   }, [toast]);
 
   /**
-   * Wager-button path: the user picked a stake and hit Start.
-   * We just note the stake and remount the game (new roundKey).
-   * The actual burn happens on the FIRST tap inside the game,
-   * through beforeStart → chargeEntryFee. That keeps every round-
-   * start (wager button, tap-to-start, R-to-restart) on the same
-   * gate and avoids double-charging.
+   * Wager-button path: the user picked a mode and hit Start. We
+   * stash the mode in modeRef (so the game's beforeStart hook reads
+   * the latest), reset the stake to zero (no per-round chip in this
+   * UI anymore), and remount the game. The actual burn (or skip,
+   * for practice) happens on the FIRST tap inside the game, through
+   * beforeStart → chargeEntryFee.
    */
-  const handleStart = useCallback((pickedStake: number) => {
-    setStake(pickedStake);
+  const handleStart = useCallback((mode: "practice" | "real") => {
+    modeRef.current = mode;
+    setStake(0);
     setRoundKey((k) => k + 1);
     setPhase("idle");
   }, []);
