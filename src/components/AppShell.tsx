@@ -233,16 +233,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <RouteTransitionBar />
         {/* Paired skip-links. DOM order matters: "main content" is
             the first Tab stop (matches tab-order invariant in the
-            file header), "games" is second. Both use the shared
+            file header), "Stacker" is second. Both use the shared
             .skip-link style which is invisible until focused. The
-            games link is a Next Link (client nav) so it also bails
+            Stacker link is a Next Link (client nav) so it also bails
             into prefetch — useful because a keyboard user
             activating it is about to play a round. */}
         <a href={ANCHORS.content} className="skip-link">
           Skip to main content
         </a>
-        <Link href={ROUTES.play} className="skip-link">
-          Skip to games
+        <Link href={ROUTES.stacker} className="skip-link">
+          Skip to Stacker
         </Link>
         <NetworkBanner />
         <main id={ANCHORS.content.slice(1)} tabIndex={-1} className="outline-none">

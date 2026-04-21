@@ -133,9 +133,9 @@ export default function AccountPage() {
               >
                 {status === "loading" ? "Connecting…" : "Connect Internet Identity"}
               </Button>
-              <Link href={ROUTES.play}>
+              <Link href={ROUTES.stacker}>
                 <Button variant="outline" size="lg">
-                  Browse games instead
+                  Try Stacker first
                 </Button>
               </Link>
             </div>
