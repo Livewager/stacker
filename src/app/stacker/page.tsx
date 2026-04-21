@@ -118,67 +118,90 @@ function StackerPageInner() {
   const toast = useToast();
 
   /**
-   * Start a round: burn the entry fee on-chain first, then flip the
-   * UI into the new round. If the burn fails (not signed in,
-   * insufficient balance, ledger rejection, network), we show a
-   * toast + leave the UI in its current state. The game never
-   * starts without a confirmed ledger tx.
+   * Burn ENTRY_FEE_BASE_UNITS from the active key's balance as the
+   * on-chain entry fee for one round. Returns true on confirmed
+   * burn, false on any failure (and fires a toast explaining what
+   * went wrong).
+   *
+   * This is the single authoritative place the fee is charged. Both
+   * the wager component's Start button AND every tap-to-start /
+   * press-R-to-restart inside the game funnel through here via
+   * StackerGame's `beforeStart` prop — see handleStart (wager
+   * button path) and the beforeStart={chargeEntryFee} prop on the
+   * <StackerGame> below. No duplicate burns.
    */
-  const handleStart = useCallback(
-    async (pickedStake: number, _mode?: string) => {
-      const identity = loadActiveIdentity();
-      if (!identity) {
-        toast.push({
-          kind: "error",
-          title: "Sign in to play",
-          description: "Stacker requires a signed-in key. Head to /icrc to log in.",
-        });
-        return;
-      }
-      setEntryBusy(true);
-      try {
-        const actor = await getLedgerActor(identity);
-        const res = await actor.burn({
-          from_subaccount: [],
-          amount: ENTRY_FEE_BASE_UNITS,
-          memo: [],
-          created_at_time: [],
-        });
-        if ("Err" in res) {
-          const variant = Object.keys(res.Err)[0];
-          if (variant === "InsufficientFunds") {
-            toast.push({
-              kind: "error",
-              title: `Need ${ENTRY_FEE_LABEL} to play`,
-              description:
-                "Your balance is short. Grab some from the faucet on /icrc first.",
-            });
-          } else {
-            toast.push({
-              kind: "error",
-              title: "Ledger rejected the entry fee",
-              description: `Burn returned ${variant}; the round was not started.`,
-            });
-          }
-          return;
+  const chargeEntryFee = useCallback(async (): Promise<boolean> => {
+    const identity = loadActiveIdentity();
+    if (!identity) {
+      toast.push({
+        kind: "error",
+        title: "Sign in to play",
+        description:
+          "Stacker requires a signed-in key. Head to /icrc to log in.",
+      });
+      return false;
+    }
+    setEntryBusy(true);
+    try {
+      const actor = await getLedgerActor(identity);
+      const res = await actor.burn({
+        from_subaccount: [],
+        amount: ENTRY_FEE_BASE_UNITS,
+        memo: [],
+        created_at_time: [],
+      });
+      if ("Err" in res) {
+        const variant = Object.keys(res.Err)[0];
+        if (variant === "InsufficientFunds") {
+          toast.push({
+            kind: "error",
+            title: `Need ${ENTRY_FEE_LABEL} to play`,
+            description:
+              "Your balance is short. Grab some from the faucet on /icrc first.",
+          });
+        } else {
+          toast.push({
+            kind: "error",
+            title: "Ledger rejected the entry fee",
+            description: `Burn returned ${variant}; the round was not started.`,
+          });
         }
-        // Success — tell the rest of the app the ledger moved.
-        window.dispatchEvent(new CustomEvent("lw-ledger-mutated"));
-        setStake(pickedStake);
-        setRoundKey((k) => k + 1);
-        setPhase("idle");
-      } catch (e) {
-        toast.push({
-          kind: "error",
-          title: "Couldn't reach the ledger",
-          description: (e as Error).message,
-        });
-      } finally {
-        setEntryBusy(false);
+        return false;
       }
-    },
-    [toast],
-  );
+      // Success — tell the rest of the app the ledger moved so
+      // /wallet, /icrc, /accounts repaint.
+      window.dispatchEvent(new CustomEvent("lw-ledger-mutated"));
+      toast.push({
+        kind: "info",
+        title: `Burned ${ENTRY_FEE_LABEL}`,
+        description: "Round starting now.",
+      });
+      return true;
+    } catch (e) {
+      toast.push({
+        kind: "error",
+        title: "Couldn't reach the ledger",
+        description: (e as Error).message,
+      });
+      return false;
+    } finally {
+      setEntryBusy(false);
+    }
+  }, [toast]);
+
+  /**
+   * Wager-button path: the user picked a stake and hit Start.
+   * We just note the stake and remount the game (new roundKey).
+   * The actual burn happens on the FIRST tap inside the game,
+   * through beforeStart → chargeEntryFee. That keeps every round-
+   * start (wager button, tap-to-start, R-to-restart) on the same
+   * gate and avoids double-charging.
+   */
+  const handleStart = useCallback((pickedStake: number) => {
+    setStake(pickedStake);
+    setRoundKey((k) => k + 1);
+    setPhase("idle");
+  }, []);
 
   // Scope the scroll-snap behavior to this page only. <html> is the
   // scroll container, so we add/remove a class there. No regression
@@ -357,6 +380,10 @@ function StackerPageInner() {
               // into the same level forever.
               initialSeed={roundKey === 0 ? initialSeed : null}
               onPhaseChange={(p) => setPhase(p)}
+              // Every round-start (tap-to-start, press-space, press-R-
+              // to-restart, wager-button path) is gated on this burn.
+              // See chargeEntryFee for the exact contract.
+              beforeStart={chargeEntryFee}
             />
           </div>
 

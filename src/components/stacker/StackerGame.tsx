@@ -171,6 +171,18 @@ type StackerGameProps = {
    * rounds in the same mount use fresh random seeds.
    */
   initialSeed?: number | null;
+  /**
+   * Async gate invoked on every round-start request (tap/click/space
+   * on idle/won/over, plus the "R" restart). Must resolve to `true`
+   * for the round to begin; `false` or a thrown error cancels.
+   *
+   * This is the hook the /stacker page uses to burn the ICRC-1 entry
+   * fee before any mechanics run. The fee burn happens inside the
+   * gate; if the ledger rejects, this returns false and the player
+   * sees a toast from the gate itself. The game stays in its current
+   * phase (idle / won / over) so a retry just means tapping again.
+   */
+  beforeStart?: () => Promise<boolean>;
 };
 
 export default function StackerGame({
@@ -178,6 +190,7 @@ export default function StackerGame({
   winMultiplier = 3,
   onPhaseChange,
   initialSeed = null,
+  beforeStart,
 }: StackerGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Wrapper ref so we can snap SR focus to the game region when a
@@ -340,6 +353,36 @@ export default function StackerGame({
   // ----------------------------------------------------------------
   // Game mechanics
   // ----------------------------------------------------------------
+
+  // Keep the latest beforeStart in a ref so handleTap + key handler
+  // don't close over a stale copy when the parent re-renders with a
+  // new burn function (e.g. after a toast hook rebind).
+  const beforeStartRef = useRef(beforeStart);
+  useEffect(() => {
+    beforeStartRef.current = beforeStart;
+  }, [beforeStart]);
+
+  /**
+   * Serialize round-start requests through the optional beforeStart
+   * gate. While a gate call is in flight a second tap is ignored —
+   * avoids double-charging users who mash space while the burn
+   * round-trip is pending.
+   */
+  const startingRef = useRef(false);
+  const gateStart = useCallback(async (): Promise<boolean> => {
+    if (startingRef.current) return false;
+    const gate = beforeStartRef.current;
+    if (!gate) return true;
+    startingRef.current = true;
+    try {
+      const ok = await gate();
+      return ok;
+    } catch {
+      return false;
+    } finally {
+      startingRef.current = false;
+    }
+  }, []);
 
   const startRound = useCallback(() => {
     stateRef.current = {
@@ -660,13 +703,20 @@ export default function StackerGame({
       return;
     }
     if (s.phase === "idle" || s.phase === "won" || s.phase === "over") {
+      // Gate the start on the parent's async hook — burns the ICRC-1
+      // entry fee before any mechanics run. We play the ping + haptic
+      // optimistically so the tap feels responsive; on gate failure
+      // the toast from the hook is the user-visible feedback and the
+      // game sits right where it was.
       sfx.ping();
       haptics.tick();
-      startRound();
+      gateStart().then((ok) => {
+        if (ok) startRound();
+      });
       return;
     }
     lockRow();
-  }, [lockRow, startRound]);
+  }, [lockRow, startRound, gateStart]);
 
   // ----------------------------------------------------------------
   // Input
@@ -693,12 +743,16 @@ export default function StackerGame({
         e.preventDefault();
         sfx.ping();
         haptics.tick();
-        startRound();
+        // Same gate as tap-to-start — the restart is a new round,
+        // so it needs to burn a fresh entry fee.
+        gateStart().then((ok) => {
+          if (ok) startRound();
+        });
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleTap, startRound]);
+  }, [handleTap, startRound, gateStart]);
 
   // ----------------------------------------------------------------
   // Render loop
