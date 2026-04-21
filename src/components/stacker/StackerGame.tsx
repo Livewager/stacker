@@ -33,51 +33,133 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 
 const GRID_COLS = 7;
 const GRID_ROWS = 15;
-/** Level targets — the "win" row. Classic arcades set this ~12-15 tall. */
+/** Ceiling row. Reaching this no longer ends the round — it levels up. */
 const TOP_ROW = GRID_ROWS - 1;
+
 /**
- * Speed ramp: cells per second the slider moves at each row. Previous
- * curve started at 3.6 which read as "free warm-up" — users looping
- * the demo were clearing rows 0–3 without any tension. Rebalanced to
- * a quicker base + flatter cubic so the opening floors demand real
- * tracking from tap 1, while the top end stays at ~13.5 so the
- * DifficultyLadder's "approaching unplayable" narrative still holds.
+ * Round duration cap. Classic stacker gives you a fresh ceiling on
+ * every level-up so "virtually infinite" play is possible, but the
+ * round still has to end SOME time so the leaderboard gets a score.
+ * 60s matches the "let's say one minute" feel from the spec while
+ * leaving room for 4–6 level climbs by a skilled player.
+ */
+const ROUND_TIME_LIMIT_MS = 60_000;
+
+/**
+ * Speed ramp: cells per second the slider moves at each row. Toned
+ * down slightly from the HARDER-01 curve — the spec was "a little
+ * too fast" even after the earlier warm-up-floor bump. Opening
+ * rows are learnable; the cubic coefficient puts most of the
+ * difficulty at the top of each level. Per-level multiplier applied
+ * outside via speedMultiplierForLevel() so the curve's SHAPE stays
+ * constant while the ABSOLUTE speed climbs as levels stack.
  *
- *   row 0:  ~5.2 cells/sec  (no free ride — classic stacker first-tier feel)
- *   row 5:  ~6.3
- *   row 10: ~8.2
- *   row 14: ~13.5 + jitter  (approaching unplayable without rhythm)
- *
- * Cubic coefficient dropped from 9.9 → 8.3 so the ramp reaches the
- * same ceiling from the higher floor. Base bumped 3.6 → 5.2 (+44%).
+ *   row 0:  ~4.2 cells/sec  (slower opening, learnable)
+ *   row 7:  ~5.0
+ *   row 14: ~10.8 + jitter  (approaching unplayable at level 1)
+ *   row 14 × level 3: ~13.2 (harder again as levels stack)
  */
 const SPEED_BY_ROW = (row: number): number => {
   const t = row / Math.max(1, TOP_ROW);
-  // 5.2 base + cubic ramp to ~13.5 by the top row.
-  return 5.2 + t * t * t * 8.3;
+  return 4.2 + t * t * t * 6.6;
 };
 
-/**
- * Per-frame speed jitter amplitude (fraction of SPEED_BY_ROW). Kicks
- * in from row JITTER_ROW. Moved from row 8 → 6 so the mid-game
- * transition to "no rhythm" happens earlier — aligns with the earlier
- * RANDOM_DIR_ROW shift and keeps the tower from having a 5-row easy
- * stretch before anything interesting happens.
- */
-const JITTER_ROW = 6;
-const JITTER_AMP = 0.18; // ±18% at full strength
+/** Per-level global speed multiplier. Level 1 = 1.00; each level
+ *  adds 9% to the whole curve so a veteran climbing to level 4 is
+ *  playing at ~1.27× the base speed on every row. */
+const speedMultiplierForLevel = (level: number): number =>
+  1 + 0.09 * Math.max(0, level - 1);
 
-/**
- * From this row, spawn direction is randomized instead of always
- * starting left-to-right. Moved from row 6 → 3 so muscle memory
- * breaks earlier — you can't coast the first 5 rows on a pure
- * left-to-right reflex anymore, which is exactly the "first level
- * way too easy" complaint this tune addresses.
- */
+/** Per-frame speed jitter amplitude (fraction of SPEED_BY_ROW).
+ *  Kicks in from row JITTER_ROW. Moved 8→6 in HARDER-01; kept
+ *  there since the spec asked for MORE randomness, not less. */
+const JITTER_ROW = 6;
+const JITTER_AMP = 0.22; // ±22% at full strength (bumped 0.18→0.22 for "very random")
+
+/** From this row, spawn direction is randomized. Earlier = less
+ *  muscle-memory coasting on the first level. */
 const RANDOM_DIR_ROW = 3;
 
-/** Starting block width. Narrower = harder. */
+/**
+ * Randomization knobs past level 1 — the spec asked for "very
+ * random", which isn't just speed jitter. These two add genuine
+ * unpredictability to the spawn phase:
+ *   - widthJitterChance: chance per spawn that the slider width
+ *     is one cell narrower than the locked row beneath. Applies
+ *     only when the stack width is > 2 so it can never brick-
+ *     instant-zero the round.
+ *   - extraSineFreqRow: from this row, the speed jitter starts
+ *     modulating on a second much-higher-frequency sine so the
+ *     slider lurches on both slow AND fast timescales.
+ */
+const widthJitterChanceForLevel = (level: number): number =>
+  level <= 1 ? 0 : Math.min(0.25, 0.05 * (level - 1)); // +5% per level, cap 25%
+
+const EXTRA_SINE_ROW = 10;
+
+/** Starting block width at the BOTTOM of each level. Narrower =
+ *  harder. Level-up bonus restores this fresh; it's not penalized
+ *  for the width you finished the prior level at. */
 const START_WIDTH = 3;
+
+/**
+ * Level-keyed visual themes. Each theme is a pair of endpoint
+ * colors for the row color ramp (bottom → top) plus a backdrop
+ * tint applied behind the canvas. Five themes cycle; level 6+
+ * starts over at theme 0 so we don't need an infinite palette.
+ * Tetris-style: the world literally looks different each level
+ * so the player feels the progression in their peripheral
+ * vision, not just in a number in the HUD.
+ */
+type Theme = {
+  name: string;
+  floor: readonly [number, number, number]; // bottom-row color
+  ceil: readonly [number, number, number]; // top-row color
+  bgA: string; // inner radial stop (higher opacity)
+  bgB: string; // outer radial stop (fades out)
+};
+const LEVEL_THEMES: readonly Theme[] = [
+  {
+    name: "Cyan · Gold",
+    floor: [34, 211, 238],
+    ceil: [250, 204, 21],
+    bgA: "rgba(34,211,238,0.14)",
+    bgB: "rgba(250,204,21,0.06)",
+  },
+  {
+    name: "Violet · Rose",
+    floor: [167, 139, 250],
+    ceil: [251, 113, 133],
+    bgA: "rgba(167,139,250,0.16)",
+    bgB: "rgba(251,113,133,0.08)",
+  },
+  {
+    name: "Emerald · Amber",
+    floor: [52, 211, 153],
+    ceil: [251, 191, 36],
+    bgA: "rgba(52,211,153,0.14)",
+    bgB: "rgba(251,191,36,0.07)",
+  },
+  {
+    name: "Rose · Cyan",
+    floor: [251, 113, 133],
+    ceil: [34, 211, 238],
+    bgA: "rgba(251,113,133,0.15)",
+    bgB: "rgba(34,211,238,0.07)",
+  },
+  {
+    name: "Amber · Violet",
+    floor: [251, 146, 60],
+    ceil: [167, 139, 250],
+    bgA: "rgba(251,146,60,0.14)",
+    bgB: "rgba(167,139,250,0.08)",
+  },
+];
+const themeForLevel = (level: number): Theme =>
+  LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+
+/** Level-up bonus added to score when the ceiling is cleared. */
+const LEVEL_UP_BONUS_BASE = 100; // level 1→2 pays 100, 2→3 pays 200, etc.
 
 type Phase = "idle" | "playing" | "won" | "over";
 
@@ -112,6 +194,12 @@ interface GameState {
   } | null;
   shards: Shard[];
   score: number;
+  /**
+   * Current level (1-indexed). Every time the player clears the
+   * top row, this increments, the stack resets, and the theme
+   * rotates. Round ends when the stack collapses (width=0) OR the
+   * 60s timer elapses — NOT when the ceiling is reached.
+   */
   level: number;
   perfectStreak: number;
   /** Running high-water mark of perfectStreak for this round. perfectStreak
@@ -121,6 +209,16 @@ interface GameState {
   runMaxStreak: number;
   /** Last perfect-lock row — used to draw an expanding ring on that block. */
   perfectAt: { row: number; col: number; width: number; at: number } | null;
+  /** performance.now() when the current round started. Used to
+   *  check the ROUND_TIME_LIMIT_MS cap. null when idle/ended. */
+  roundStartedAt: number | null;
+  /**
+   * Level-up transition flare: set to {level, at} when the player
+   * just cleared a ceiling. The render loop reads this to paint a
+   * one-frame celebratory overlay (ring pulse + theme-swap shimmer)
+   * then clears itself after the flare window elapses.
+   */
+  levelUpAt: number | null;
 }
 
 const initialState = (): GameState => ({
@@ -133,12 +231,18 @@ const initialState = (): GameState => ({
   perfectStreak: 0,
   runMaxStreak: 0,
   perfectAt: null,
+  roundStartedAt: null,
+  levelUpAt: null,
 });
 
 // Colors cycle as the tower grows — cyan floor → gold top.
 const CYAN: [number, number, number] = [34, 211, 238];
 const GOLD: [number, number, number] = [250, 204, 21];
-const mix = (a: [number, number, number], b: [number, number, number], t: number) =>
+const mix = (
+  a: readonly [number, number, number],
+  b: readonly [number, number, number],
+  t: number,
+) =>
   [
     Math.round(a[0] + (b[0] - a[0]) * t),
     Math.round(a[1] + (b[1] - a[1]) * t),
@@ -222,7 +326,14 @@ export default function StackerGame({
   const [hudState, setHudState] = useState<{
     phase: Phase;
     score: number;
+    /** Level count (1, 2, 3…). Increments every time the player
+     *  clears the top row. Persists across level-ups; resets on
+     *  round-end. */
     level: number;
+    /** Current row within the active level (1..GRID_ROWS). The HUD
+     *  pill now shows "Row N/15 · L{level}" so a veteran climbing
+     *  level 3 sees where they are in their current ascent. */
+    row: number;
     perfectStreak: number;
     best: number;
     bestStreak: number;
@@ -240,6 +351,7 @@ export default function StackerGame({
     phase: "idle",
     score: 0,
     level: 1,
+    row: 1,
     perfectStreak: 0,
     best: 0,
     bestStreak: 0,
@@ -264,6 +376,44 @@ export default function StackerGame({
   // and show an overlay. Any click / Space / Enter resumes after
   // the tab is visible again.
   const [paused, setPaused] = useState(false);
+  /**
+   * Remaining round time in whole seconds. Updated via a 1s
+   * interval (NOT in the rAF loop — we don't need 60Hz precision
+   * for a countdown pill, and re-rendering the whole game tree
+   * every frame for the number would waste cycles). Null when the
+   * round isn't live.
+   */
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  /**
+   * Tracks hudState.level to emit a one-shot "LEVEL N" flash when
+   * the player ascends. Previous value lives in a ref; when the
+   * React-state level differs, we set a ticker that clears itself
+   * after ~1800ms for the overlay fade.
+   */
+  const [levelFlash, setLevelFlash] = useState<number | null>(null);
+  const lastShownLevel = useRef(hudState.level);
+  useEffect(() => {
+    if (hudState.level !== lastShownLevel.current && hudState.level > 1) {
+      setLevelFlash(hudState.level);
+      const id = window.setTimeout(() => setLevelFlash(null), 1800);
+      lastShownLevel.current = hudState.level;
+      return () => window.clearTimeout(id);
+    }
+    lastShownLevel.current = hudState.level;
+  }, [hudState.level]);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const s = stateRef.current;
+      if (s.phase !== "playing" || s.roundStartedAt === null) {
+        setSecondsLeft(null);
+        return;
+      }
+      const elapsed = performance.now() - s.roundStartedAt;
+      const remain = Math.max(0, ROUND_TIME_LIMIT_MS - elapsed);
+      setSecondsLeft(Math.ceil(remain / 1000));
+    }, 200);
+    return () => window.clearInterval(id);
+  }, []);
   const pausedRef = useRef(false);
 
   // Anti-cheat groundwork: local tap-entropy buffer per round. No
@@ -450,6 +600,7 @@ export default function StackerGame({
   }, []);
 
   const startRound = useCallback(() => {
+    const now = performance.now();
     stateRef.current = {
       phase: "playing",
       stack: [],
@@ -458,7 +609,7 @@ export default function StackerGame({
         x: 0,
         width: START_WIDTH,
         dir: 1,
-        spawnedAt: performance.now(),
+        spawnedAt: now,
       },
       shards: [],
       score: 0,
@@ -466,6 +617,8 @@ export default function StackerGame({
       perfectStreak: 0,
       runMaxStreak: 0,
       perfectAt: null,
+      roundStartedAt: now,
+      levelUpAt: null,
     };
     flashRef.current = 0;
     flareRow.current = -1;
@@ -491,6 +644,7 @@ export default function StackerGame({
       phase: "playing",
       score: 0,
       level: 1,
+      row: 1,
       perfectStreak: 0,
       // Fresh round — clear any leftover "new best" flash from the
       // previous end-of-round card. bestStreak itself stays as-is so
@@ -500,6 +654,79 @@ export default function StackerGame({
     }));
     onPhaseChange?.("playing");
   }, [onPhaseChange]);
+
+  /**
+   * Finalize the round — shared by the collapse path (lockRow →
+   * no overlap) and the timer-cap path (rAF loop seeing that
+   * ROUND_TIME_LIMIT_MS has elapsed).
+   *
+   * outcome === "won" is kept for leaderboard semantics if we ever
+   * add a "cleared the tower without collapse" end-state, but in
+   * the current level-looping model this param is always "over".
+   * The time-cap ending is also tagged "over" — the leaderboard
+   * cares about score, not reason.
+   */
+  const finalizeRound = useCallback(
+    (s: GameState, outcome: "won" | "over") => {
+      s.phase = "over";
+      const newBest = Math.max(hudState.best, s.score);
+      const newBestStreak = Math.max(hudState.bestStreak, s.runMaxStreak);
+      const streakBeaten = newBestStreak > hudState.bestStreak;
+      try {
+        window.localStorage.setItem(LS_BEST, String(newBest));
+        if (streakBeaten) {
+          window.localStorage.setItem(LS_BEST_STREAK, String(newBestStreak));
+        }
+      } catch {
+        /* ignore */
+      }
+      // Local scoreboard post — canister-side post happens via
+      // parent onRoundEnd (which reads real-mode state).
+      try {
+        postScore("stacker", s.score, rngRef.current?.seed);
+      } catch {
+        /* never block end-of-round UI on leaderboard post */
+      }
+      const scoreBeaten = newBest > hudState.best;
+      const newBestDelta = scoreBeaten ? newBest - hudState.best : null;
+      setHudState({
+        phase: "over",
+        score: s.score,
+        level: s.level,
+        row: Math.min(GRID_ROWS, (s.current?.row ?? 0) + 1),
+        perfectStreak: s.perfectStreak,
+        best: newBest,
+        bestStreak: newBestStreak,
+        newBestStreak: streakBeaten ? newBestStreak : null,
+        newBestDelta,
+      });
+      const transcript = roundRef.current?.finalize() ?? null;
+      if (transcript) setLastTranscript(transcript);
+      onPhaseChange?.("over");
+      onRoundEnd?.({
+        score: s.score,
+        streak: s.runMaxStreak,
+        outcome,
+      });
+      s.roundStartedAt = null;
+    },
+    [hudState.best, hudState.bestStreak, onPhaseChange, onRoundEnd],
+  );
+
+  /**
+   * Timer cap fired — the 60s ROUND_TIME_LIMIT_MS elapsed. End the
+   * round cleanly; the player sees their end-of-round card with the
+   * reason spelled out via a "TIME" flare on the HUD.
+   */
+  const endRoundDueToTimer = useCallback(
+    (s: GameState) => {
+      if (s.phase !== "playing") return;
+      sfx.over();
+      haptics.over();
+      finalizeRound(s, "over");
+    },
+    [finalizeRound],
+  );
 
   const lockRow = useCallback(() => {
     const s = stateRef.current;
@@ -558,45 +785,11 @@ export default function StackerGame({
           }
         }
         if (!rescued) {
-        // No overlap — game over.
-        sfx.over();
-        haptics.over();
-        s.phase = "over";
-        const newBest = Math.max(hudState.best, s.score);
-        const newBestStreak = Math.max(hudState.bestStreak, s.runMaxStreak);
-        const streakBeaten = newBestStreak > hudState.bestStreak;
-        try {
-          window.localStorage.setItem(LS_BEST, String(newBest));
-          if (streakBeaten) {
-            window.localStorage.setItem(LS_BEST_STREAK, String(newBestStreak));
-          }
-        } catch {
-          /* ignore */
-        }
-        // Delta lives only when score beats the prior best by ≥1.
-        // Prior best of 0 (first ever round) → render the whole new
-        // best as a delta; feels like a proper "opening best" beat.
-        const scoreBeaten = newBest > hudState.best;
-        const newBestDelta = scoreBeaten ? newBest - hudState.best : null;
-        setHudState({
-          phase: "over",
-          score: s.score,
-          level: s.level,
-          perfectStreak: s.perfectStreak,
-          best: newBest,
-          bestStreak: newBestStreak,
-          newBestStreak: streakBeaten ? newBestStreak : null,
-          newBestDelta,
-        });
-        const t = roundRef.current?.finalize() ?? null;
-        if (t) setLastTranscript(t);
-        onPhaseChange?.("over");
-        onRoundEnd?.({
-          score: s.score,
-          streak: s.runMaxStreak,
-          outcome: "over",
-        });
-        return;
+          // No overlap — game over.
+          sfx.over();
+          haptics.over();
+          finalizeRound(s, "over");
+          return;
         }
         // Rescued: fall through to the normal lock path with the
         // 1-col overlap we pinned above. Reads as a minimum-width
@@ -613,7 +806,8 @@ export default function StackerGame({
     // spawns as a falling shard for drama.
     if (below && newWidth < cur.width) {
       const t = TOP_ROW > 0 ? cur.row / TOP_ROW : 0;
-      const color = mix(CYAN, GOLD, t);
+      const lvlTheme = themeForLevel(s.level);
+      const color = mix(lvlTheme.floor, lvlTheme.ceil, t);
       const leftChopWidth = lockedLeft - curLeft;
       const rightChopWidth = curRight - lockedRight;
       const now = performance.now();
@@ -668,56 +862,49 @@ export default function StackerGame({
       sfx.lock();
       haptics.tick();
     }
-    s.level = cur.row + 2; // next row shown to the player
-
-    // Win condition.
+    // Ceiling reached = LEVEL UP, not game over.
+    //
+    // This flips the classic stacker loop inside out: instead of
+    // the arcade "clean top floor → you win, round ends" endpoint,
+    // we mint a fresh level on top of whatever score they've
+    // accumulated, clear the stack, rotate the theme palette, and
+    // keep going. Round now ends only on stack-collapse (width=0)
+    // or the 60s ROUND_TIME_LIMIT_MS cap — see the per-frame
+    // check in the render loop.
     if (cur.row >= TOP_ROW) {
       sfx.win();
       haptics.win();
-      s.phase = "won";
-      const newBest = Math.max(hudState.best, s.score);
-      // Streak best is orthogonal — a long perfect streak in a run
-      // that ends below the score record still counts as a new best
-      // streak. Both persist independently.
-      const newBestStreak = Math.max(hudState.bestStreak, s.runMaxStreak);
-      const streakBeaten = newBestStreak > hudState.bestStreak;
-      try {
-        window.localStorage.setItem(LS_BEST, String(newBest));
-        if (streakBeaten) {
-          window.localStorage.setItem(LS_BEST_STREAK, String(newBestStreak));
-        }
-      } catch {
-        /* ignore */
-      }
-      // Cross-game leaderboard post. Seed is included so a future
-      // replay/validator (ANTICHEAT-T1) can deterministically reject
-      // claims that don't match. postScore is idempotent by entry id.
-      try {
-        postScore("stacker", s.score, rngRef.current?.seed);
-      } catch {
-        /* leaderboard post should never block the win screen */
-      }
-      const scoreBeaten = newBest > hudState.best;
-      const newBestDelta = scoreBeaten ? newBest - hudState.best : null;
-      setHudState({
-        phase: "won",
+      const levelUpAt = performance.now();
+      const nextLevel = s.level + 1;
+      const bonus = LEVEL_UP_BONUS_BASE * s.level; // level 1→2 pays 100, 2→3 pays 200, etc.
+      s.score += bonus;
+      s.level = nextLevel;
+      s.stack = [];
+      s.shards = [];
+      s.perfectAt = null;
+      s.current = null;
+      s.levelUpAt = levelUpAt;
+      // Spawn the first slider of the new level. Width reset to
+      // START_WIDTH so the player isn't penalized for the narrow
+      // width they finished the prior level at.
+      const rng = rngRef.current;
+      const startDir: 1 | -1 = rng && rng.next() < 0.5 ? -1 : 1;
+      const maxStart = GRID_COLS - START_WIDTH;
+      const startX = startDir === 1 ? 0 : maxStart;
+      s.current = {
+        row: 0,
+        x: startX,
+        width: START_WIDTH,
+        dir: startDir,
+        spawnedAt: levelUpAt,
+      };
+      setHudState((h) => ({
+        ...h,
         score: s.score,
         level: s.level,
+        row: 1, // freshly climbing a new ceiling
         perfectStreak: s.perfectStreak,
-        best: newBest,
-        bestStreak: newBestStreak,
-        newBestStreak: streakBeaten ? newBestStreak : null,
-        newBestDelta,
-      });
-      const t = roundRef.current?.finalize() ?? null;
-      if (t) setLastTranscript(t);
-      onPhaseChange?.("won");
-      onRoundEnd?.({
-        score: s.score,
-        streak: s.runMaxStreak,
-        outcome: "won",
-      });
-      s.current = null;
+      }));
       return;
     }
 
@@ -727,18 +914,25 @@ export default function StackerGame({
     // on muscle memory. Width = the new locked width.
     const nextRow = cur.row + 1;
     const randomize = nextRow >= RANDOM_DIR_ROW;
-    // Seeded RNG so the whole round is replayable given (seed,
-    // transcript). Falls back to Math.random only if something
-    // exploded during startRound — belt and suspenders.
+    const rngNow = rngRef.current;
     const fromRight =
-      randomize &&
-      (rngRef.current?.coin() ?? Math.random() < 0.5);
-    const startX = fromRight ? GRID_COLS - newWidth : 0;
+      randomize && (rngNow?.coin() ?? Math.random() < 0.5);
+    // Width jitter past level 1 — spec asked for "very random".
+    // On lucky unlucky spawns, the slider comes out a cell
+    // narrower than the base it'd sit on. Guarded against
+    // narrowing below 2 cells so a jittered spawn can never
+    // instant-brick the round; the player still has at least a
+    // one-cell overlap window to aim for.
+    const wjChance = widthJitterChanceForLevel(s.level);
+    const wjRoll = rngNow?.next() ?? Math.random();
+    const jittered = nextRow >= RANDOM_DIR_ROW && wjRoll < wjChance && newWidth > 2;
+    const spawnW = jittered ? newWidth - 1 : newWidth;
+    const startX = fromRight ? GRID_COLS - spawnW : 0;
     const dir: 1 | -1 = fromRight ? -1 : 1;
     s.current = {
       row: nextRow,
       x: startX,
-      width: newWidth,
+      width: spawnW,
       dir,
       spawnedAt: performance.now(),
     };
@@ -760,6 +954,7 @@ export default function StackerGame({
       ...h,
       score: s.score,
       level: s.level,
+      row: Math.min(GRID_ROWS, nextRow + 1),
       perfectStreak: s.perfectStreak,
       best: Math.max(h.best, s.score),
     }));
@@ -884,22 +1079,54 @@ export default function StackerGame({
 
       const s = stateRef.current;
 
+      // ---- timer cap ----
+      // Round ends when ROUND_TIME_LIMIT_MS has elapsed since
+      // roundStartedAt, regardless of current row or level. Matches
+      // the "one minute" spec — the leaderboard posts your score,
+      // the overlay says "TIME", and the user can restart.
+      if (
+        s.phase === "playing" &&
+        s.roundStartedAt !== null &&
+        performance.now() - s.roundStartedAt >= ROUND_TIME_LIMIT_MS &&
+        !pausedRef.current
+      ) {
+        endRoundDueToTimer(s);
+      }
+
       // ---- simulate ----
       if (s.phase === "playing" && s.current && !pausedRef.current) {
-        const baseSpeed = SPEED_BY_ROW(s.current.row);
+        // Base speed = row-curve × level multiplier. Levels stack on
+        // each cleared ceiling so a veteran climbing level 4 is
+        // playing the same curve 36% faster than the first level.
+        const levelMul = speedMultiplierForLevel(s.level);
+        const baseSpeed = SPEED_BY_ROW(s.current.row) * levelMul;
         // Rhythm-breaking jitter kicks in on upper rows. Uses a sine of
         // wall-clock time at a deliberately-odd frequency so it doesn't
         // land on any predictable beat. Scales from 0 at JITTER_ROW to
-        // full amplitude at TOP_ROW.
+        // full amplitude at TOP_ROW. Past EXTRA_SINE_ROW a third much
+        // faster sine layers in so the slider lurches on both slow and
+        // fast timescales — "very random" per spec.
         let speed = baseSpeed;
         if (s.current.row >= JITTER_ROW) {
           const ramp = Math.min(
             1,
             (s.current.row - JITTER_ROW) / Math.max(1, TOP_ROW - JITTER_ROW),
           );
-          const wobble =
+          let wobble =
             Math.sin(t * 0.017) * JITTER_AMP * ramp * baseSpeed +
             Math.sin(t * 0.0063 + 1.3) * (JITTER_AMP / 2) * ramp * baseSpeed;
+          if (s.current.row >= EXTRA_SINE_ROW) {
+            // Higher-freq sine ramps in over the top third of the
+            // tower. Half the amplitude of the primary so it
+            // perturbs rather than dominates.
+            const topRamp = Math.min(
+              1,
+              (s.current.row - EXTRA_SINE_ROW) /
+                Math.max(1, TOP_ROW - EXTRA_SINE_ROW),
+            );
+            wobble +=
+              Math.sin(t * 0.041 + 2.7) * (JITTER_AMP / 2) * topRamp * baseSpeed;
+          }
           speed = Math.max(baseSpeed * 0.5, baseSpeed + wobble);
         }
         s.current.x += s.current.dir * speed * dt;
@@ -993,10 +1220,12 @@ export default function StackerGame({
         ctx.stroke();
       };
 
-      // Stack.
+      // Stack. Colors come from the active level's theme so each
+      // level's tower has its own palette — Tetris-style world shift.
+      const levelTheme = themeForLevel(s.level);
       s.stack.forEach((r) => {
         const tt = TOP_ROW > 0 ? r.row / TOP_ROW : 0;
-        drawBlock(r.startCol, r.row, r.width, mix(CYAN, GOLD, tt));
+        drawBlock(r.startCol, r.row, r.width, mix(levelTheme.floor, levelTheme.ceil, tt));
       });
 
       // Overlap hint — dim rectangle marking where a lock would land
@@ -1103,7 +1332,7 @@ export default function StackerGame({
         const w = cellW * s.current.width;
         const h = cellH;
         const pad = Math.min(cellW, cellH) * 0.06;
-        const color = mix(CYAN, GOLD, tt);
+        const color = mix(levelTheme.floor, levelTheme.ceil, tt);
 
         // Spawn pop: scale from 0.7 → 1.0 over first 180ms.
         const sinceSpawn = t - s.current.spawnedAt;
@@ -1256,20 +1485,27 @@ export default function StackerGame({
     ? "fixed inset-0 z-[100] w-full h-full max-w-none aspect-auto rounded-none ring-0 shadow-none bg-background select-none"
     : "relative mx-auto w-full max-w-[560px] aspect-[3/5] rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-2xl select-none";
 
+  // Theme-keyed background radial glow. Rotates every level-up so
+  // the world literally changes color as you climb — Tetris-style
+  // progression. Under fullscreen the glow still paints; only the
+  // container chrome differs.
+  const theme = themeForLevel(hudState.level);
+  const wrapperStyle: React.CSSProperties = {
+    touchAction: "manipulation",
+    // Dual-radial backdrop: cyan-ish tint from top-left, warm tint
+    // from bottom-right. Colors driven by the active theme.
+    background: `radial-gradient(ellipse at 20% 0%, ${theme.bgA}, transparent 60%), radial-gradient(ellipse at 80% 100%, ${theme.bgB}, transparent 65%)`,
+    transition: "background 600ms ease-out",
+  };
+
   return (
     <div
       className={wrapperCls}
-      // touchAction: "manipulation" suppresses the 300ms double-tap-
-      // to-zoom wait iOS Safari imposes on ad-hoc tappable elements
-      // that aren't obvious buttons. Without it, rhythm taps on the
-      // Stacker surface feel rubbery in the first third of a run.
-      // We don't use "none" here — the stake-chip row above can live
-      // just outside the canvas on smaller viewports and the page
-      // itself still needs scroll recovery if an overlay stacks
-      // weirdly. "manipulation" keeps scroll + pinch, kills the
-      // tap-delay timer.
+      // wrapperStyle carries the theme-keyed radial backdrop plus
+      // touchAction: "manipulation" (suppresses iOS Safari's 300ms
+      // double-tap-to-zoom wait on rhythm taps).
+      style={wrapperStyle}
       ref={wrapperRef}
-      style={{ touchAction: "manipulation" }}
       onPointerDown={(e) => {
         // Avoid double-firing on keyboard focus.
         (e.currentTarget as HTMLElement).focus();
@@ -1290,7 +1526,24 @@ export default function StackerGame({
       <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-3 pointer-events-none">
         <div className="flex gap-2 flex-wrap">
           <HudPill label="Score" value={String(hudState.score)} />
-          <HudPill label="Row" value={`${hudState.level}/${GRID_ROWS}`} />
+          <HudPill
+            label="Row"
+            value={`${hudState.row}/${GRID_ROWS}`}
+          />
+          <HudPill
+            label="Level"
+            value={String(hudState.level)}
+            accent={hudState.level > 1 ? "gold" : undefined}
+          />
+          {secondsLeft !== null && (
+            <HudPill
+              label="Time"
+              value={`${secondsLeft}s`}
+              // Amber when <10s to give the player a visual warning
+              // before the round caps itself out.
+              accent={secondsLeft <= 10 ? "gold" : undefined}
+            />
+          )}
           {hudState.perfectStreak > 1 && (
             <HudPill label="Streak" value={`×${hudState.perfectStreak}`} accent="gold" />
           )}
@@ -1382,6 +1635,39 @@ export default function StackerGame({
           />
         </div>
       </BottomSheet>
+
+      {/* Level-up flash. One-shot overlay shown for ~1.8s after the
+          player clears a ceiling. Big "LEVEL N" text + the theme
+          name, centered in the canvas. Pointer-events-none so the
+          next tap isn't eaten by this layer. */}
+      {levelFlash !== null && hudState.phase === "playing" && (
+        <div
+          aria-live="polite"
+          className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+        >
+          <div className="lw-reveal-pop text-center">
+            <div
+              className="text-[9px] uppercase tracking-[0.3em] text-white/70 font-mono mb-2"
+              style={{ textShadow: "0 0 12px rgba(255,255,255,0.4)" }}
+            >
+              {themeForLevel(levelFlash).name}
+            </div>
+            <div
+              className="text-6xl md:text-7xl font-black text-white"
+              style={{
+                textShadow: `0 0 24px rgba(${themeForLevel(levelFlash).ceil[0]},${
+                  themeForLevel(levelFlash).ceil[1]
+                },${themeForLevel(levelFlash).ceil[2]},0.85)`,
+              }}
+            >
+              Level {levelFlash}
+            </div>
+            <div className="text-xs uppercase tracking-widest text-white/80 font-mono mt-2">
+              +{LEVEL_UP_BONUS_BASE * (levelFlash - 1)} pts · keep climbing
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Transient difficulty flare. Centered under the HUD row so it
           doesn't fight the score pills for attention. Fades via CSS,
