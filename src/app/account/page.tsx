@@ -213,14 +213,14 @@ export default function AccountPage() {
                 <div className="mt-4 flex gap-2">
                   <Link
                     href="/deposit"
-                    className="text-xs md:text-sm px-4 py-2 rounded-lg font-bold text-black transition hover:brightness-110"
+                    className="text-xs md:text-sm px-4 py-2 rounded-lg font-bold text-black transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     style={{ background: "linear-gradient(90deg,#fdba74,#f97316)" }}
                   >
                     Deposit
                   </Link>
                   <Link
                     href="/wallet"
-                    className="text-xs md:text-sm px-4 py-2 rounded-lg border border-white/15 text-gray-200 hover:border-white/30 hover:text-white transition"
+                    className="text-xs md:text-sm px-4 py-2 rounded-lg border border-white/15 text-gray-200 hover:border-white/30 hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
                   >
                     Open wallet
                   </Link>
