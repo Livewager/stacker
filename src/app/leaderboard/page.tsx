@@ -1,552 +1,350 @@
 "use client";
 
+/**
+ * /leaderboard — live leaderboard from the game_scores canister.
+ *
+ * Reads two buckets per game:
+ *   - All-time top 100
+ *   - Today top 50 (resets at UTC midnight via lazy-clear in the canister)
+ *
+ * Writes happen elsewhere (StackerGame round-end → /stacker page →
+ * game_scores.submit_score). This page is purely a read-and-render
+ * surface so an 8s polling interval keeps it fresh without
+ * hammering the replica.
+ *
+ * Multi-game ready: the canister exposes `games()` returning every
+ * tag that has at least one submission. Today there's only "stacker"
+ * but a future "dunk" or "stacker_v2" automatically appears as a
+ * pickable tab — no frontend code change needed.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useReducedMotion } from "@/lib/hooks/useReducedMotion";
-import { usePrefs } from "@/lib/prefs";
 import AppHeader from "@/components/AppHeader";
-import { BackToTop } from "@/components/ui/BackToTop";
-import { useCopyable } from "@/lib/clipboard";
+import { Pill } from "@/components/ui/Pill";
+import { Button } from "@/components/ui/Button";
+import { ROUTES } from "@/lib/routes";
 import {
-  getHourBoard,
-  getPlayerHandle,
-  useScoreboardVersion,
+  getScoresActor,
+  GAME_TAG_STACKER,
   type ScoreEntry,
-} from "@/lib/scoreboard";
+  type GameOverview,
+  type Period,
+  type PrincipalStats,
+} from "@/lib/ic/scores";
+import { loadActiveIdentity } from "@/lib/ic/agent";
+import { Principal } from "@dfinity/principal";
 
-const HOUR_MS = 60 * 60 * 1000;
+const POLL_MS = 8_000;
 
-// Leaderboard is a localStorage-backed demo board (see scoreboard.ts).
-// No canister round-trip, no network failure to time out on. When the
-// leaderboard migrates to a real canister the error-handling shape to
-// mirror is the POLISH-304 contract (what happened / what didn't /
-// what next) — the hourly tick loop below (setInterval 1s) already
-// provides the retry cadence a real fetch would hook into.
+type PeriodKey = "alltime" | "today";
+
 export default function LeaderboardPage() {
-  const version = useScoreboardVersion();
-  const [now, setNow] = useState<number>(() => Date.now());
-  const myHandle = getPlayerHandle();
+  const [game, setGame] = useState<string>(GAME_TAG_STACKER);
+  const [period, setPeriod] = useState<PeriodKey>("alltime");
+  const [games, setGames] = useState<GameOverview[]>([]);
+  const [entries, setEntries] = useState<ScoreEntry[]>([]);
+  const [stats, setStats] = useState<PrincipalStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [selfPrincipal, setSelfPrincipal] = useState<string | null>(null);
 
-  // Tick the clock once a second so both the hour countdown AND the
-  // "Xs ago / Xm ago / Xh ago" timestamps on every row stay live
-  // without a full refetch. Pause while the tab is hidden to save
-  // battery; snap `now` forward on return so timestamps don't stall.
+  // Active identity → highlight self in the table.
   useEffect(() => {
-    let id: number | null = null;
-    const start = () => {
-      if (id !== null) return;
-      setNow(Date.now());
-      id = window.setInterval(() => setNow(Date.now()), 1000);
+    const id = loadActiveIdentity();
+    setSelfPrincipal(id?.getPrincipal().toText() ?? null);
+    const onIdent = () => {
+      const next = loadActiveIdentity();
+      setSelfPrincipal(next?.getPrincipal().toText() ?? null);
     };
-    const stop = () => {
-      if (id === null) return;
-      window.clearInterval(id);
-      id = null;
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") stop();
-      else start();
-    };
-    start();
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      stop();
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
+    window.addEventListener("lw-identity-changed", onIdent);
+    return () => window.removeEventListener("lw-identity-changed", onIdent);
   }, []);
 
-  const { stackerBoard, stackerBest, myRank, msToReset } = useMemo(() => {
-    const all = getHourBoard(now);
-    const stacker = all.filter((e) => e.game === "stacker").slice(0, 20);
-    const myIdx = myHandle ? stacker.findIndex((e) => e.handle === myHandle) : -1;
-    const hourStart = Math.floor(now / HOUR_MS) * HOUR_MS;
-    return {
-      stackerBoard: stacker,
-      stackerBest: readStackerBoard().localBest,
-      myRank: myIdx >= 0 ? myIdx + 1 : null,
-      msToReset: hourStart + HOUR_MS - now,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, now, myHandle]);
+  const refresh = useCallback(async () => {
+    setErr(null);
+    try {
+      const actor = await getScoresActor();
+      const periodVariant: Period =
+        period === "alltime" ? { AllTime: null } : { Today: null };
+      const [t, g] = await Promise.all([
+        actor.top(game, periodVariant, 50),
+        actor.games(),
+      ]);
+      setEntries(t);
+      setGames(g);
+      // Self stats only when signed in.
+      if (selfPrincipal) {
+        try {
+          const s = await actor.stats_for(
+            game,
+            Principal.fromText(selfPrincipal),
+          );
+          setStats(s[0] ?? null);
+        } catch {
+          setStats(null);
+        }
+      } else {
+        setStats(null);
+      }
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [game, period, selfPrincipal]);
 
-  const showBackToTop = stackerBoard.length > 10;
+  useEffect(() => {
+    refresh();
+    const id = window.setInterval(refresh, POLL_MS);
+    return () => window.clearInterval(id);
+  }, [refresh]);
+
+  // Listen for the global lw-ledger-mutated event so a fresh round
+  // (which fires that event after the burn) bumps the board without
+  // waiting for the next poll tick.
+  useEffect(() => {
+    const handler = () => refresh();
+    window.addEventListener("lw-ledger-mutated", handler);
+    return () => window.removeEventListener("lw-ledger-mutated", handler);
+  }, [refresh]);
+
+  // Sort the games tab list with the active game first, then by
+  // all-time count descending.
+  const sortedGames = useMemo(() => {
+    const arr = [...games];
+    arr.sort((a, b) => {
+      if (a.game === game) return -1;
+      if (b.game === game) return 1;
+      return b.all_time_count - a.all_time_count;
+    });
+    return arr;
+  }, [games, game]);
 
   return (
     <>
       <AppHeader />
-      <div className="mx-auto max-w-6xl lw-safe-x py-8 md:py-12">
-        <HeroHeader msToReset={msToReset} myRank={myRank} myHandle={myHandle} />
-        <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
-          <LiveHourPanel board={stackerBoard} myHandle={myHandle} />
-          <div className="space-y-6">
-            <HallOfFame />
-            <BestsPanel stackerBest={stackerBest} />
+      <div className="min-h-screen bg-background text-white">
+        <div className="mx-auto max-w-5xl px-4 md:px-8 py-8 md:py-12">
+          <header className="mb-8">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs uppercase tracking-widest text-cyan-300">
+                Leaderboard
+              </span>
+              <Pill status="live" size="xs" mono>
+                live
+              </Pill>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+              Top of the{" "}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+                }}
+              >
+                tower
+              </span>
+              .
+            </h1>
+            <p className="text-sm text-gray-400 mt-1 max-w-xl">
+              Live read from the on-chain{" "}
+              <code className="text-cyan-300">game_scores</code> canister.
+              Real-mode rounds are recorded; practice rounds aren&apos;t.
+              Polled every {POLL_MS / 1000}s, refreshed instantly when you
+              finish a round in the same tab.
+            </p>
+          </header>
+
+          {/* Game picker — only renders if more than one game has scores */}
+          {sortedGames.length > 1 && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {sortedGames.map((g) => (
+                <button
+                  key={g.game}
+                  type="button"
+                  onClick={() => setGame(g.game)}
+                  className={`text-xs uppercase tracking-widest px-3 py-1.5 rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
+                    g.game === game
+                      ? "border-cyan-300/60 bg-cyan-300/[0.10] text-cyan-100"
+                      : "border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/25 hover:text-white"
+                  }`}
+                >
+                  {g.game}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Period toggle */}
+          <div className="mb-6 inline-flex rounded-xl border border-white/10 bg-black/30 p-1">
+            <PeriodTab
+              active={period === "alltime"}
+              onClick={() => setPeriod("alltime")}
+              label="All time"
+            />
+            <PeriodTab
+              active={period === "today"}
+              onClick={() => setPeriod("today")}
+              label="Today (UTC)"
+            />
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">
+            {/* Leaderboard table */}
+            <section
+              aria-label={`${game} ${period === "alltime" ? "all-time" : "today"} leaderboard`}
+              className="rounded-2xl border border-white/10 bg-white/[0.02]"
+            >
+              <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-cyan-300">
+                  {game} · {period === "alltime" ? "all time" : "today"}
+                </div>
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">
+                  {loading ? "loading…" : `${entries.length} entries`}
+                </div>
+              </div>
+              {err ? (
+                <div className="p-5 text-sm text-red-300">{err}</div>
+              ) : entries.length === 0 ? (
+                <EmptyState period={period} />
+              ) : (
+                <ol className="divide-y divide-white/5">
+                  {entries.map((e, i) => {
+                    const pt = e.principal.toText();
+                    const isMe = pt === selfPrincipal;
+                    return (
+                      <ScoreRow
+                        key={`${pt}-${e.ts_ns.toString()}`}
+                        rank={i + 1}
+                        entry={e}
+                        isMe={isMe}
+                      />
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
+
+            {/* Side panel: your stats + game overview */}
+            <aside className="space-y-4">
+              <SelfStatsCard stats={stats} signedIn={!!selfPrincipal} />
+              <OverviewCard games={games} activeGame={game} />
+              <CtaCard />
+            </aside>
           </div>
         </div>
       </div>
-      {showBackToTop && <BackToTop threshold={600} bottomOffset={84} />}
     </>
   );
 }
 
 // ----------------------------------------------------------------
-// Header
+// Subcomponents
 // ----------------------------------------------------------------
 
-function HeroHeader({
-  msToReset,
-  myRank,
-  myHandle,
+function PeriodTab({
+  active,
+  onClick,
+  label,
 }: {
-  msToReset: number;
-  myRank: number | null;
-  myHandle: string;
+  active: boolean;
+  onClick: () => void;
+  label: string;
 }) {
-  return (
-    <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-      <div>
-        <div className="text-xs uppercase tracking-widest text-cyan-300 mb-2">
-          Leaderboard
-        </div>
-        <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-          Top{" "}
-          <span
-            className="bg-clip-text text-transparent"
-            style={{
-              backgroundImage:
-                "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
-            }}
-          >
-            stacks
-          </span>{" "}
-          of the hour.
-        </h1>
-        <p className="text-sm text-gray-400 mt-1 max-w-xl">
-          Every top-of-the-hour a prize drops. Your best round in the last 60 minutes
-          is what counts — no penalty for playing more.
-        </p>
-      </div>
-      <div className="flex items-center gap-3">
-        {myHandle ? (
-          <YouBadge handle={myHandle} rank={myRank} />
-        ) : (
-          <Link
-            href="/stacker"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs text-gray-300 hover:text-white hover:border-white/20 transition"
-          >
-            Play a round to claim a handle →
-          </Link>
-        )}
-        <HourClock msToReset={msToReset} />
-      </div>
-    </div>
-  );
-}
-
-function YouBadge({ handle, rank }: { handle: string; rank: number | null }) {
-  const copy = useCopyable();
-  const text = rank
-    ? `@${handle} · rank ${rank} · this hour · livewager.io/leaderboard`
-    : `@${handle} · playing this hour · livewager.io/leaderboard`;
   return (
     <button
       type="button"
-      onClick={() => copy(text, { label: "Share card" })}
-      aria-live="polite"
-      title="Copy share card"
-      className="rounded-xl border border-cyan-300/40 bg-cyan-300/[0.06] px-4 py-3 text-left hover:bg-cyan-300/[0.10] hover:border-cyan-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 ${
+        active
+          ? "bg-white/10 text-white border border-white/25"
+          : "text-gray-400 hover:text-white border border-transparent"
+      }`}
     >
-      <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-1">
-        You · tap to copy
-      </div>
-      <div className="text-sm font-mono text-white">
-        @{handle}{" "}
-        <span className="text-gray-400">
-          {rank ? `· rank #${rank}` : "· unranked this hour"}
-        </span>
-      </div>
+      {label}
     </button>
   );
 }
 
-function HourClock({ msToReset }: { msToReset: number }) {
-  const s = Math.max(0, Math.floor(msToReset / 1000));
-  const mm = String(Math.floor(s / 60)).padStart(2, "0");
-  const ss = String(s % 60).padStart(2, "0");
-  // SUPER-21 — urgency tiers. Last 60s = amber, last 5 min = yellow,
-  // baseline = white. Colon separator blinks once per second in the
-  // last 60s to communicate 'time is nearly up' without needing the
-  // user to read the tenths. Border also warms as the hour closes.
-  const isLast60s = s < 60;
-  const isLast5m = s < 300;
-  const numeralColor = isLast60s
-    ? "text-amber-300"
-    : isLast5m
-      ? "text-yellow-300"
-      : "text-white";
-  const borderCls = isLast60s
-    ? "border-amber-400/40 bg-amber-400/[0.05]"
-    : isLast5m
-      ? "border-yellow-400/30 bg-yellow-400/[0.03]"
-      : "border-white/10 bg-white/[0.03]";
-  return (
-    <div className={`rounded-xl border px-4 py-3 text-right transition-colors ${borderCls}`}>
-      <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
-        Hour resets in
-      </div>
-      <div
-        className={`font-mono text-lg tabular-nums transition-colors ${numeralColor}`}
-        aria-live="off"
-      >
-        {mm}
-        <span
-          aria-hidden
-          className={isLast60s ? "animate-pulse" : ""}
-        >
-          :
-        </span>
-        {ss}
-      </div>
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------
-// Live hour board (Stacker only)
-// ----------------------------------------------------------------
-
-function LiveHourPanel({
-  board,
-  myHandle,
+function ScoreRow({
+  rank,
+  entry,
+  isMe,
 }: {
-  board: ScoreEntry[];
-  myHandle: string;
+  rank: number;
+  entry: ScoreEntry;
+  isMe: boolean;
 }) {
-  const myIdx = myHandle ? board.findIndex((e) => e.handle === myHandle) : -1;
-  const myCallout =
-    myIdx >= 0 && myHandle
-      ? {
-          rank: myIdx + 1,
-          score: board[myIdx].score,
-          delta: myIdx > 0 ? board[myIdx - 1].score - board[myIdx].score : null,
-          nextHandle: myIdx > 0 ? board[myIdx - 1].handle : null,
-        }
-      : null;
-  const notOnBoardYet =
-    myHandle !== "" && myCallout === null && board.length > 0;
-
-  return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-      <header className="flex items-center justify-between border-b border-white/5 px-4 py-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-cyan-300">
-            Live · this hour
-          </div>
-          <div className="text-sm text-gray-400 mt-0.5">
-            {board.length === 0
-              ? "Board is quiet — play a round to open the hour."
-              : `Top ${board.length} scores, refreshed every round.`}
-          </div>
-        </div>
-      </header>
-
-      <div
-        role="status"
-        aria-live="polite"
-        className={
-          myCallout
-            ? "flex items-center justify-between gap-3 border-b border-white/5 bg-cyan-300/[0.03] px-4 py-2.5 text-xs"
-            : notOnBoardYet
-              ? "flex items-center justify-between gap-3 border-b border-white/5 bg-white/[0.02] px-4 py-2.5 text-xs"
-              : "sr-only"
-        }
-      >
-        {myCallout && (
-          <>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="inline-flex items-center rounded-full border border-cyan-300/40 bg-cyan-300/[0.08] px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-cyan-200">
-                rank #{myCallout.rank}
-              </span>
-              <span className="text-gray-300 truncate">
-                <span className="text-white font-semibold">@{myHandle}</span>
-                {" · "}
-                <span className="font-mono tabular-nums text-cyan-200">{myCallout.score}</span>
-              </span>
-            </div>
-            <div className="shrink-0 text-gray-400 font-mono tabular-nums text-[11px]">
-              {myCallout.rank === 1 ? (
-                <span className="text-yellow-300">holding #1</span>
-              ) : myCallout.delta !== null ? (
-                <>
-                  +<span className="text-white">{myCallout.delta}</span> to pass{" "}
-                  <span className="text-gray-300">@{myCallout.nextHandle}</span>
-                </>
-              ) : null}
-            </div>
-          </>
-        )}
-        {!myCallout && notOnBoardYet && (
-          <>
-            <div className="flex items-center gap-2 min-w-0 text-gray-300">
-              <span className="inline-flex items-center rounded-full border border-white/15 bg-white/[0.03] px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-gray-400">
-                unranked
-              </span>
-              <span className="truncate">
-                <span className="text-white font-semibold">@{myHandle}</span>
-                {" · "}
-                <span className="text-gray-400">no round yet this hour</span>
-              </span>
-            </div>
-            <Link
-              href="/stacker"
-              className="shrink-0 inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 border-orange-400/40 bg-orange-400/[0.08] text-orange-200 hover:bg-orange-400/[0.15]"
-            >
-              Play Stacker
-              <span aria-hidden>→</span>
-            </Link>
-          </>
-        )}
-      </div>
-      {board.length === 0 ? (
-        <EmptyBoard />
-      ) : (
-        <ol
-          className="divide-y divide-white/5"
-          onKeyDown={(e) => {
-            if (e.key !== "j" && e.key !== "k" && e.key !== "Enter") return;
-            if (e.metaKey || e.ctrlKey || e.altKey) return;
-            const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-            if (tag === "input" || tag === "textarea") return;
-            const ol = e.currentTarget as HTMLElement;
-            const rows = Array.from(ol.querySelectorAll<HTMLLIElement>(":scope > li"));
-            if (rows.length === 0) return;
-            const active = document.activeElement as HTMLElement | null;
-            const currentIdx = rows.findIndex((row) => row.contains(active));
-            if (e.key === "Enter") {
-              if (currentIdx < 0) return;
-              const tip = rows[currentIdx].querySelector<HTMLElement>(
-                'a[data-row-action="tip"]',
-              );
-              if (tip) {
-                e.preventDefault();
-                tip.click();
-              }
-              return;
-            }
-            e.preventDefault();
-            const dir = e.key === "j" ? 1 : -1;
-            const nextIdx =
-              currentIdx < 0
-                ? dir > 0
-                  ? 0
-                  : rows.length - 1
-                : Math.max(0, Math.min(rows.length - 1, currentIdx + dir));
-            const target = rows[nextIdx].querySelector<HTMLElement>(
-              "button, a",
-            );
-            target?.focus();
-          }}
-        >
-          {board.slice(0, 3).map((e, i) => (
-            <PodiumRow key={e.id} entry={e} rank={i + 1} me={e.handle === myHandle} />
-          ))}
-          {board.slice(3).map((e, i) => (
-            <Row
-              key={e.id}
-              entry={e}
-              rank={i + 4}
-              me={e.handle === myHandle}
-              signedIn={!!myHandle}
-            />
-          ))}
-        </ol>
-      )}
-    </section>
-  );
-}
-
-const PODIUM_TONES = [
-  { bg: "rgba(250,204,21,0.08)", border: "rgba(250,204,21,0.35)", fg: "#fde68a" },
-  { bg: "rgba(226,232,240,0.06)", border: "rgba(226,232,240,0.25)", fg: "#e5e7eb" },
-  { bg: "rgba(251,146,60,0.07)", border: "rgba(251,146,60,0.3)", fg: "#fed7aa" },
-];
-
-function PodiumRow({ entry, rank, me }: { entry: ScoreEntry; rank: number; me: boolean }) {
-  const tone = PODIUM_TONES[rank - 1];
-  const copy = useCopyable();
+  const principalText = entry.principal.toText();
+  const short = `${principalText.slice(0, 6)}…${principalText.slice(-4)}`;
   return (
     <li
-      className="flex items-center gap-3 px-4 py-4 transition"
-      style={{ background: tone.bg, borderLeft: `3px solid ${tone.border}` }}
+      className={`flex items-center gap-3 px-4 py-2.5 ${
+        isMe ? "bg-cyan-300/[0.06]" : "hover:bg-white/[0.02]"
+      } transition`}
     >
-      <div
-        className="h-9 w-9 shrink-0 rounded-full grid place-items-center font-black text-sm border"
-        style={{ color: tone.fg, borderColor: tone.border }}
-      >
-        {rank}
-      </div>
+      <RankBadge rank={rank} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => copy(`@${entry.handle}`, { label: "Handle" })}
-            className="text-sm font-semibold text-white truncate hover:text-cyan-200 transition text-left focus:outline-none focus-visible:text-cyan-200"
-            title="Copy handle"
+          <span
+            className={`font-mono text-xs truncate ${
+              isMe ? "text-cyan-200" : "text-gray-200"
+            }`}
           >
-            @{entry.handle}
-          </button>
-          {entry.flag && <span aria-hidden>{entry.flag}</span>}
-          {me && (
-            <span className="text-[9px] uppercase tracking-widest text-cyan-300 border border-cyan-300/40 rounded-full px-1.5 py-[1px]">
+            {short}
+          </span>
+          {isMe && (
+            <span className="text-[9px] uppercase tracking-widest text-cyan-300 font-mono">
               you
             </span>
           )}
-          {entry.id.startsWith("sim-") && (
-            <span className="text-[9px] uppercase tracking-widest text-gray-500 border border-white/15 rounded-full px-1.5 py-[1px]">
-              demo
+          {entry.streak > 0 && (
+            <span className="text-[9px] uppercase tracking-widest text-yellow-300/80 font-mono">
+              streak {entry.streak}
             </span>
           )}
         </div>
-        <div className="text-[11px] text-gray-500">{relTime(entry.ts)}</div>
+        <div className="text-[10px] text-gray-500 font-mono">
+          {fmtRelative(entry.ts_ns)}
+        </div>
       </div>
-      <div className="text-right">
-        <div className="font-mono text-2xl tabular-nums" style={{ color: tone.fg }}>
-          {entry.score}
+      <div className="text-right shrink-0">
+        <div
+          className={`text-base font-mono tabular-nums font-bold ${
+            isMe ? "text-cyan-100" : "text-white"
+          }`}
+        >
+          {entry.score.toString()}
         </div>
         <div className="text-[10px] uppercase tracking-widest text-gray-500">
-          Stacker
+          pts
         </div>
       </div>
     </li>
   );
 }
 
-function RowSparkline({ entry, me }: { entry: ScoreEntry; me: boolean }) {
-  // 32-bit string hash — enough spread for 8–10 rows per board.
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < entry.id.length; i++) {
-    h ^= entry.id.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
-  const N = 8;
-  const pts: number[] = [];
-  for (let i = 0; i < N; i++) {
-    h = Math.imul(h, 1664525) + 1013904223;
-    const r = ((h >>> 0) / 2 ** 32) - 0.5;
-    const phase = i / (N - 1);
-    const baseline = 0.35 + phase * 0.5;
-    pts.push(Math.max(0.05, Math.min(0.98, baseline + r * 0.25)));
-  }
-  pts[N - 1] = 0.92;
-  const w = 56;
-  const hgt = 18;
-  const step = w / (N - 1);
-  const d = pts
-    .map((v, i) => `${i === 0 ? "M" : "L"}${(i * step).toFixed(1)} ${((1 - v) * hgt).toFixed(1)}`)
-    .join(" ");
-  const stroke = me ? "#22d3ee" : "rgba(255,255,255,0.45)";
-
-  const systemReduced = useReducedMotion();
-  const { reducedMotion: userReduced } = usePrefs();
-  const reduced = systemReduced || userReduced;
-  const [drawn, setDrawn] = useState(reduced);
-  const delayMs = reduced ? 0 : (h % 280);
-  useEffect(() => {
-    if (reduced) {
-      setDrawn(true);
-      return;
-    }
-    const id = window.setTimeout(() => setDrawn(true), delayMs);
-    return () => window.clearTimeout(id);
-  }, [reduced, delayMs]);
-
+function RankBadge({ rank }: { rank: number }) {
+  const isPodium = rank <= 3;
+  const cls = isPodium
+    ? rank === 1
+      ? "border-yellow-300/50 bg-yellow-300/[0.12] text-yellow-200"
+      : rank === 2
+        ? "border-gray-300/40 bg-gray-300/[0.10] text-gray-100"
+        : "border-orange-400/40 bg-orange-400/[0.10] text-orange-200"
+    : "border-white/10 bg-white/[0.03] text-gray-400";
   return (
-    <svg
-      width={w}
-      height={hgt}
-      viewBox={`0 0 ${w} ${hgt}`}
-      className="shrink-0 hidden sm:block"
-      aria-hidden
+    <span
+      className={`shrink-0 w-8 h-8 rounded-md border flex items-center justify-center text-xs font-mono tabular-nums font-bold ${cls}`}
     >
-      <path
-        d={d}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={1.2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        pathLength={1}
-        strokeDasharray={1}
-        strokeDashoffset={drawn ? 0 : 1}
-        style={{
-          transition: reduced ? "none" : "stroke-dashoffset 520ms ease-out",
-        }}
-      />
-    </svg>
+      {rank}
+    </span>
   );
 }
 
-function Row({
-  entry,
-  rank,
-  me,
-  signedIn,
-}: {
-  entry: ScoreEntry;
-  rank: number;
-  me: boolean;
-  signedIn: boolean;
-}) {
-  const copy = useCopyable();
-  const canTip = !me && signedIn;
-  return (
-    <li
-      className={`group/row relative flex items-center gap-3 px-4 py-2.5 transition ${
-        me ? "bg-cyan-300/[0.04]" : "hover:bg-white/[0.02]"
-      }`}
-    >
-      <div className="w-6 text-right font-mono text-xs text-gray-500 tabular-nums">
-        #{rank}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => copy(`@${entry.handle}`, { label: "Handle" })}
-            className="text-sm text-white truncate hover:text-cyan-200 transition text-left focus:outline-none focus-visible:text-cyan-200"
-            title="Copy handle"
-          >
-            @{entry.handle}
-          </button>
-          {entry.flag && <span aria-hidden className="text-sm">{entry.flag}</span>}
-          {me && (
-            <span className="text-[9px] uppercase tracking-widest text-cyan-300 border border-cyan-300/40 rounded-full px-1.5 py-[1px]">
-              you
-            </span>
-          )}
-        </div>
-      </div>
-      <RowSparkline entry={entry} me={me} />
-      <div className="font-mono text-sm tabular-nums text-gray-200">{entry.score}</div>
-      {canTip && (
-        <Link
-          href={`/send?handle=${encodeURIComponent(entry.handle)}`}
-          data-row-action="tip"
-          aria-label={`Tip @${entry.handle}`}
-          className="opacity-70 pointer-events-auto md:opacity-0 md:pointer-events-none md:group-hover/row:opacity-100 md:group-hover/row:pointer-events-auto md:group-focus-within/row:opacity-100 md:group-focus-within/row:pointer-events-auto inline-flex items-center gap-1 rounded-full border border-violet-300/40 bg-violet-300/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-violet-200 hover:text-white hover:border-violet-300/60 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60 focus-visible:opacity-100"
-          title={`Open /send with @${entry.handle} pre-filled`}
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden>
-            <path d="M3.4 9.1l13-5.6a.8.8 0 0 1 1.1 1l-5.6 13a.8.8 0 0 1-1.4 0l-2-4.6-4.6-2a.8.8 0 0 1 0-1.4Z" />
-          </svg>
-          Tip
-        </Link>
-      )}
-    </li>
-  );
-}
-
-function EmptyBoard() {
+function EmptyState({ period }: { period: PeriodKey }) {
   return (
     <div className="px-6 py-10 text-center">
       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-cyan-300">
@@ -555,235 +353,144 @@ function EmptyBoard() {
         </svg>
       </div>
       <div className="text-sm text-white font-semibold mb-1">
-        No Stacker scores this hour yet
+        {period === "today"
+          ? "No scores today yet"
+          : "No scores recorded yet"}
       </div>
       <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug">
-        Be the first — tap{" "}
+        Be first — head to{" "}
         <Link
-          href="/stacker"
-          className="text-cyan-300 underline-offset-2 hover:underline focus:outline-none focus-visible:underline focus-visible:ring-2 focus-visible:ring-cyan-300/60 rounded-sm"
+          href={ROUTES.stacker}
+          className="text-cyan-300 underline underline-offset-2 hover:text-cyan-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 rounded-sm"
         >
-          Stacker
+          /stacker
         </Link>{" "}
-        and stack to the top.
+        and play a Real-mode round.
       </div>
     </div>
   );
 }
 
-// ----------------------------------------------------------------
-// Hall of fame (demo)
-// ----------------------------------------------------------------
-
-interface Legend {
-  handle: string;
-  score: number;
-  flag: string;
-  note: string;
-}
-const LEGENDS: Legend[] = [
-  { handle: "topfloor", score: 9_820, flag: "🇯🇵", note: "14/15 perfect locks" },
-  { handle: "basedhunter", score: 9_640, flag: "🇺🇸", note: "Late-night streak run" },
-  { handle: "ricochet", score: 9_410, flag: "🇫🇷", note: "Won with a 1-cell slider" },
-  { handle: "cosmic", score: 9_205, flag: "🇨🇦", note: "Won on their 3rd round ever" },
-  { handle: "elev8", score: 8_990, flag: "🇦🇺", note: "Broke their own 4-hr streak" },
-];
-
-function HallOfFame() {
-  const [idx, setIdx] = useState(0);
-  const systemReduced = useReducedMotion();
-  const { reducedMotion: userReduced } = usePrefs();
-  const reduced = systemReduced || userReduced;
-
-  useEffect(() => {
-    if (reduced) return;
-    const id = window.setInterval(
-      () => setIdx((i) => (i + 1) % LEGENDS.length),
-      5000,
-    );
-    return () => window.clearInterval(id);
-  }, [reduced]);
-  const cur = LEGENDS[idx];
+function SelfStatsCard({
+  stats,
+  signedIn,
+}: {
+  stats: PrincipalStats | null;
+  signedIn: boolean;
+}) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] uppercase tracking-widest text-yellow-300">
-          Hall of fame
-        </div>
-        <span className="text-[9px] uppercase tracking-widest text-gray-500 border border-white/15 rounded-full px-1.5 py-[1px]">
-          demo
-        </span>
-      </div>
-      <div className="relative min-h-[92px]">
-        <div
-          key={idx}
-          className={reduced ? "" : "animate-[fadeSlide_0.5s_ease]"}
-        >
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="text-sm font-semibold text-white">@{cur.handle}</span>
-            <span aria-hidden className="text-sm">{cur.flag}</span>
-          </div>
-          <div className="font-mono text-2xl text-yellow-200 tabular-nums">{cur.score}</div>
-          <div className="mt-1 text-[11px] text-gray-400 leading-snug">{cur.note}</div>
-        </div>
-      </div>
-      <div className="mt-4 flex gap-1.5">
-        {LEGENDS.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setIdx(i)}
-            aria-label={`Show legend ${i + 1}`}
-            className="flex-1 h-6 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60 rounded-sm"
-          >
-            {/* SUPER-23 — active dot now doubles as a fill bar that
-                sweeps left→right over 5s, matching the auto-cycle
-                interval. Shows progress within the current legend's
-                window rather than a flat uniform dot. Inactive dots
-                stay flat. Animation keyed off `idx` so each slide
-                restarts the sweep. Reduced-motion skips the sweep
-                (active dot stays fully filled). */}
-            {i === idx ? (
-              <span
-                aria-hidden
-                className="relative block h-1.5 w-full rounded-full bg-yellow-300/20 overflow-hidden"
-              >
-                <span
-                  key={idx}
-                  className={`block h-full rounded-full bg-yellow-300 origin-left ${
-                    reduced ? "w-full" : "lw-hof-fill"
-                  }`}
-                />
-              </span>
-            ) : (
-              <span
-                aria-hidden
-                className="block h-1.5 w-full rounded-full bg-white/15 hover:bg-white/25 transition"
-              />
-            )}
-          </button>
-        ))}
-      </div>
-      <style>{`
-        @keyframes fadeSlide {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes lw-hof-fill-kf {
-          from { transform: scaleX(0); }
-          to   { transform: scaleX(1); }
-        }
-        .lw-hof-fill {
-          width: 100%;
-          animation: lw-hof-fill-kf 5s linear forwards;
-        }
-      `}</style>
-    </section>
-  );
-}
-
-// ----------------------------------------------------------------
-// Bests (per-device)
-// ----------------------------------------------------------------
-
-function BestsPanel({ stackerBest }: { stackerBest: number }) {
-  const has = stackerBest > 0;
-  return (
-    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+    <section className="rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.04] p-5">
       <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-3">
-        Your best (this device)
+        Your stats
       </div>
-      {!has ? (
-        <div className="py-6 text-center">
-          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-cyan-300">
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-              <path d="M10 2a1 1 0 0 1 .894.553l1.934 3.87 4.272.62a1 1 0 0 1 .554 1.706l-3.091 3.013.73 4.254a1 1 0 0 1-1.451 1.054L10 15.077l-3.842 2.019a1 1 0 0 1-1.451-1.054l.73-4.254L2.346 8.75a1 1 0 0 1 .554-1.706l4.272-.62 1.934-3.87A1 1 0 0 1 10 2Z" />
-            </svg>
-          </div>
-          <div className="text-sm text-white font-semibold mb-1">
-            No personal best yet
-          </div>
-          <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug mb-4">
-            Play a round and your score shows up here. Bests are stored locally
-            until accounts pair with the ledger.
-          </div>
+      {!signedIn ? (
+        <div className="text-sm text-gray-300 leading-snug">
+          Sign in via{" "}
           <Link
-            href="/stacker"
-            className="rounded-md border border-orange-400/40 bg-orange-400/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-widest text-orange-200 hover:bg-orange-400/[0.15] transition"
+            href={ROUTES.icrc}
+            className="text-cyan-300 underline underline-offset-2 hover:text-cyan-200"
           >
-            Play Stacker
-          </Link>
+            /icrc
+          </Link>{" "}
+          to track your runs and see your rank highlighted.
+        </div>
+      ) : !stats ? (
+        <div className="text-sm text-gray-400 leading-snug">
+          No runs recorded for this game yet. Real-mode rounds count;
+          practice doesn&apos;t.
         </div>
       ) : (
-        <>
-          <ul className="divide-y divide-white/5">
-            <BestRow game="Stacker" best={stackerBest} cta={{ href: "/stacker", label: "Play" }} />
-          </ul>
-          <div className="mt-3 text-[11px] text-gray-500 leading-snug">
-            Device-local right now. Sign-in-synced bests land when accounts pair
-            with the ledger.
-          </div>
-        </>
+        <div className="grid grid-cols-2 gap-3">
+          <Stat label="Best score" value={stats.best_score.toString()} />
+          <Stat label="Total runs" value={stats.total_runs.toString()} />
+          <Stat label="Avg score" value={stats.avg_score.toString()} />
+          <Stat label="Last run" value={fmtRelative(stats.last_ts_ns)} />
+        </div>
       )}
     </section>
   );
 }
 
-function BestRow({
-  game,
-  best,
-  cta,
+function OverviewCard({
+  games,
+  activeGame,
 }: {
-  game: string;
-  best: number;
-  cta: { href: string; label: string };
+  games: GameOverview[];
+  activeGame: string;
 }) {
-  const has = best > 0;
   return (
-    <li className="flex items-center gap-3 py-3">
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-white">{game}</div>
-        <div className="text-[11px] text-gray-500">
-          {has ? "Personal best" : "No round played yet"}
-        </div>
+    <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+      <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-3">
+        Games on this canister
       </div>
-      <div
-        className={`font-mono text-xl tabular-nums shrink-0 ${
-          has ? "text-white" : "text-gray-600"
-        }`}
-      >
-        {has ? best : "—"}
-      </div>
-      <Link
-        href={cta.href}
-        className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-200 hover:text-white hover:border-white/30 transition shrink-0"
-      >
-        {has ? cta.label : "Start"}
-      </Link>
-    </li>
+      {games.length === 0 ? (
+        <div className="text-sm text-gray-500">No games registered yet.</div>
+      ) : (
+        <ul className="space-y-2">
+          {games.map((g) => (
+            <li
+              key={g.game}
+              className={`rounded-lg border px-3 py-2 ${
+                g.game === activeGame
+                  ? "border-cyan-300/40 bg-cyan-300/[0.04]"
+                  : "border-white/10 bg-white/[0.02]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-sm font-semibold text-white">
+                  {g.game}
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">
+                  {g.all_time_count} all · {g.today_count} today
+                </span>
+              </div>
+              <div className="text-[11px] text-gray-400 font-mono tabular-nums">
+                top: {g.top_alltime_score.toString()} pts
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
-// ----------------------------------------------------------------
-// Helpers
-// ----------------------------------------------------------------
-
-function relTime(ts: number, now: number = Date.now()): string {
-  const diff = now - ts;
-  const s = Math.max(0, Math.floor(diff / 1000));
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  return `${h}h ago`;
+function CtaCard() {
+  return (
+    <section className="rounded-2xl border border-orange-300/30 bg-gradient-to-br from-orange-300/[0.06] to-yellow-300/[0.04] p-5">
+      <div className="text-[10px] uppercase tracking-widest text-orange-300 mb-2">
+        Get on the board
+      </div>
+      <p className="text-sm text-gray-300 leading-snug mb-3">
+        Real-mode Stacker rounds post here automatically. Burn 1 LWP,
+        play, your score lands on the leaderboard the moment the round
+        ends.
+      </p>
+      <Link href={ROUTES.stacker}>
+        <Button tone="orange" size="sm" fullWidth>
+          Play Stacker
+        </Button>
+      </Link>
+    </section>
+  );
 }
 
-const LS_STACKER_BEST = "livewager-stacker-best";
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-0.5">
+        {label}
+      </div>
+      <div className="text-sm font-mono tabular-nums text-white">{value}</div>
+    </div>
+  );
+}
 
-function readStackerBoard(): { localBest: number } {
-  try {
-    const v = window.localStorage.getItem(LS_STACKER_BEST);
-    return { localBest: v ? Number(v) : 0 };
-  } catch {
-    return { localBest: 0 };
-  }
+function fmtRelative(ts_ns: bigint): string {
+  const ms = Number(ts_ns / 1_000_000n);
+  const delta = Date.now() - ms;
+  if (delta < 60_000) return "just now";
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+  if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h ago`;
+  return `${Math.floor(delta / 86_400_000)}d ago`;
 }

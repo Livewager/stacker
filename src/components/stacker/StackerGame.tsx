@@ -183,6 +183,17 @@ type StackerGameProps = {
    * phase (idle / won / over) so a retry just means tapping again.
    */
   beforeStart?: () => Promise<boolean>;
+  /**
+   * Fired exactly once per round-end. Carries the final score, the
+   * peak perfect-streak observed during the run, and the outcome
+   * variant. Best place for the parent to submit to game_scores or
+   * persist any post-round telemetry.
+   *
+   * Note: fires on both "won" and "over" outcomes. For Practice
+   * rounds the parent should ignore this (don't pollute the public
+   * leaderboard with practice runs).
+   */
+  onRoundEnd?: (info: { score: number; streak: number; outcome: "won" | "over" }) => void;
 };
 
 export default function StackerGame({
@@ -191,6 +202,7 @@ export default function StackerGame({
   onPhaseChange,
   initialSeed = null,
   beforeStart,
+  onRoundEnd,
 }: StackerGameProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Wrapper ref so we can snap SR focus to the game region when a
@@ -526,6 +538,11 @@ export default function StackerGame({
         const t = roundRef.current?.finalize() ?? null;
         if (t) setLastTranscript(t);
         onPhaseChange?.("over");
+        onRoundEnd?.({
+          score: s.score,
+          streak: s.runMaxStreak,
+          outcome: "over",
+        });
         return;
         }
         // Rescued: fall through to the normal lock path with the
@@ -642,6 +659,11 @@ export default function StackerGame({
       const t = roundRef.current?.finalize() ?? null;
       if (t) setLastTranscript(t);
       onPhaseChange?.("won");
+      onRoundEnd?.({
+        score: s.score,
+        streak: s.runMaxStreak,
+        outcome: "won",
+      });
       s.current = null;
       return;
     }
@@ -688,7 +710,7 @@ export default function StackerGame({
       perfectStreak: s.perfectStreak,
       best: Math.max(h.best, s.score),
     }));
-  }, [hudState.best, onPhaseChange]);
+  }, [hudState.best, onPhaseChange, onRoundEnd]);
 
   const handleTap = useCallback(() => {
     unlockAudio();

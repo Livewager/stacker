@@ -1,5 +1,5 @@
 [workspace]
-members = ["canisters/points_ledger"]
+members = ["canisters/points_ledger", "canisters/game_scores"]
 resolver = "2"
 
 [profile.release]

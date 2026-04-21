@@ -5,10 +5,15 @@
       "package": "points_ledger",
       "candid": "canisters/points_ledger/points_ledger.did"
     },
+    "game_scores": {
+      "type": "rust",
+      "package": "game_scores",
+      "candid": "canisters/game_scores/game_scores.did"
+    },
     "stacker_frontend": {
       "type": "assets",
       "source": ["out"],
-      "dependencies": ["points_ledger"]
+      "dependencies": ["points_ledger", "game_scores"]
     }
   },
   "defaults": {

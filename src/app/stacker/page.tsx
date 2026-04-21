@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { ROUTES } from "@/lib/routes";
 import { getLedgerActor, loadActiveIdentity } from "@/lib/ic/agent";
+import { getScoresActor, GAME_TAG_STACKER } from "@/lib/ic/scores";
 import { useToast } from "@/components/shared/Toast";
 
 /**
@@ -330,6 +331,69 @@ function StackerPageInner() {
     setPhase("idle");
   }, []);
 
+  /**
+   * On round-end, post the score to the game_scores canister — but
+   * ONLY for Real-mode rounds. Practice rounds are local play; sending
+   * them to the public leaderboard would dilute the rankings and let
+   * a free-tap user spam the top.
+   *
+   * Submission failures are silent: any rate-limit or network blip
+   * just means the round doesn't get recorded; the player's local
+   * best is still tracked by the game itself.
+   *
+   * Anonymous callers (no roster identity) skip submission too — the
+   * canister rejects them anyway, no point round-tripping. A friendly
+   * toast nudges them toward /icrc.
+   */
+  const handleRoundEnd = useCallback(
+    async (info: { score: number; streak: number; outcome: "won" | "over" }) => {
+      if (modeRef.current !== "real") return;
+      if (info.score === 0) return; // canister rejects ScoreZero
+      const identity = loadActiveIdentity();
+      if (!identity) return;
+      try {
+        const actor = await getScoresActor(identity);
+        const res = await actor.submit_score({
+          game: GAME_TAG_STACKER,
+          score: BigInt(Math.max(0, Math.floor(info.score))),
+          streak: info.streak,
+        });
+        if ("Ok" in res) {
+          const ok = res.Ok;
+          // Compose a friendly success toast that calls out the
+          // rank if the player landed on the today-board.
+          const todayRank = ok.today_rank[0];
+          const allTimeRank = ok.all_time_rank[0];
+          const parts: string[] = [];
+          if (ok.new_personal_best) parts.push("personal best");
+          if (typeof todayRank === "number") parts.push(`#${todayRank} today`);
+          if (typeof allTimeRank === "number" && allTimeRank <= 10) {
+            parts.push(`#${allTimeRank} all time`);
+          }
+          toast.push({
+            kind: parts.length > 0 ? "success" : "info",
+            title: `Score posted · ${info.score} pts`,
+            description:
+              parts.length > 0 ? parts.join(" · ") : "On the leaderboard.",
+          });
+        } else {
+          // RateLimited / GameTagInvalid / etc. — noisy but useful.
+          const variant = Object.keys(res.Err)[0];
+          toast.push({
+            kind: "warning",
+            title: "Score not posted",
+            description: `Leaderboard returned ${variant}.`,
+          });
+        }
+      } catch (e) {
+        // Silent: leaderboard is best-effort. Local best is fine.
+        // eslint-disable-next-line no-console
+        console.warn("[stacker] score submit failed", e);
+      }
+    },
+    [toast],
+  );
+
   // Scope the scroll-snap behavior to this page only. <html> is the
   // scroll container, so we add/remove a class there. No regression
   // risk because the CSS hides behind a mobile media query.
@@ -511,6 +575,7 @@ function StackerPageInner() {
               // to-restart, wager-button path) is gated on this burn.
               // See chargeEntryFee for the exact contract.
               beforeStart={chargeEntryFee}
+              onRoundEnd={handleRoundEnd}
             />
             <ChargingOverlay step={chargeStep} />
           </div>

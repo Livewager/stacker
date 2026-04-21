@@ -1,0 +1,16 @@
+[package]
+name = "game_scores"
+version = "0.1.0"
+edition = "2021"
+description = "Multi-game scoreboard canister for Livewager. Decoupled from points_ledger so leaderboard iteration doesn't touch the money layer."
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ic-cdk = "0.17"
+ic-cdk-macros = "0.17"
+candid = "0.10"
+serde = { version = "1", features = ["derive"] }
+ic-stable-structures = "0.6"
