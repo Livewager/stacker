@@ -274,8 +274,9 @@ export function ErrorScaffold({
             <Link
               href={primary.href}
               aria-describedby={fullDetail ? detailHintId : undefined}
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <Button tone="cyan" size="lg">
+              <Button tone="cyan" size="lg" tabIndex={-1}>
                 {primary.label}
               </Button>
             </Link>
@@ -292,8 +293,11 @@ export function ErrorScaffold({
           )}
           {secondary ? (
             secondary.href ? (
-              <Link href={secondary.href}>
-                <Button variant="outline" size="lg">
+              <Link
+                href={secondary.href}
+                className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Button variant="outline" size="lg" tabIndex={-1}>
                   {secondary.label}
                 </Button>
               </Link>
