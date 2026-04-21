@@ -109,7 +109,17 @@ function HeroHeader({
           Leaderboard
         </div>
         <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-          Top stacks of the hour.
+          Top{" "}
+          <span
+            className="bg-clip-text text-transparent"
+            style={{
+              backgroundImage:
+                "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+            }}
+          >
+            stacks
+          </span>{" "}
+          of the hour.
         </h1>
         <p className="text-sm text-gray-400 mt-1 max-w-xl">
           Every top-of-the-hour a prize drops. Your best round in the last 60 minutes
