@@ -28,18 +28,18 @@ Without `dfx`, the wallet and ledger calls fall back to a demo stub
 
 ## The ten-route smoke test
 
-Every tick that changes code hits these ten routes and confirms 200
+Every tick that changes code hits these nine routes and confirms 200
 before committing:
 
 ```
-/stacker  /stacker  /play  /wallet  /send
-/withdraw  /deposit  /account  /leaderboard  /settings
+/stacker  /play      /wallet     /send       /withdraw
+/deposit  /account   /leaderboard  /settings
 ```
 
 One-liner:
 
 ```bash
-for r in /stacker /stacker /play /wallet /send /withdraw /deposit /account /leaderboard /settings; do
+for r in /stacker /play /wallet /send /withdraw /deposit /account /leaderboard /settings; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3002$r")
   echo "$code $r"
 done
@@ -240,8 +240,8 @@ encode real tiers. Before "consolidating" one of these, check here:
      gray-200 softens it while preserving legibility. See the kbd
      pills in CommandPalette and the address-copy code blocks in
      LtcDepositPanel.
-  3. **Panel-prose on saturated marketing surfaces** — GamesHub
-     card descriptions, /stacker quote blockquote, /stacker tier
+  3. **Panel-prose on saturated marketing surfaces** — /play
+     card descriptions, /stacker hero blockquote, /fair-play tier
      body. These sit on gradient or tinted backgrounds where
      `text-gray-300` (the standard prose rung) would wash out.
      Use judiciously; if you're on the default `bg-background` or
@@ -494,8 +494,8 @@ encode real tiers. Before "consolidating" one of these, check here:
   double-time flicker (child opacity × parent opacity, each at
   2s cubic-bezier). The rule: `animate-pulse` goes on either the
   **single-element placeholder** (dynamic-import fallbacks like
-  /stacker's DropWallet loading slot, /stacker's game canvas slot —
-  filled cards with no children) OR on the **individual
+  /stacker's game canvas slot — filled cards with no children) OR
+  on the **individual
   SkeletonBlock children inside a static card container** — never
   both. The Skeleton primitive in `src/components/ui/Skeleton.tsx`
   follows this: `SkeletonCard` is a plain static border+bg, only
