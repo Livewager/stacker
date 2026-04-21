@@ -219,7 +219,17 @@ export default function SettingsPage() {
           <div className="text-xs uppercase tracking-widest text-cyan-300 mb-2">
             Settings
           </div>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight">Preferences</h1>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+              }}
+            >
+              Preferences
+            </span>
+          </h1>
           <p className="text-sm text-gray-400 mt-1 max-w-xl">
             Local-only. Nothing here is sent to a server — these flags live in your
             browser. Your principal + balance on the ICRC-1 ledger are unaffected.
