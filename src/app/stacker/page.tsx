@@ -433,9 +433,33 @@ function Hero() {
             </Link>
             <a
               href="#how"
-              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="group inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <Button variant="outline" size="lg" tabIndex={-1}>
+              <Button
+                variant="outline"
+                size="lg"
+                tabIndex={-1}
+                trailing={
+                  /* ENHANCE-04 — tertiary CTA's behavior (scroll to
+                     "Three rules" section) wasn't obvious from the
+                     label alone; the chevron signals in-page jump
+                     vs. route navigation. Nudges 2px on hover to
+                     reinforce the anchor affordance, matching the
+                     /play "Stacker →" arrow pattern from SUPER-14. */
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-4 w-4 opacity-70 transition-transform group-hover:translate-y-[2px]"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 3a1 1 0 0 1 1 1v9.586l3.293-3.293a1 1 0 0 1 1.414 1.414l-5 5a1 1 0 0 1-1.414 0l-5-5a1 1 0 0 1 1.414-1.414L9 13.586V4a1 1 0 0 1 1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                }
+              >
                 How it works
               </Button>
             </a>

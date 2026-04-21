@@ -60,7 +60,7 @@ export function StorageAckBanner() {
         <div className="mt-3 flex items-center justify-end gap-2">
           <Link
             href="/settings#data"
-            className="text-[11px] text-cyan-300/80 hover:text-cyan-200 underline underline-offset-2"
+            className="text-[11px] text-cyan-300/80 hover:text-cyan-200 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:text-cyan-200 rounded-sm"
             onClick={() => setAck(true)}
           >
             Learn more
