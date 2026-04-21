@@ -25,6 +25,72 @@ const ENTRY_FEE_BASE_UNITS = 100_000_000n; // 1 LWP
 const ENTRY_FEE_LABEL = "1 LWP";
 
 /**
+ * Entry-fee progress states driving the overlay that covers the
+ * game canvas during the burn round-trip. Linear forward-only flow:
+ *
+ *   idle     → no call in flight, overlay hidden
+ *   auth     → checking the active identity (<50ms, rarely visible)
+ *   connect  → opening the HTTP agent + fetching the replica root key
+ *   charge   → burn RPC in flight on the canister
+ *   confirm  → RPC returned Ok, settling state + broadcasting event
+ *   done     → flashes a "Ready" frame before the overlay fades out
+ *   error    → sticky until the overlay auto-dismisses (~1.5s)
+ *
+ * Each state has matching copy in STEP_COPY below.
+ */
+type ChargeStep =
+  | "idle"
+  | "auth"
+  | "connect"
+  | "charge"
+  | "confirm"
+  | "done"
+  | "error";
+
+const STEP_COPY: Record<
+  ChargeStep,
+  { title: string; sub: string; pct: number; tone: "cyan" | "green" | "red" | "amber" }
+> = {
+  idle: { title: "", sub: "", pct: 0, tone: "cyan" },
+  auth: {
+    title: "Checking key…",
+    sub: "Looking up your active identity in the roster.",
+    pct: 10,
+    tone: "cyan",
+  },
+  connect: {
+    title: "Connecting to the replica…",
+    sub: "Opening agent + fetching root key.",
+    pct: 30,
+    tone: "cyan",
+  },
+  charge: {
+    title: `Charging ${ENTRY_FEE_LABEL}…`,
+    sub: "Burning your entry fee on the ICRC-1 ledger.",
+    pct: 70,
+    tone: "amber",
+  },
+  confirm: {
+    title: "Burn confirmed.",
+    sub: "Settling state + broadcasting to other tabs.",
+    pct: 90,
+    tone: "green",
+  },
+  done: {
+    title: "Ready.",
+    sub: "Round starting.",
+    pct: 100,
+    tone: "green",
+  },
+  error: {
+    title: "Entry charge failed.",
+    sub: "See the toast for detail. Tap again to retry.",
+    pct: 100,
+    tone: "red",
+  },
+};
+
+/**
  * Parse a seed query param in the forms: "0xABCD", "ABCD" (hex),
  * or a decimal int. Any malformed value falls through to null so
  * the game uses its own randomSeed(). Clamps to 32 bits to match
@@ -114,6 +180,7 @@ function StackerPageInner() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [roundKey, setRoundKey] = useState(0);
   const [entryBusy, setEntryBusy] = useState(false);
+  const [chargeStep, setChargeStep] = useState<ChargeStep>("idle");
   const wagerDisabled = phase === "playing" || entryBusy;
   const toast = useToast();
 
@@ -131,19 +198,35 @@ function StackerPageInner() {
    * <StackerGame> below. No duplicate burns.
    */
   const chargeEntryFee = useCallback(async (): Promise<boolean> => {
+    // 1/ auth — check the roster has an active identity. Fast
+    // (synchronous localStorage read); the step still flashes so a
+    // signed-out user's error path doesn't jump-cut to the toast.
+    setChargeStep("auth");
     const identity = loadActiveIdentity();
     if (!identity) {
+      setChargeStep("error");
       toast.push({
         kind: "error",
         title: "Sign in to play",
         description:
           "Stacker requires a signed-in key. Head to /icrc to log in.",
       });
+      // Let the error frame show for ~1.4s, then clear.
+      window.setTimeout(() => setChargeStep("idle"), 1400);
       return false;
     }
     setEntryBusy(true);
     try {
+      // 2/ connect — getLedgerActor builds the HTTP agent and
+      // fetches the replica root key on cold start. On warm calls
+      // this resolves instantly from the cached agent.
+      setChargeStep("connect");
       const actor = await getLedgerActor(identity);
+
+      // 3/ charge — the actual update call. This is where the ~200-
+      // 500ms replica round-trip lives; the progress bar sits at
+      // 70% through the whole wait.
+      setChargeStep("charge");
       const res = await actor.burn({
         from_subaccount: [],
         amount: ENTRY_FEE_BASE_UNITS,
@@ -151,6 +234,7 @@ function StackerPageInner() {
         created_at_time: [],
       });
       if ("Err" in res) {
+        setChargeStep("error");
         const variant = Object.keys(res.Err)[0];
         if (variant === "InsufficientFunds") {
           toast.push({
@@ -166,23 +250,30 @@ function StackerPageInner() {
             description: `Burn returned ${variant}; the round was not started.`,
           });
         }
+        window.setTimeout(() => setChargeStep("idle"), 1400);
         return false;
       }
-      // Success — tell the rest of the app the ledger moved so
-      // /wallet, /icrc, /accounts repaint.
+      // 4/ confirm — ledger said Ok. Fire the cross-tab repaint
+      // event and flash the "Burn confirmed" frame briefly so the
+      // user feels the transition rather than it jump-cutting to
+      // the round.
+      setChargeStep("confirm");
       window.dispatchEvent(new CustomEvent("lw-ledger-mutated"));
-      toast.push({
-        kind: "info",
-        title: `Burned ${ENTRY_FEE_LABEL}`,
-        description: "Round starting now.",
-      });
+      // Brief pause so the "confirmed" frame registers visually.
+      await new Promise((r) => window.setTimeout(r, 280));
+
+      // 5/ done — final 100% frame before the overlay fades out.
+      setChargeStep("done");
+      window.setTimeout(() => setChargeStep("idle"), 500);
       return true;
     } catch (e) {
+      setChargeStep("error");
       toast.push({
         kind: "error",
         title: "Couldn't reach the ledger",
         description: (e as Error).message,
       });
+      window.setTimeout(() => setChargeStep("idle"), 1400);
       return false;
     } finally {
       setEntryBusy(false);
@@ -385,6 +476,7 @@ function StackerPageInner() {
               // See chargeEntryFee for the exact contract.
               beforeStart={chargeEntryFee}
             />
+            <ChargingOverlay step={chargeStep} />
           </div>
 
           <div className="space-y-4">
@@ -1982,5 +2074,214 @@ function Tip({ title, children }: { title: string; children: React.ReactNode }) 
       </div>
       <div className="text-sm text-gray-200 leading-snug">{children}</div>
     </div>
+  );
+}
+
+/**
+ * Full-cover overlay that sits on top of the StackerGame canvas
+ * during the entry-fee burn round-trip. Shows what the system is
+ * doing right now (auth → connect → charge → confirm → done)
+ * with a smooth-animating progress bar and step-specific copy.
+ *
+ * Hidden when `step === "idle"`. Stays visible briefly on `done`
+ * (~500ms) and `error` (~1.4s) so the user perceives the outcome
+ * before the overlay clears. Pointer-events stay enabled while
+ * visible so a click during the round-trip doesn't bleed through
+ * to the canvas (which would otherwise count as a lock-attempt
+ * tap the moment the round actually starts).
+ *
+ * Accessibility: aria-live="polite" so screen readers announce
+ * the changing step copy. The progress bar carries an aria-
+ * valuenow so AT users get a numeric reading too.
+ */
+function ChargingOverlay({ step }: { step: ChargeStep }) {
+  const visible = step !== "idle";
+  const copy = STEP_COPY[step];
+  const toneClasses = {
+    cyan: {
+      ring: "border-cyan-300/40",
+      bg: "from-cyan-300/[0.10] via-cyan-300/[0.04] to-transparent",
+      bar: "from-cyan-300 to-cyan-500",
+      title: "text-cyan-100",
+      glyph: "text-cyan-300",
+    },
+    amber: {
+      ring: "border-amber-300/50",
+      bg: "from-amber-300/[0.12] via-amber-300/[0.04] to-transparent",
+      bar: "from-amber-300 to-orange-400",
+      title: "text-amber-100",
+      glyph: "text-amber-300",
+    },
+    green: {
+      ring: "border-emerald-300/50",
+      bg: "from-emerald-300/[0.12] via-emerald-300/[0.04] to-transparent",
+      bar: "from-emerald-300 to-emerald-500",
+      title: "text-emerald-100",
+      glyph: "text-emerald-300",
+    },
+    red: {
+      ring: "border-red-400/50",
+      bg: "from-red-400/[0.12] via-red-400/[0.04] to-transparent",
+      bar: "from-red-400 to-red-500",
+      title: "text-red-100",
+      glyph: "text-red-300",
+    },
+  } as const;
+  const t = toneClasses[copy.tone];
+
+  return (
+    <div
+      aria-hidden={!visible}
+      role={visible ? "status" : undefined}
+      aria-live="polite"
+      className={`absolute inset-0 z-30 flex items-center justify-center rounded-2xl transition-opacity duration-300 ${
+        visible ? "opacity-100" : "opacity-0 pointer-events-none"
+      }`}
+    >
+      {/* Frosted backdrop. Pointer-events on so a misfire tap during
+          the burn doesn't bleed through to the canvas. */}
+      <div
+        aria-hidden
+        className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${t.bg} backdrop-blur-md`}
+      />
+      <div
+        className={`relative w-[min(420px,90%)] rounded-2xl border ${t.ring} bg-background/85 px-5 py-5 md:px-6 md:py-6 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7)]`}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          {step === "error" ? (
+            <ErrorGlyph className={t.glyph} />
+          ) : step === "done" || step === "confirm" ? (
+            <CheckGlyph className={t.glyph} />
+          ) : (
+            <SpinnerGlyph className={t.glyph} />
+          )}
+          <div className="min-w-0 flex-1">
+            <div
+              className={`text-base md:text-lg font-bold leading-tight ${t.title}`}
+            >
+              {copy.title || "…"}
+            </div>
+            <div className="text-xs md:text-sm text-gray-300 leading-snug mt-0.5">
+              {copy.sub}
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar. Width animates between step pcts via a CSS
+            transition so the bar 'travels' rather than jumping. */}
+        <div
+          className="h-1.5 rounded-full bg-white/10 overflow-hidden"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(copy.pct)}
+        >
+          <div
+            className={`h-full rounded-full bg-gradient-to-r ${t.bar} transition-[width] duration-500 ease-out`}
+            style={{
+              width: `${copy.pct}%`,
+              boxShadow:
+                copy.tone === "amber"
+                  ? "0 0 12px rgba(251,191,36,0.55)"
+                  : copy.tone === "green"
+                    ? "0 0 12px rgba(110,231,183,0.55)"
+                    : copy.tone === "red"
+                      ? "0 0 10px rgba(248,113,113,0.45)"
+                      : "0 0 10px rgba(103,232,249,0.45)",
+            }}
+          />
+        </div>
+
+        {/* Step ladder — small visual map of where we are in the
+            sequence. Colored chips fill in as the progress moves. */}
+        <div className="mt-3 flex items-center justify-between gap-1.5">
+          {(["auth", "connect", "charge", "confirm", "done"] as const).map(
+            (s, i) => {
+              const order: Record<ChargeStep, number> = {
+                idle: -1,
+                auth: 0,
+                connect: 1,
+                charge: 2,
+                confirm: 3,
+                done: 4,
+                error: -1,
+              };
+              const cur = order[step];
+              const isError = step === "error";
+              const reached = !isError && cur >= i;
+              const active = !isError && cur === i;
+              return (
+                <div
+                  key={s}
+                  className={`flex-1 h-[3px] rounded-full transition-colors duration-300 ${
+                    isError
+                      ? "bg-red-400/40"
+                      : reached
+                        ? active
+                          ? "bg-cyan-300"
+                          : "bg-emerald-300/70"
+                        : "bg-white/10"
+                  }`}
+                  title={s}
+                />
+              );
+            },
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpinnerGlyph({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className={`h-7 w-7 shrink-0 animate-spin ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+    >
+      <path d="M21 12a9 9 0 1 1-9-9" />
+      <path d="M21 12a9 9 0 0 0-3.6-7.2" opacity={0.4} />
+    </svg>
+  );
+}
+
+function CheckGlyph({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className={`h-7 w-7 shrink-0 ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx={12} cy={12} r={10} opacity={0.35} />
+      <path d="M7.5 12.5l3 3 6-6.5" />
+    </svg>
+  );
+}
+
+function ErrorGlyph({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className={`h-7 w-7 shrink-0 ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx={12} cy={12} r={10} opacity={0.35} />
+      <path d="M9 9l6 6M15 9l-6 6" />
+    </svg>
   );
 }
