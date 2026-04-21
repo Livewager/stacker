@@ -24,12 +24,13 @@ import {
 } from "react";
 import type { Identity } from "@dfinity/agent";
 import {
-  currentIdentity,
   formatLWP,
-  loginWithII,
-  logout as iiLogout,
   pointsLedger,
 } from "@/lib/icp";
+import {
+  loadActiveIdentity,
+  logoutActiveRosterEntry,
+} from "@/lib/ic/agent";
 import { writeRaw, PREF_KEYS } from "@/lib/prefs";
 import { useToast } from "./Toast";
 
@@ -525,12 +526,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (idRef.current) await refreshBalance(idRef.current);
   }, [refreshBalance, refreshSupply]);
 
-  // Restore session on mount.
+  // Restore session on mount. Reads the active roster identity
+  // (localStorage-backed Ed25519 key). If present, treat the user
+  // as signed in; the canister will accept the signatures from that
+  // key. If absent, the wallet shows signed-out UI and the top-nav
+  // "Connect" button routes the user to /icrc for the real login
+  // flow (we no longer boot II's popup from this context).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const existing = await currentIdentity();
+        const existing = loadActiveIdentity();
         if (cancelled) return;
         if (existing) {
           idRef.current = existing;
@@ -545,43 +551,52 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setStatus("idle");
       }
     })();
+
+    // Cross-tab + same-tab sync: when the /icrc page logs in / logs
+    // out / switches keys, it writes to localStorage + dispatches
+    // "lw-identity-changed" which we listen for here.
+    const onIdentityChange = () => {
+      const fresh = loadActiveIdentity();
+      idRef.current = fresh;
+      setIdentity(fresh);
+      if (fresh) {
+        setPrincipal(fresh.getPrincipal().toString());
+        refreshBalance(fresh).catch(() => {});
+      } else {
+        setPrincipal("");
+        setBalance(null);
+      }
+    };
+    window.addEventListener("lw-identity-changed", onIdentityChange);
+    window.addEventListener("storage", onIdentityChange);
     return () => {
       cancelled = true;
+      window.removeEventListener("lw-identity-changed", onIdentityChange);
+      window.removeEventListener("storage", onIdentityChange);
     };
   }, [refreshBalance, refreshSupply]);
 
+  // The top-nav "Connect" CTA calls this. Rather than popping II
+  // (not deployed locally), we deep-link to /icrc where the user
+  // picks a key from their roster or creates a new one. When they
+  // come back, the "lw-identity-changed" listener above picks up.
   const login = useCallback(async () => {
-    setError(null);
-    setStatus("loading");
-    try {
-      const id = await loginWithII();
-      idRef.current = id;
-      setIdentity(id);
-      setPrincipal(id.getPrincipal().toString());
-      // Stamp the successful auth moment so /account can show a
-      // human-readable "authed Xm ago" chip. Written through the prefs
-      // pipeline so cross-tab sign-ins propagate to any open /account.
-      writeRaw<number>(PREF_KEYS.lastAuthAt, Date.now());
-      await refreshBalance(id);
-      toast.push({ kind: "success", title: "Signed in", description: "Internet Identity connected." });
-    } catch (e) {
-      const msg = (e as Error).message;
-      setError(msg);
-      setStatus("error");
-      toast.push({ kind: "error", title: "Sign-in failed", description: msg });
-      return;
+    if (typeof window !== "undefined") {
+      window.location.assign("/icrc");
     }
-    setStatus("idle");
-  }, [refreshBalance, toast]);
+  }, []);
 
   const logout = useCallback(async () => {
     setStatus("loading");
-    await iiLogout();
+    logoutActiveRosterEntry();
     idRef.current = null;
     setIdentity(null);
     setPrincipal("");
     setBalance(null);
     writeRaw<number | null>(PREF_KEYS.lastAuthAt, null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("lw-identity-changed"));
+    }
     setStatus("idle");
     toast.push({ kind: "info", title: "Signed out" });
   }, [toast]);

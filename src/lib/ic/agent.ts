@@ -50,6 +50,23 @@ export function pointsLedgerCanisterId(): string {
 let cachedAgent: HttpAgent | null = null;
 let cachedIdentityFingerprint: string | null = null;
 
+/**
+ * Notify the rest of the app (specifically WalletContext) that the
+ * active roster identity changed. Invoked from every mutation of
+ * the active session — login, logout, switch, import, forget.
+ * WalletContext listens for both `lw-identity-changed` and the
+ * browser's native `storage` event (for cross-tab updates) and
+ * re-reads loadActiveIdentity() on either.
+ */
+function broadcastIdentityChange(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent("lw-identity-changed"));
+  } catch {
+    /* ignore */
+  }
+}
+
 async function getAgent(identity?: Identity): Promise<HttpAgent> {
   const fp = identity ? identity.getPrincipal().toText() : "anonymous";
   if (cachedAgent && cachedIdentityFingerprint === fp) return cachedAgent;
@@ -242,6 +259,7 @@ export function setActiveRosterEntry(principal: string): Ed25519KeyIdentity | nu
   saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+  broadcastIdentityChange();
   try {
     return Ed25519KeyIdentity.fromJSON(entry.secretJson);
   } catch {
@@ -267,6 +285,7 @@ export function createAndActivateRosterEntry(label?: string): Ed25519KeyIdentity
   saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+  broadcastIdentityChange();
   return id;
 }
 
@@ -299,6 +318,7 @@ export function importAndActivateRosterEntry(
   saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+  broadcastIdentityChange();
   return id;
 }
 
@@ -319,6 +339,7 @@ export function removeRosterEntry(principal: string): void {
   saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+  broadcastIdentityChange();
 }
 
 /** Wipe everything — all keys, active state, roster itself. */
@@ -331,6 +352,7 @@ export function clearRoster(): void {
   }
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+  broadcastIdentityChange();
 }
 
 /** Log out without touching the roster. */
@@ -340,6 +362,7 @@ export function logoutActiveRosterEntry(): void {
   saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+  broadcastIdentityChange();
 }
 
 /** Export a roster entry's JSON for backup. */
@@ -379,6 +402,7 @@ export function loginFromSeedPhrase(phrase: string, label?: string): Ed25519KeyI
   saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+  broadcastIdentityChange();
   return id;
 }
 

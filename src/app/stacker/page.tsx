@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { StackerWager, PAYOUT_MULTIPLIER } from "@/components/stacker/StackerWager";
@@ -11,6 +11,18 @@ import { Livestream } from "@/components/stacker/Livestream";
 import { Button } from "@/components/ui/Button";
 import { Pill } from "@/components/ui/Pill";
 import { ROUTES } from "@/lib/routes";
+import { getLedgerActor, loadActiveIdentity } from "@/lib/ic/agent";
+import { useToast } from "@/components/shared/Toast";
+
+/**
+ * Cost to start a Stacker round — burned on the ICRC-1 ledger before
+ * the round begins. The canister refuses the burn if the caller's
+ * balance is short, so the gate is server-enforced, not client-hoped.
+ *
+ * 1 LWP = 10^8 base units at 8 decimals.
+ */
+const ENTRY_FEE_BASE_UNITS = 100_000_000n; // 1 LWP
+const ENTRY_FEE_LABEL = "1 LWP";
 
 /**
  * Parse a seed query param in the forms: "0xABCD", "ABCD" (hex),
@@ -101,7 +113,72 @@ function StackerPageInner() {
   const [stake, setStake] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [roundKey, setRoundKey] = useState(0);
-  const wagerDisabled = phase === "playing";
+  const [entryBusy, setEntryBusy] = useState(false);
+  const wagerDisabled = phase === "playing" || entryBusy;
+  const toast = useToast();
+
+  /**
+   * Start a round: burn the entry fee on-chain first, then flip the
+   * UI into the new round. If the burn fails (not signed in,
+   * insufficient balance, ledger rejection, network), we show a
+   * toast + leave the UI in its current state. The game never
+   * starts without a confirmed ledger tx.
+   */
+  const handleStart = useCallback(
+    async (pickedStake: number, _mode?: string) => {
+      const identity = loadActiveIdentity();
+      if (!identity) {
+        toast.push({
+          kind: "error",
+          title: "Sign in to play",
+          description: "Stacker requires a signed-in key. Head to /icrc to log in.",
+        });
+        return;
+      }
+      setEntryBusy(true);
+      try {
+        const actor = await getLedgerActor(identity);
+        const res = await actor.burn({
+          from_subaccount: [],
+          amount: ENTRY_FEE_BASE_UNITS,
+          memo: [],
+          created_at_time: [],
+        });
+        if ("Err" in res) {
+          const variant = Object.keys(res.Err)[0];
+          if (variant === "InsufficientFunds") {
+            toast.push({
+              kind: "error",
+              title: `Need ${ENTRY_FEE_LABEL} to play`,
+              description:
+                "Your balance is short. Grab some from the faucet on /icrc first.",
+            });
+          } else {
+            toast.push({
+              kind: "error",
+              title: "Ledger rejected the entry fee",
+              description: `Burn returned ${variant}; the round was not started.`,
+            });
+          }
+          return;
+        }
+        // Success — tell the rest of the app the ledger moved.
+        window.dispatchEvent(new CustomEvent("lw-ledger-mutated"));
+        setStake(pickedStake);
+        setRoundKey((k) => k + 1);
+        setPhase("idle");
+      } catch (e) {
+        toast.push({
+          kind: "error",
+          title: "Couldn't reach the ledger",
+          description: (e as Error).message,
+        });
+      } finally {
+        setEntryBusy(false);
+      }
+    },
+    [toast],
+  );
 
   // Scope the scroll-snap behavior to this page only. <html> is the
   // scroll container, so we add/remove a class there. No regression
@@ -286,16 +363,26 @@ function StackerPageInner() {
           <div className="space-y-4">
             <StackerWager
               disabled={wagerDisabled}
-              onStart={(s) => {
-                // Future slice: thread `mode` into StackerGame so it
-                // can disable the entropy buffer on unranked rounds.
-                // For now the stake-forced-to-0 on unranked is enough
-                // to keep the prize copy honest.
-                setStake(s);
-                setRoundKey((k) => k + 1);
-                setPhase("idle");
-              }}
+              onStart={handleStart}
             />
+            {/* Entry-fee disclosure. Surfaced here rather than in
+                the wager card so the copy can call out the real on-
+                chain effect (burn) without the wager component needing
+                to know about the ledger. */}
+            <div className="rounded-xl border border-yellow-300/30 bg-yellow-300/[0.04] px-4 py-3 text-[12px] text-yellow-100 leading-snug">
+              <span className="font-mono text-yellow-300 font-bold">
+                {ENTRY_FEE_LABEL}
+              </span>{" "}
+              is burned on the ICRC-1 ledger when the round starts. No
+              payouts yet — scoring only. Out of LWP? Claim from the{" "}
+              <Link
+                href={ROUTES.icrc}
+                className="underline underline-offset-2 text-yellow-200 hover:text-yellow-50"
+              >
+                faucet
+              </Link>
+              .
+            </div>
 
             <div className="grid gap-3 text-sm text-gray-300">
               <Tip title="Controls">Space / Enter / Click / Tap locks the slider.</Tip>
