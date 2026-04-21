@@ -1329,7 +1329,16 @@ function DifficultyLadder() {
           The climb
         </div>
         <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-          Easy at the bottom. Brutal at the top.
+          Easy at the bottom.{" "}
+          <span
+            className="bg-clip-text text-transparent"
+            style={{
+              backgroundImage:
+                "linear-gradient(90deg,#fdba74,#f97316 50%,#facc15)",
+            }}
+          >
+            Brutal at the top.
+          </span>
         </h2>
         <p className="text-sm text-gray-400 leading-snug">
           Speed ramps cubically across the tower. Past row 6 the slider can
