@@ -559,7 +559,10 @@ function EmptyBoard() {
       </div>
       <div className="text-xs text-gray-400 max-w-xs mx-auto leading-snug">
         Be the first — tap{" "}
-        <Link href="/stacker" className="text-cyan-300 hover:underline">
+        <Link
+          href="/stacker"
+          className="text-cyan-300 underline-offset-2 hover:underline focus:outline-none focus-visible:underline focus-visible:ring-2 focus-visible:ring-cyan-300/60 rounded-sm"
+        >
           Stacker
         </Link>{" "}
         and stack to the top.
