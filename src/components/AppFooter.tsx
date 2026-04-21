@@ -24,7 +24,7 @@ import { resolveCanisterId, resolveHost } from "@/lib/icp/actor";
 import { useCopyable } from "@/lib/clipboard";
 import { ROUTES } from "@/lib/routes";
 
-const HIDDEN_ON: readonly string[] = [ROUTES.stacker, ROUTES.stacker];
+const HIDDEN_ON: readonly string[] = [ROUTES.stacker];
 
 // POLISH-287 perf audit. Measured 1M iterations at 9.8ms → ~10ns
 // per call. Footer renders ~10–30 times per session (route changes
