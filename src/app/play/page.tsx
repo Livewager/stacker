@@ -297,7 +297,7 @@ export default function PlayHubPage() {
                       aria-hidden
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/70 transition group-hover:bg-cyan-300/15 group-hover:text-cyan-300"
                     >
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5">
                         <path d="M7.3 4.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 0 1-1.4-1.4L11.58 10 7.3 5.7a1 1 0 0 1 0-1.4Z" />
                       </svg>
                     </span>
