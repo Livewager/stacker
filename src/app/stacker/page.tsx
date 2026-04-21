@@ -101,14 +101,19 @@ function StackerPageInner() {
           />
         </Link>
         <div className="flex items-center gap-2">
-          <Link href={ROUTES.play}>
+          <Link href={ROUTES.play} className="hidden sm:inline-flex">
             <Button variant="outline" size="sm">
               ← All games
             </Button>
           </Link>
+          <Link href={ROUTES.deposit}>
+            <Button tone="orange" size="sm">
+              Deposit now
+            </Button>
+          </Link>
           <a href="#play">
             <Button tone="cyan" size="sm">
-              Play now
+              Play
             </Button>
           </a>
         </div>
@@ -147,30 +152,64 @@ function StackerPageInner() {
         id="play"
         className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-8 pb-16 scroll-mt-20"
       >
-        <div className="mb-6">
-          <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
-            Your round
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2 flex items-center gap-2">
+              <span>Your round</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-400/[0.08] px-1.5 py-0.5 text-[9px] font-semibold text-emerald-200">
+                <span aria-hidden className="h-1 w-1 rounded-full bg-emerald-300 animate-pulse" />
+                live demo
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.95]">
+              Lock in. Stack clean.
+            </h2>
+            <p className="text-sm md:text-base text-gray-400 mt-2 max-w-lg">
+              Pick a chip, then tap to start. Space or Enter works too. Low on
+              LWP?{" "}
+              <Link
+                href={ROUTES.deposit}
+                className="text-orange-300 underline underline-offset-2 hover:text-orange-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/60 rounded-sm"
+              >
+                Top up now →
+              </Link>
+            </p>
           </div>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight">
-            Lock in. Stack clean.
-          </h2>
-          <p className="text-sm text-gray-400 mt-1 max-w-lg">
-            Pick a chip, then tap to start. Space or Enter works too.
-          </p>
+          <Link href={ROUTES.deposit} className="hidden md:block">
+            <Button tone="orange" size="lg">
+              Deposit LWP
+            </Button>
+          </Link>
         </div>
 
         <div className="grid gap-4 md:grid-cols-[minmax(0,560px)_1fr] items-start">
-          <StackerGame
-            key={roundKey}
-            stake={stake}
-            winMultiplier={PAYOUT_MULTIPLIER.win}
-            // Seed replay: ?seed=0x... on the very first mounted
-            // round only. Subsequent rounds (roundKey > 0) fall back
-            // to a fresh random seed so the user doesn't get locked
-            // into the same level forever.
-            initialSeed={roundKey === 0 ? initialSeed : null}
-            onPhaseChange={(p) => setPhase(p)}
-          />
+          {/* Game board with a pulsing bloom behind it on idle, so
+              the eye tracks to it. Bloom fades the moment the round
+              begins so it doesn't fight the gameplay canvas. */}
+          <div className="relative">
+            <div
+              aria-hidden
+              className={`absolute -inset-6 rounded-[2rem] pointer-events-none transition-opacity duration-500 ${
+                phase === "playing" ? "opacity-0" : "opacity-100"
+              }`}
+              style={{
+                background:
+                  "radial-gradient(500px 420px at 50% 50%, rgba(34,211,238,0.16), rgba(249,115,22,0.08) 55%, transparent 75%)",
+                filter: "blur(6px)",
+              }}
+            />
+            <StackerGame
+              key={roundKey}
+              stake={stake}
+              winMultiplier={PAYOUT_MULTIPLIER.win}
+              // Seed replay: ?seed=0x... on the very first mounted
+              // round only. Subsequent rounds (roundKey > 0) fall back
+              // to a fresh random seed so the user doesn't get locked
+              // into the same level forever.
+              initialSeed={roundKey === 0 ? initialSeed : null}
+              onPhaseChange={(p) => setPhase(p)}
+            />
+          </div>
 
           <div className="space-y-4">
             <StackerWager
@@ -196,6 +235,11 @@ function StackerPageInner() {
             </div>
           </div>
         </div>
+
+        {/* Sticky mobile-only deposit rail — only after the fold.
+            Puts a fat orange CTA within thumb reach the moment the
+            user has scrolled to the actual play area. */}
+        <StickyDepositRail />
       </section>
     </div>
   );
@@ -231,12 +275,13 @@ function Hero() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="flex items-center gap-2 mb-4"
+            className="flex items-center gap-2 mb-4 flex-wrap"
           >
             <Pill status="demo">Arcade · demo</Pill>
             <span className="text-[10px] uppercase tracking-widest text-gray-500">
               Stacker · Livewager
             </span>
+            <LivePulse />
           </motion.div>
 
           <motion.h1
@@ -246,14 +291,34 @@ function Hero() {
             className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-4"
           >
             Stack to the{" "}
-            <span
-              className="bg-clip-text text-transparent"
-              style={{
-                backgroundImage:
-                  "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
-              }}
-            >
-              top.
+            <span className="relative inline-block">
+              {/* Pulsing glow behind the gradient word. Scoped to
+                  the word itself so the rest of the h1 stays static.
+                  Respects reduced-motion via the global CSS clamp in
+                  style.css which drops transition-duration to 0.001ms
+                  — the framer-motion animate prop also defers to OS
+                  preference. */}
+              <motion.span
+                aria-hidden
+                className="absolute inset-0 blur-xl pointer-events-none"
+                style={{
+                  background:
+                    "linear-gradient(90deg,rgba(34,211,238,0.55),rgba(253,186,116,0.55) 50%,rgba(250,204,21,0.55))",
+                  borderRadius: 12,
+                }}
+                initial={{ opacity: 0.35, scale: 0.96 }}
+                animate={{ opacity: [0.35, 0.7, 0.35], scale: [0.96, 1.04, 0.96] }}
+                transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+              />
+              <span
+                className="relative bg-clip-text text-transparent"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+                }}
+              >
+                top.
+              </span>
             </span>
           </motion.h1>
 
@@ -278,11 +343,16 @@ function Hero() {
             transition={{ duration: 0.5, delay: 0.18 }}
             className="flex flex-wrap items-center gap-3"
           >
-            <a href="#play">
+            <a href="#play" className="lw-hero-cta-primary">
               <Button tone="cyan" size="lg">
                 Play now
               </Button>
             </a>
+            <Link href={ROUTES.deposit}>
+              <Button tone="orange" size="lg">
+                Deposit LWP
+              </Button>
+            </Link>
             <a href="#how">
               <Button variant="outline" size="lg">
                 How it works
@@ -308,6 +378,8 @@ function Hero() {
 
         <HeroTower />
       </div>
+
+      <WinnersMarquee />
     </section>
   );
 }
@@ -317,6 +389,221 @@ function StatChip({ label, value }: { label: string; value: string }) {
     <span className="inline-flex items-baseline gap-1.5 shrink-0 snap-start">
       <span className="uppercase tracking-widest text-gray-500">{label}</span>
       <span className="font-mono text-white">{value}</span>
+    </span>
+  );
+}
+
+// =============================================================
+// Live pulse — "N playing now" chip in the badge row
+// =============================================================
+
+/**
+ * Small live-ish pulse that sits next to the hero's eyebrow row.
+ * Deterministic per-minute: the "playing now" count comes from a
+ * mulberry32 hash of the current minute so every visitor in the
+ * same minute sees the same number (the social-proof trick). Dot
+ * pulses via animate-pulse, gated by prefers-reduced-motion via
+ * the framer-motion hook.
+ */
+function LivePulse() {
+  const reduced = useReducedMotion();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    // Refresh every 30s so the count drifts as the user reads.
+    const id = window.setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => window.clearInterval(id);
+    // tick unused — interval just re-runs the closure to bump state
+  }, []);
+  const n = useMemo(() => {
+    const m = Math.floor(Date.now() / 60_000);
+    let h = (m ^ 0x9e3779b9) >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+    h ^= h >>> 16;
+    // 180..420 playing now, stable per minute.
+    return 180 + (h % 240);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tick]);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/[0.08] px-2 py-0.5 text-[10px] uppercase tracking-widest font-semibold text-emerald-200"
+      role="status"
+      aria-live="off"
+      title="Live players (demo)"
+    >
+      <span
+        aria-hidden
+        className={`h-1.5 w-1.5 rounded-full bg-emerald-300 ${reduced ? "" : "animate-pulse"}`}
+      />
+      <span className="font-mono tabular-nums">{n}</span>
+      <span className="text-emerald-300/80">playing now</span>
+    </span>
+  );
+}
+
+// =============================================================
+// Winners marquee — scrolling ticker of recent fake wins
+// =============================================================
+
+type MarqueeEntry = { handle: string; amount: number; tier: "big" | "mid" | "small" };
+const MARQUEE_POOL: MarqueeEntry[] = [
+  { handle: "topfloor", amount: 300, tier: "big" },
+  { handle: "queenstacks", amount: 75, tier: "mid" },
+  { handle: "basedhunter", amount: 300, tier: "big" },
+  { handle: "r3m", amount: 15, tier: "small" },
+  { handle: "cosmic", amount: 75, tier: "mid" },
+  { handle: "mimic", amount: 15, tier: "small" },
+  { handle: "elev8", amount: 300, tier: "big" },
+  { handle: "ftboi", amount: 75, tier: "mid" },
+  { handle: "ricochet", amount: 300, tier: "big" },
+  { handle: "civic", amount: 15, tier: "small" },
+  { handle: "atxstax", amount: 75, tier: "mid" },
+  { handle: "dropship", amount: 15, tier: "small" },
+];
+
+/**
+ * Auto-scrolling winners ticker below the hero. Renders two copies
+ * of the pool end-to-end and translates the container by -50% over
+ * a long duration so the loop seams are invisible (the half-offset
+ * lines up with the duplicate starting position). Pauses on hover
+ * and when prefers-reduced-motion is set; reduced users get a
+ * static "recent wins" chip strip instead.
+ */
+function WinnersMarquee() {
+  const reduced = useReducedMotion();
+  const entries = [...MARQUEE_POOL, ...MARQUEE_POOL];
+  return (
+    <div
+      aria-label="Recent winners (demo)"
+      role="region"
+      className="mt-10 relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-white/[0.03] via-white/[0.05] to-white/[0.03]"
+    >
+      {/* Left + right fade masks */}
+      <div
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(90deg, rgba(2,11,24,1), rgba(2,11,24,0))",
+        }}
+      />
+      <div
+        aria-hidden
+        className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(270deg, rgba(2,11,24,1), rgba(2,11,24,0))",
+        }}
+      />
+
+      <div className="flex items-center gap-3 py-3 pl-4 pr-4">
+        <span className="shrink-0 text-[10px] uppercase tracking-widest font-mono text-yellow-300/90 z-20 relative">
+          Recent wins
+        </span>
+        <div className="relative flex-1 overflow-hidden">
+          {reduced ? (
+            // Static row when reduced — show 4 entries, no motion.
+            <div className="flex items-center gap-4">
+              {MARQUEE_POOL.slice(0, 4).map((e, i) => (
+                <MarqueeChip key={i} entry={e} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 animate-[lw-marquee_34s_linear_infinite] hover:[animation-play-state:paused]">
+              {entries.map((e, i) => (
+                <MarqueeChip key={i} entry={e} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Keyframes scoped to this component */}
+      <style>{`
+        @keyframes lw-marquee {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// =============================================================
+// Sticky deposit rail — mobile-only, appears after scroll
+// =============================================================
+
+/**
+ * Thumb-reach DEPOSIT NOW button fixed to the bottom-right on
+ * mobile only. Appears after the user has scrolled ~500px past
+ * the hero (so it doesn't crowd the first-paint), sits above the
+ * BottomNav safe-area-inset, and dismisses if the user dismisses
+ * it. Hidden at md+ because desktop already shows deposit buttons
+ * in the sticky top nav, the hero CTA rail, the Play section
+ * header, and the WagerPrimer panel.
+ */
+function StickyDepositRail() {
+  const reduced = useReducedMotion();
+  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      setVisible(window.scrollY > 500);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  if (dismissed) return null;
+  return (
+    <div
+      className="md:hidden fixed right-4 z-40 flex items-center gap-1.5 transition-[opacity,transform] duration-200"
+      style={{
+        bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(8px)",
+        pointerEvents: visible ? "auto" : "none",
+      }}
+    >
+      <Link
+        href={ROUTES.deposit}
+        aria-label="Deposit LWP"
+        className="relative inline-flex items-center gap-2 rounded-full border border-orange-300/60 px-4 py-2.5 text-sm font-black uppercase tracking-widest text-black shadow-[0_10px_24px_-10px_rgba(249,115,22,0.55)] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
+        style={{
+          background:
+            "linear-gradient(90deg,#fdba74,#f97316 60%,#ea580c)",
+        }}
+      >
+        <span aria-hidden className={`h-1.5 w-1.5 rounded-full bg-black/70 ${reduced ? "" : "animate-pulse"}`} />
+        Deposit now
+      </Link>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss deposit reminder"
+        className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/15 bg-background/85 backdrop-blur-sm text-gray-300 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden>
+          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+function MarqueeChip({ entry }: { entry: MarqueeEntry }) {
+  const toneCls =
+    entry.tier === "big"
+      ? "border-yellow-400/40 bg-yellow-400/[0.08] text-yellow-200"
+      : entry.tier === "mid"
+        ? "border-cyan-300/40 bg-cyan-300/[0.08] text-cyan-200"
+        : "border-white/15 bg-white/[0.04] text-gray-300";
+  return (
+    <span
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono ${toneCls}`}
+    >
+      <span className="font-semibold">@{entry.handle}</span>
+      <span className="text-white/90">+{entry.amount} LWP</span>
     </span>
   );
 }
@@ -1114,22 +1401,72 @@ function WagerPrimer() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {chips.map((c, i) => (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {chips.map((c, i) => (
+                <motion.div
+                  key={c.label}
+                  initial={{ opacity: 0, y: 8 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.3, delay: i * 0.06 }}
+                  className="rounded-xl border border-white/10 bg-black/40 p-3 text-center"
+                >
+                  <div className="text-sm font-bold text-white">{c.label}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-yellow-300/90 font-mono mt-1">
+                    {c.sub}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* STACKER-R1 — primary CTA on the wager panel. Routes to
+                /deposit which is the only way to grow LWP beyond the
+                15-free starter balance. Sits under the chip grid so
+                the gaze lands: "what are my chip options? ... okay
+                I need more LWP → DEPOSIT NOW". Orange gradient
+                matches the tone used in the top nav + hero CTA rail
+                so the deposit affordance reads as one consistent
+                accent across the page. */}
+            <Link href={ROUTES.deposit} aria-label="Deposit LWP to unlock bigger chips">
               <motion.div
-                key={c.label}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 6 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.3, delay: i * 0.06 }}
-                className="rounded-xl border border-white/10 bg-black/40 p-3 text-center"
+                viewport={{ once: true }}
+                transition={{ duration: 0.35, delay: 0.28 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                className="relative overflow-hidden rounded-xl cursor-pointer text-center py-3 px-4 border border-orange-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
+                style={{
+                  background:
+                    "linear-gradient(90deg, #fdba74, #f97316 50%, #ea580c)",
+                }}
               >
-                <div className="text-sm font-bold text-white">{c.label}</div>
-                <div className="text-[10px] uppercase tracking-widest text-yellow-300/90 font-mono mt-1">
-                  {c.sub}
-                </div>
+                {/* Sheen sweep */}
+                <motion.span
+                  aria-hidden
+                  className="absolute inset-y-0 -left-1/3 w-1/3 pointer-events-none"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
+                    mixBlendMode: "soft-light",
+                  }}
+                  animate={{ left: ["-33%", "133%"] }}
+                  transition={{
+                    duration: 2.6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    repeatDelay: 1.2,
+                  }}
+                />
+                <span className="relative font-black uppercase tracking-widest text-sm md:text-base text-black">
+                  Deposit now →
+                </span>
+                <span className="relative block text-[10px] uppercase tracking-widest font-mono text-black/70 mt-0.5">
+                  Fund your next round
+                </span>
               </motion.div>
-            ))}
+            </Link>
           </div>
         </div>
       </div>
