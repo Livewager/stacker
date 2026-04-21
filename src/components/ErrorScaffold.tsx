@@ -315,7 +315,7 @@ export function ErrorScaffold({
             <button
               type="button"
               onClick={cancelAutoRetry}
-              className="underline-offset-2 hover:underline text-gray-400 hover:text-white"
+              className="underline-offset-2 hover:underline text-gray-400 hover:text-white cursor-pointer focus:outline-none focus-visible:text-white focus-visible:underline focus-visible:ring-2 focus-visible:ring-cyan-300/50 rounded-sm"
             >
               cancel
             </button>
