@@ -36,38 +36,45 @@ const GRID_ROWS = 15;
 /** Level targets — the "win" row. Classic arcades set this ~12-15 tall. */
 const TOP_ROW = GRID_ROWS - 1;
 /**
- * Speed ramp: cells per second the slider moves at each row. Starts
- * gentle, climbs hard in the upper tiers so the top floors really
- * punish late taps.
+ * Speed ramp: cells per second the slider moves at each row. Previous
+ * curve started at 3.6 which read as "free warm-up" — users looping
+ * the demo were clearing rows 0–3 without any tension. Rebalanced to
+ * a quicker base + flatter cubic so the opening floors demand real
+ * tracking from tap 1, while the top end stays at ~13.5 so the
+ * DifficultyLadder's "approaching unplayable" narrative still holds.
  *
- *   row 0:  ~3.6 cells/sec  (easy warm-up)
- *   row 5:  ~5.7
- *   row 10: ~9.7
+ *   row 0:  ~5.2 cells/sec  (no free ride — classic stacker first-tier feel)
+ *   row 5:  ~6.3
+ *   row 10: ~8.2
  *   row 14: ~13.5 + jitter  (approaching unplayable without rhythm)
  *
- * Cubic ease past the midpoint plus a base that's a bit quicker than
- * the old 3.2 baseline to keep early rows interesting.
+ * Cubic coefficient dropped from 9.9 → 8.3 so the ramp reaches the
+ * same ceiling from the higher floor. Base bumped 3.6 → 5.2 (+44%).
  */
 const SPEED_BY_ROW = (row: number): number => {
   const t = row / Math.max(1, TOP_ROW);
-  // 3.6 base + cubic ramp to ~13.5 by the top row.
-  return 3.6 + t * t * t * 9.9;
+  // 5.2 base + cubic ramp to ~13.5 by the top row.
+  return 5.2 + t * t * t * 8.3;
 };
 
 /**
  * Per-frame speed jitter amplitude (fraction of SPEED_BY_ROW). Kicks
- * in from row JITTER_ROW so early rows stay learnable — only the
- * later levels get the rhythm-breaking variance.
+ * in from row JITTER_ROW. Moved from row 8 → 6 so the mid-game
+ * transition to "no rhythm" happens earlier — aligns with the earlier
+ * RANDOM_DIR_ROW shift and keeps the tower from having a 5-row easy
+ * stretch before anything interesting happens.
  */
-const JITTER_ROW = 8;
+const JITTER_ROW = 6;
 const JITTER_AMP = 0.18; // ±18% at full strength
 
 /**
  * From this row, spawn direction is randomized instead of always
- * starting left-to-right. Breaks the habit of "it always appears at
- * position 0 moving right", so the upper floors demand real tracking.
+ * starting left-to-right. Moved from row 6 → 3 so muscle memory
+ * breaks earlier — you can't coast the first 5 rows on a pure
+ * left-to-right reflex anymore, which is exactly the "first level
+ * way too easy" complaint this tune addresses.
  */
-const RANDOM_DIR_ROW = 6;
+const RANDOM_DIR_ROW = 3;
 
 /** Starting block width. Narrower = harder. */
 const START_WIDTH = 3;

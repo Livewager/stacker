@@ -1411,9 +1411,14 @@ function DifficultyLadder() {
             <div className="flex items-end gap-1 h-32">
               {Array.from({ length: 15 }, (_, row) => {
                 const t = row / 14;
-                const speed = 3.6 + t * t * t * 9.9;
+                // Kept in lockstep with SPEED_BY_ROW in StackerGame.tsx.
+                // Curve retuned to 5.2 + t³·8.3 (was 3.6 + t³·9.9) —
+                // quicker floor, same ceiling, no 3.6 free-ride.
+                const speed = 5.2 + t * t * t * 8.3;
                 const heightPct = (speed / 14) * 100;
-                const hot = row >= 8;
+                // Hot-zone tiers follow the mechanic breakpoints:
+                // jitter kicks at row 6, top-tier glow at row 12.
+                const hot = row >= 6;
                 const veryHot = row >= 12;
                 return (
                   <motion.div
@@ -1444,29 +1449,32 @@ function DifficultyLadder() {
               })}
             </div>
             <div className="mt-2 flex justify-between text-[10px] font-mono text-gray-500">
-              <span>row 0 · 3.6</span>
-              <span className="text-orange-300">row 8 · 8.3</span>
+              <span>row 0 · 5.2</span>
+              <span className="text-orange-300">row 6 · 6.5</span>
               <span className="text-yellow-300">row 14 · 13.5+</span>
             </div>
           </div>
 
-          {/* Mechanics list */}
+          {/* Mechanics list. Breakpoints tracking StackerGame.tsx:
+              RANDOM_DIR_ROW=3, JITTER_ROW=6. Retuned alongside the
+              speed curve — no 5-row coast before the tower starts
+              punching back. */}
           <ul className="space-y-3">
             <LadderRule
               tone="cyan"
-              row="0–5"
+              row="0–2"
               title="Warm-up"
-              body="Predictable left-to-right slider. Missing here is on you."
+              body="Predictable left-to-right slider at 5.2 cells/sec. Short runway — learn the window fast."
             />
             <LadderRule
               tone="orange"
-              row="6+"
+              row="3+"
               title="Random spawn side"
-              body="Slider can appear on either edge moving either direction. Muscle memory stops working."
+              body="Slider can appear on either edge moving either direction. Muscle memory stops working three rows in."
             />
             <LadderRule
               tone="yellow"
-              row="8+"
+              row="6+"
               title="Speed jitter"
               body="Two irrational sines layer over the base speed. No BPM to lock. Good luck."
             />
