@@ -31,17 +31,10 @@ import { Button } from "@/components/ui/Button";
 export default function RootPage() {
   const [roster, setRoster] = useState<IdentityRosterV2 | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    const r = loadRoster();
-    setRoster(r);
+    setRoster(loadRoster());
     setMounted(true);
-    // Already signed in? fast-forward to /play.
-    if (r.activePrincipal) {
-      setRedirecting(true);
-      window.location.replace("/play");
-    }
   }, []);
 
   const handleQuickLogin = (principal: string) => {
@@ -54,7 +47,7 @@ export default function RootPage() {
     window.location.replace("/play");
   };
 
-  if (!mounted || redirecting) {
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-gray-500 text-sm">
         Loading…
