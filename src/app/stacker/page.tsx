@@ -1521,6 +1521,14 @@ function WagerPrimer() {
                 matches the tone used in the top nav + hero CTA rail
                 so the deposit affordance reads as one consistent
                 accent across the page. */}
+            {/* STACKER-R1 + SUPER-13 — primary CTA sized to match the
+                chip row above. Originally two stacked lines (Deposit
+                now + subtitle) made the button ~72px while the chip
+                row is ~54px, leaving the button visually dwarfing
+                the chips it sits under. Collapsed to a single line
+                with the subtitle inlined as a subtle dot-separated
+                suffix on md+, dropped on mobile where space is
+                tight. Preserves the sheen sweep + hover scale. */}
             <Link href={ROUTES.deposit} aria-label="Deposit LWP to unlock bigger chips">
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
@@ -1529,7 +1537,7 @@ function WagerPrimer() {
                 transition={{ duration: 0.35, delay: 0.28 }}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="relative overflow-hidden rounded-xl cursor-pointer text-center py-3 px-4 border border-orange-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
+                className="relative overflow-hidden rounded-xl cursor-pointer text-center py-2.5 px-4 border border-orange-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 flex items-center justify-center gap-2"
                 style={{
                   background:
                     "linear-gradient(90deg, #fdba74, #f97316 50%, #ea580c)",
@@ -1552,11 +1560,11 @@ function WagerPrimer() {
                     repeatDelay: 1.2,
                   }}
                 />
-                <span className="relative font-black uppercase tracking-widest text-sm md:text-base text-black">
+                <span className="relative font-black uppercase tracking-widest text-sm text-black">
                   Deposit now →
                 </span>
-                <span className="relative block text-[10px] uppercase tracking-widest font-mono text-black/70 mt-0.5">
-                  Fund your next round
+                <span className="relative hidden md:inline text-[10px] uppercase tracking-widest font-mono text-black/60">
+                  · fund your next round
                 </span>
               </motion.div>
             </Link>
