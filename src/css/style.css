@@ -9,6 +9,23 @@
     /* font-size: 14px; */
   }
 
+  /* SUPER-41 — native <button> elements render with cursor:default
+     by user-agent convention on macOS/Windows, which makes every raw
+     <button> in the app feel un-clickable next to <a>/<Link> elements
+     that inherit cursor:pointer. The shared <Button> primitive
+     explicitly sets cursor-pointer (SUPER-07), but ~15 callsites use
+     raw <button> for utility actions (copy chips, dismiss banners,
+     close modals, settings gears, etc.). Adding the cursor globally
+     catches them all in one rule.
+
+     `:disabled` keeps cursor:not-allowed (matches the disabled state
+     on the Button primitive). Specific overrides inside
+     BottomSheet's aria-hidden scrim + invisible tabindex-trap buttons
+     still win via direct utility classes. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
   @media (max-width: 500px) {
     html {
       font-size: 14px;
