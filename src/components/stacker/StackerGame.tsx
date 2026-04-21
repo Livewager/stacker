@@ -1447,27 +1447,31 @@ export default function StackerGame({
               {statusCopy.sub}
             </p>
 
-            {/* Pre-round difficulty hint. Only on idle — leaving it on
-                won/over would bury the score. Cues match the actual
-                mechanic rows in SPEED_BY_ROW / RANDOM_DIR_ROW / JITTER_ROW. */}
+            {/* Pre-round difficulty hint. Rows match the live
+                breakpoints in SPEED_BY_ROW / RANDOM_DIR_ROW=3 /
+                JITTER_ROW=6. HARDER-01 tightened those constants
+                but this UI copy was still quoting the old 0-5/6+/8+
+                split — misleading first-time players. Now honest:
+                warm-up is only rows 0-2, random spawn kicks at 3,
+                jitter at 6. */}
             {hudState.phase === "idle" && (
               <ul className="mb-5 mx-auto max-w-[260px] space-y-1 text-left">
                 <DifficultyCue
                   dot="bg-cyan-300"
                   tone="text-cyan-300"
-                  rows="0–5"
+                  rows="0–2"
                   text="Predictable slider"
                 />
                 <DifficultyCue
                   dot="bg-orange-400"
                   tone="text-orange-300"
-                  rows="6+"
+                  rows="3+"
                   text="Spawn side randomizes"
                 />
                 <DifficultyCue
                   dot="bg-yellow-300"
                   tone="text-yellow-300"
-                  rows="8+"
+                  rows="6+"
                   text="Speed jitters — no rhythm"
                 />
               </ul>

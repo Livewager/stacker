@@ -1141,8 +1141,8 @@ function DifficultyLadder() {
           </span>
         </h2>
         <p className="text-sm text-gray-400 leading-snug">
-          Speed ramps cubically across the tower. Past row 6 the slider can
-          spawn on either side — past row 8 the speed jitters on two irrational
+          Speed ramps cubically across the tower. Past row 3 the slider can
+          spawn on either side — past row 6 the speed jitters on two irrational
           sines so there&apos;s no rhythm to lock onto.
         </p>
       </div>
