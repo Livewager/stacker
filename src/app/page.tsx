@@ -18,7 +18,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import AppHeader from "@/components/AppHeader";
 import {
   loadRoster,
   setActiveRosterEntry,
@@ -69,31 +69,22 @@ export default function RootPage() {
   const returning = sorted.length > 0;
 
   return (
-    <div className="min-h-screen bg-background text-white overflow-x-hidden">
-      {/* Ambient glow — matches the /stacker backdrop for a consistent
-          arrival-to-the-site feel. */}
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(800px 500px at 20% -10%, rgba(34,211,238,0.14), transparent 60%), radial-gradient(700px 500px at 90% 110%, rgba(249,115,22,0.12), transparent 60%)",
-        }}
-      />
+    <>
+      <AppHeader />
+      <div className="relative min-h-[calc(100vh-64px)] bg-background text-white overflow-x-hidden">
+        {/* Ambient glow — matches the /stacker backdrop for a consistent
+            arrival-to-the-site feel. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(800px 500px at 20% -10%, rgba(34,211,238,0.14), transparent 60%), radial-gradient(700px 500px at 90% 110%, rgba(249,115,22,0.12), transparent 60%)",
+          }}
+        />
 
-      <div className="relative max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-20">
-        <div className="mb-10">
-          <Image
-            src="/assets/logo43.png"
-            alt="Livewager · Stacker"
-            width={440}
-            height={144}
-            priority
-            style={{ height: 64, width: "auto", objectFit: "contain" }}
-          />
-        </div>
-
-        <div className="grid md:grid-cols-[1.35fr_1fr] gap-10 md:gap-12 items-start">
+        <div className="relative max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-20">
+          <div className="grid md:grid-cols-[1.35fr_1fr] gap-10 md:gap-12 items-start">
           {/* Hero copy */}
           <div>
             <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-3">
@@ -257,13 +248,14 @@ export default function RootPage() {
           </aside>
         </div>
 
-        <footer className="mt-16 text-[11px] text-gray-500 leading-snug max-w-xl">
-          Keys live in <code>localStorage</code> on this browser only.
-          Clearing site data erases them. This is a local dfx dev
-          environment — swap in Internet Identity for a real deploy.
-        </footer>
+          <footer className="mt-16 text-[11px] text-gray-500 leading-snug max-w-xl">
+            Keys live in <code>localStorage</code> on this browser only.
+            Clearing site data erases them. This is a local dfx dev
+            environment — swap in Internet Identity for a real deploy.
+          </footer>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

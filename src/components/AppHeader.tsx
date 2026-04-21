@@ -27,7 +27,7 @@ type Tab = { href: string; label: string };
 
 const TABS: Tab[] = [
   { href: ROUTES.play, label: "Play" },
-  { href: ROUTES.wallet, label: "Wallet" },
+  { href: ROUTES.account, label: "Account" },
   { href: ROUTES.deposit, label: "Deposit" },
   { href: ROUTES.send, label: "Send" },
   { href: ROUTES.withdraw, label: "Withdraw" },
@@ -35,7 +35,6 @@ const TABS: Tab[] = [
   { href: ROUTES.icrc, label: "ICRC" },
   { href: ROUTES.accounts, label: "Keys" },
   { href: ROUTES.fairPlay, label: "Fair play" },
-  { href: ROUTES.account, label: "Account" },
   { href: ROUTES.settings, label: "Settings" },
 ];
 
