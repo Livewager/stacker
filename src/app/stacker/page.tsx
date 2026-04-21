@@ -85,37 +85,50 @@ function StackerPageInner() {
     <div className="min-h-screen bg-background text-white relative overflow-x-hidden">
       <AmbientBackdrop />
 
+      {/* Sticky hero nav: was `relative z-20` so it scrolled off on a
+          long landing, which left Deposit + Play CTAs only reachable
+          via the in-page scroll-back. Every other route sits under
+          AppHeader (sticky top-0 z-40) so /stacker felt janky in
+          comparison — a user 3 sections deep who wanted to deposit
+          had to scroll all the way back up or find the WagerPrimer
+          call-out. sticky top-0 + backdrop-blur matches AppHeader's
+          POLISH-368 treatment (safe-area-inset-top on the <nav>
+          itself so notched viewports keep the backdrop stretching
+          to the hardware edge). */}
       <nav
         aria-label="Site"
-        className="relative z-20 max-w-7xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-3"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className="sticky top-0 z-30 border-b border-white/10 bg-background/85 backdrop-blur-md"
       >
-        <Link href={ROUTES.stacker} className="flex items-center" aria-label="Livewager Stacker home">
-          <Image
-            src="/assets/logo43.png"
-            alt="Livewager · Stacker"
-            width={440}
-            height={144}
-            priority
-            sizes="(max-width: 768px) 320px, 440px"
-            style={{ height: 80, width: "auto", objectFit: "contain" }}
-          />
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link href={ROUTES.play} className="hidden sm:inline-flex">
-            <Button variant="outline" size="sm">
-              ← All games
-            </Button>
+        <div className="max-w-7xl mx-auto px-5 md:px-8 py-3 md:py-4 flex items-center justify-between gap-3">
+          <Link href={ROUTES.stacker} className="flex items-center" aria-label="Livewager Stacker home">
+            <Image
+              src="/assets/logo43.png"
+              alt="Livewager · Stacker"
+              width={440}
+              height={144}
+              priority
+              sizes="(max-width: 768px) 220px, 360px"
+              style={{ height: 56, width: "auto", objectFit: "contain" }}
+            />
           </Link>
-          <Link href={ROUTES.deposit}>
-            <Button tone="orange" size="sm">
-              Deposit now
-            </Button>
-          </Link>
-          <a href="#play">
-            <Button tone="cyan" size="sm">
-              Play
-            </Button>
-          </a>
+          <div className="flex items-center gap-2">
+            <Link href={ROUTES.play} className="hidden sm:inline-flex">
+              <Button variant="outline" size="sm">
+                ← All games
+              </Button>
+            </Link>
+            <Link href={ROUTES.deposit}>
+              <Button tone="orange" size="sm">
+                Deposit now
+              </Button>
+            </Link>
+            <a href="#play">
+              <Button tone="cyan" size="sm">
+                Play
+              </Button>
+            </a>
+          </div>
         </div>
       </nav>
 
