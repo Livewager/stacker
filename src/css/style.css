@@ -208,6 +208,27 @@
     pointer-events: none;
   }
 
+  /* SUPER-17 — Livestream play-glyph pulse ring. Two concentric
+     rings scale 1 → 1.45 while fading to transparent, producing
+     a continuous ripple that reads as "waiting to play". The
+     .lw-stream-pulse-delayed sibling starts 700ms later so the
+     ripples overlap rather than sync. transform + opacity only
+     so the animation composites on the GPU, no layout thrash.
+     The global prefers-reduced-motion clamp below freezes both
+     to an imperceptible tick, which pairs with the JS-side
+     reducedMotion gate in Livestream.tsx (belt + suspenders). */
+  @keyframes lw-stream-pulse-kf {
+    0%   { transform: scale(1);    opacity: 0.55; }
+    100% { transform: scale(1.45); opacity: 0;    }
+  }
+  .lw-stream-pulse {
+    animation: lw-stream-pulse-kf 1900ms cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+    will-change: transform, opacity;
+  }
+  .lw-stream-pulse-delayed {
+    animation-delay: 700ms;
+  }
+
   /* Single-fire balance-changed pulse for the top-nav wallet pill.
      Brightens the cyan ring + nudges the tabular-nums figure by
      ~1px, no layout thrash (box-shadow + filter only). Applied via

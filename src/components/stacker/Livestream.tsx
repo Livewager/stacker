@@ -212,15 +212,35 @@ export function Livestream() {
               ~36% height on 240px and scales up to h-16 at sm,
               h-20 at md. Inner svg tracks the same ladder. */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 rounded-full bg-white/10 border border-white/20 backdrop-blur flex items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-5 w-5 sm:h-7 sm:w-7 md:h-8 md:w-8 text-white/80 translate-x-[2px]"
-                aria-hidden
-              >
-                <path d="M8 5v14l11-7z" />
-              </svg>
+            <div className="relative">
+              {/* SUPER-17 — breathing ring around the play glyph so
+                  the video placeholder reads as 'waiting to play'
+                  rather than static. Two concentric pulse layers
+                  offset by 700ms so there's always one mid-cycle,
+                  producing a continuous ripple. Gated on reduced-
+                  motion — the bare button stays visible. */}
+              {!reducedMotion && (
+                <>
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 rounded-full border border-white/25 lw-stream-pulse"
+                  />
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 rounded-full border border-white/20 lw-stream-pulse lw-stream-pulse-delayed"
+                  />
+                </>
+              )}
+              <div className="relative h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 rounded-full bg-white/10 border border-white/20 backdrop-blur flex items-center justify-center">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-5 w-5 sm:h-7 sm:w-7 md:h-8 md:w-8 text-white/80 translate-x-[2px]"
+                  aria-hidden
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
             </div>
           </div>
 
