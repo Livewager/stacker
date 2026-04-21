@@ -497,7 +497,17 @@ function WelcomeBanner({ balance }: { balance: bigint | null }) {
         Fresh wallet · demo mode
       </div>
       <h2 className="text-lg md:text-xl font-bold text-white mb-1">
-        Get some LWP to start.
+        Get some{" "}
+        <span
+          className="bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+          }}
+        >
+          LWP
+        </span>{" "}
+        to start.
       </h2>
       <p className="text-xs md:text-sm text-gray-300 leading-snug max-w-md mb-4">
         No real money moves — the ledger is a local ICRC-1 demo. Either
