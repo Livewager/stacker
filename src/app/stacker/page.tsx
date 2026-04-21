@@ -605,22 +605,17 @@ function StackerPageInner() {
               .
             </div>
 
-            <div className="grid gap-3 text-sm text-gray-300">
-              <Tip title="Controls">Space / Enter / Click / Tap locks the slider.</Tip>
-              <Tip title="Scoring">10 pts per row. Perfect stack adds 15 × streak.</Tip>
-              <Tip title="Prize (demo)">
-                Stake × {PAYOUT_MULTIPLIER.win} on a clean top floor. LWP does not
-                move on-chain in this demo round.
-              </Tip>
-            </div>
-
             {/* Compact livestream — watch-while-playing widget that
-                sits in the right column's previously-empty space
-                below the wager tips. Same Livestream component as
-                the top-of-page banner; `compact` mode drops the
-                outer section wrapper, hides the big h2, and stacks
-                chat under the video so the whole thing fits a
-                narrow column. */}
+                now sits immediately under the wager in the right
+                column. Removed the three Tip cards (Controls /
+                Scoring / Prize) that used to sit between them so
+                the stream rides up next to the game where the
+                empty space was.
+
+                Rules the Tip cards covered still live on /stacker
+                farther down the page (HowItWorks section + the
+                Prize-mode strip under the wager card), so nothing
+                was lost — just decongested. */}
             <Livestream compact />
           </div>
         </div>
@@ -1604,20 +1599,6 @@ function WagerPrimer() {
   );
 }
 
-// =============================================================
-// Tip (play section)
-// =============================================================
-
-function Tip({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-1.5">
-        {title}
-      </div>
-      <div className="text-sm text-gray-200 leading-snug">{children}</div>
-    </div>
-  );
-}
 
 /**
  * Full-cover overlay that sits on top of the StackerGame canvas
