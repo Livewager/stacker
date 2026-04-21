@@ -2,7 +2,7 @@
 name = "points_ledger"
 version = "0.1.0"
 edition = "2021"
-description = "Non-custodial ICRC-1 + ICRC-2 points ledger for Livewager Dunk Drop"
+description = "Non-custodial ICRC-1 + ICRC-2 points ledger for Livewager Stacker"
 license = "MIT"
 
 [lib]
