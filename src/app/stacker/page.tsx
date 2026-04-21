@@ -100,6 +100,8 @@ function StackerPageInner() {
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         className="sticky top-0 z-30 border-b border-white/10 bg-background/85 backdrop-blur-md"
       >
+        <ScrollProgress />
+
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-3 md:py-4 flex items-center justify-between gap-3">
           <Link href={ROUTES.stacker} className="flex items-center" aria-label="Livewager Stacker home">
             <Image
@@ -452,6 +454,58 @@ function LivePulse() {
       <span className="font-mono tabular-nums">{n}</span>
       <span className="text-emerald-300/80">playing now</span>
     </span>
+  );
+}
+
+// =============================================================
+// Scroll progress — 2px gradient bar pinned to the sticky nav top
+// =============================================================
+
+/**
+ * Thin cyan→orange→yellow progress bar that grows across the top
+ * of the sticky hero nav as the user scrolls the page. Fills 0→1
+ * over the full scrollable range. Passive scroll listener + rAF
+ * throttling so the bar can't drop frames on low-end mobile. Uses
+ * transform: scaleX so the browser composites on the GPU and
+ * avoids layout thrash.
+ */
+function ScrollProgress() {
+  const [pct, setPct] = useState(0);
+  useEffect(() => {
+    let rafId = 0;
+    const tick = () => {
+      const max =
+        (document.documentElement.scrollHeight || 0) - window.innerHeight;
+      const y = window.scrollY;
+      setPct(max > 0 ? Math.min(1, Math.max(0, y / max)) : 0);
+      rafId = 0;
+    };
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(tick);
+    };
+    tick();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
+  }, []);
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-white/5 overflow-hidden"
+      style={{ top: "env(safe-area-inset-top, 0px)" }}
+    >
+      <div
+        className="h-full origin-left"
+        style={{
+          background:
+            "linear-gradient(90deg,#22d3ee,#fdba74 55%,#facc15)",
+          transform: `scaleX(${pct.toFixed(4)})`,
+        }}
+      />
+    </div>
   );
 }
 
