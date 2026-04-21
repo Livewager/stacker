@@ -177,7 +177,17 @@ function StackerPageInner() {
               </span>
             </div>
             <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.95]">
-              Lock in. Stack clean.
+              Lock in. Stack{" "}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+                }}
+              >
+                clean
+              </span>
+              .
             </h2>
             <p className="text-sm md:text-base text-gray-400 mt-2 max-w-lg">
               Pick a chip, then tap to start. Space or Enter works too. Low on
