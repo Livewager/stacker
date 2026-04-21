@@ -187,7 +187,7 @@ export function LtcDepositPanel() {
         {!signedIn ? (
           <button
             onClick={login}
-            className="w-full py-3 rounded-xl font-bold text-black transition hover:brightness-110"
+            className="w-full py-3 rounded-xl font-bold text-black transition cursor-pointer hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             style={{ background: "linear-gradient(90deg,#22d3ee,#0891b2)" }}
           >
             Connect Internet Identity to continue
@@ -196,7 +196,7 @@ export function LtcDepositPanel() {
           <button
             onClick={runDeposit}
             disabled={busy}
-            className="w-full py-3 rounded-xl font-bold text-black transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 rounded-xl font-bold text-black transition cursor-pointer hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             style={{ background: "linear-gradient(90deg,#fdba74,#f97316)" }}
           >
             {busy ? "Confirming…" : `Deposit ${amount || "?"} LTC`}
