@@ -181,7 +181,7 @@ export default function AccountPage() {
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         onClick={copyPrincipal}
-                        className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-200 hover:border-white/30 hover:text-white transition"
+                        className="text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-md border border-white/15 text-gray-200 hover:border-white/30 hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
                       >
                         {copied ? "Copied" : "Copy"}
                       </button>
