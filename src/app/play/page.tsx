@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import AppHeader from "@/components/AppHeader";
 import OnboardingNudge from "@/components/OnboardingNudge";
+import { HeroTower } from "@/components/stacker/HeroTower";
 
 type Game = {
   href: string;
@@ -267,8 +268,12 @@ export default function PlayHubPage() {
                     {g.tagline}
                   </p>
 
-                  <div className="mb-4 rounded-xl overflow-hidden border border-white/5 bg-black/40 aspect-[5/2]">
-                    <GamePreview kind={g.preview} />
+                  {/* Full Stacker hero animation, centered. Portrait
+                      3:4 frame wraps the 7×15 tower comfortably; the
+                      HeroTower SVG preserves aspect-ratio internally
+                      so the grid always centers horizontally. */}
+                  <div className="mb-4 mx-auto w-full max-w-[380px] aspect-[3/4]">
+                    <HeroTower showBadges entrance={false} />
                   </div>
 
                   <ul className="space-y-1.5 mb-5">
@@ -427,107 +432,3 @@ function ParallaxCard({
   );
 }
 
-// Per-game animated previews. Inline SVG + framer-motion so the
-// cards render a living peek at each mechanic. Loops continuously
-// rather than hover-only so mobile sees them too.
-// ---------------------------------------------------------------
-
-function GamePreview({ kind }: { kind: "stacker" }) {
-  // Single game today — switch lives here so adding a second preview
-  // later stays a local edit.
-  void kind;
-  return <StackerPreview />;
-}
-
-function StackerPreview() {
-  const reduced = useReducedMotion();
-  const BASE_BLOCKS = 4; // four stacked blocks at the bottom
-  return (
-    <svg
-      viewBox="0 0 200 80"
-      className="w-full h-full"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id="stk-bg" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#0c2437" />
-          <stop offset="100%" stopColor="#020b18" />
-        </linearGradient>
-        <linearGradient id="stk-block" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#fdba74" />
-          <stop offset="100%" stopColor="#f97316" />
-        </linearGradient>
-      </defs>
-      <rect width="200" height="80" fill="url(#stk-bg)" />
-
-      {/* Grid dots */}
-      {Array.from({ length: 10 }, (_, c) =>
-        Array.from({ length: 4 }, (_, r) => (
-          <circle
-            key={`${c}-${r}`}
-            cx={20 + c * 18}
-            cy={20 + r * 16}
-            r="0.6"
-            fill="rgba(255,255,255,0.06)"
-          />
-        )),
-      )}
-
-      {/* Stacked blocks */}
-      {Array.from({ length: BASE_BLOCKS }, (_, i) => (
-        <rect
-          key={i}
-          x={60}
-          y={70 - i * 10}
-          width={80}
-          height={8}
-          rx={1.5}
-          fill="url(#stk-block)"
-          opacity={0.92}
-        />
-      ))}
-
-      {/* Moving slider on top */}
-      <motion.rect
-        y={20}
-        width={80}
-        height={8}
-        rx={1.5}
-        fill="#fdba74"
-        initial={{ x: 20 }}
-        animate={reduced ? { x: 60 } : { x: [20, 100, 20] }}
-        transition={{
-          duration: 3.2,
-          repeat: reduced ? 0 : Infinity,
-          ease: "easeInOut",
-        }}
-        style={{
-          filter: "drop-shadow(0 0 6px rgba(253,186,116,0.45))",
-        }}
-      />
-
-      {/* "TAP" prompt pulsing to hint the mechanic */}
-      {!reduced && (
-        <motion.g
-          initial={{ opacity: 0.2 }}
-          animate={{ opacity: [0.2, 0.85, 0.2] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <rect x="160" y="6" width="32" height="12" rx="2" fill="rgba(253,186,116,0.15)" stroke="rgba(253,186,116,0.6)" strokeWidth="0.6" />
-          <text
-            x="176"
-            y="14"
-            fontSize="6"
-            fontFamily="ui-monospace, SFMono-Regular, monospace"
-            fill="#fdba74"
-            textAnchor="middle"
-            letterSpacing="1"
-          >
-            TAP
-          </text>
-        </motion.g>
-      )}
-    </svg>
-  );
-}
