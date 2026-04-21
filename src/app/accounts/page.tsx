@@ -49,6 +49,7 @@ import type {
   AccountError,
 } from "@/declarations/points_ledger/points_ledger.did";
 import { ROUTES } from "@/lib/routes";
+import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
@@ -111,24 +112,10 @@ export default function AccountsPage() {
   }, [refresh]);
 
   return (
-    <div className="min-h-screen bg-background text-white">
+    <>
+      <AppHeader />
+      <div className="min-h-screen bg-background text-white">
       <div className="max-w-4xl mx-auto px-5 md:px-8 py-8 md:py-12">
-        <nav className="mb-6 text-[11px] uppercase tracking-widest text-gray-500 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link
-            href={ROUTES.play}
-            className="hover:text-white transition focus:outline-none focus-visible:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
-          >
-            ← Games
-          </Link>
-          <span className="text-gray-700">·</span>
-          <Link
-            href={ROUTES.icrc}
-            className="hover:text-white transition focus:outline-none focus-visible:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
-          >
-            /icrc
-          </Link>
-        </nav>
-
         <header className="mb-8">
           <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
             Account manager
@@ -189,7 +176,8 @@ export default function AccountsPage() {
           are optional but the only way to recover a cleared browser.
         </footer>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
