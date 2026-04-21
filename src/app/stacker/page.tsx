@@ -386,9 +386,10 @@ function Hero() {
 
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-baseline gap-1.5 shrink-0 snap-start">
-      <span className="uppercase tracking-widest text-gray-500">{label}</span>
-      <span className="font-mono text-white">{value}</span>
+    <span className="inline-flex items-center gap-2 shrink-0 snap-start rounded-full border border-white/10 bg-white/[0.03] pl-2 pr-2.5 py-1">
+      <span aria-hidden className="h-1 w-1 rounded-full bg-cyan-300/60" />
+      <span className="text-[10px] uppercase tracking-widest text-gray-500">{label}</span>
+      <span className="font-mono text-xs text-white tabular-nums">{value}</span>
     </span>
   );
 }
