@@ -339,7 +339,14 @@ export function StackerWager({ onStart, disabled, rankedLocked = false }: Props)
             "Free ranked round — no stake, no prize, taps captured."
           ) : insufficient ? (
             <span className="text-orange-300">
-              Balance below {stake} LWP. Deposit or pick a smaller chip.
+              Balance below {stake} LWP.{" "}
+              <Link
+                href={ROUTES.deposit}
+                className="underline underline-offset-2 hover:text-orange-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/60 rounded-sm"
+              >
+                Deposit
+              </Link>{" "}
+              or pick a smaller chip.
             </span>
           ) : (
             <>
