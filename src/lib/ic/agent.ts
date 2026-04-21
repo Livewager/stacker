@@ -54,11 +54,8 @@ async function getAgent(identity?: Identity): Promise<HttpAgent> {
   const fp = identity ? identity.getPrincipal().toText() : "anonymous";
   if (cachedAgent && cachedIdentityFingerprint === fp) return cachedAgent;
   const agent = new HttpAgent({ host: HOST, identity });
-  // Local replica — fetch root key once. On IC mainnet this step is
-  // a footgun (skips cert validation), hence the process.env gate.
   await agent.fetchRootKey().catch(() => {
-    // Swallow: happens if replica is down. Calls later will surface
-    // the real error with a cleaner stack.
+    /* swallow — calls will surface the error with a cleaner stack */
   });
   cachedAgent = agent;
   cachedIdentityFingerprint = fp;
@@ -102,122 +99,233 @@ export function parseLwp(input: string): bigint {
   return wholeBig + BigInt(fracPadded || "0");
 }
 
-/**
- * Dev identity — a plain Ed25519 keypair stored in localStorage.
- *
- * Two storage slots:
- *   - lw-dev-identity-v1  The active-session keypair. Present only
- *                         when the user has clicked "Log in" (fresh
- *                         signup) or "Log in with existing key".
- *   - lw-dev-identity-archive-v1  The last-used keypair preserved
- *                         across logout so "Log back in" works
- *                         without regenerating a new principal.
- *                         Cleared explicitly by the "Clear saved
- *                         key" button.
- *
- * Why two slots: separating "logged in RIGHT NOW" from "have a
- * saved identity" gives a real logout — calls revert to anonymous
- * until the user consciously signs back in — without forcing a new
- * principal on every logout cycle.
- *
- * Scope: local-dev test surface only. Plaintext, no password, no
- * seed. A production deploy would swap the login button for an
- * Internet Identity integration; the rest of the UI wouldn't change.
- */
-const DEV_IDENTITY_KEY = "lw-dev-identity-v1";
-const DEV_IDENTITY_ARCHIVE_KEY = "lw-dev-identity-archive-v1";
+// ==========================================================
+// Identity roster — multiple Ed25519 keypairs per browser
+// ==========================================================
+//
+// Every keypair the browser has ever created or imported is stored
+// in a single localStorage array. The UI uses this to show "you've
+// used N keys on this device" on the signed-out splash and let the
+// user hop between them without losing history.
+//
+// Storage shape:
+//   localStorage["lw-identity-roster-v2"] = IdentityRosterV2 JSON
+//
+// Older slots (v1) from earlier deploys are auto-migrated on load:
+//   - lw-dev-identity-v1          (active session key)
+//   - lw-dev-identity-archive-v1  (last-used key)
+// Both get folded into the v2 roster as a "migrated" entry and
+// removed from the old slots.
 
-/** Read the active session identity from localStorage, if any. */
-export function loadSessionIdentity(): Ed25519KeyIdentity | null {
-  if (typeof window === "undefined") return null;
+const ROSTER_KEY = "lw-identity-roster-v2";
+const LEGACY_ACTIVE_KEY = "lw-dev-identity-v1";
+const LEGACY_ARCHIVE_KEY = "lw-dev-identity-archive-v1";
+
+export interface RosterEntry {
+  /** Principal text — stable, unique across the roster. */
+  principal: string;
+  /** User-assigned nickname. Optional. */
+  label?: string;
+  /** Serialized Ed25519 JSON (["pub hex", "secret hex"]). */
+  secretJson: string;
+  /** ms epoch when this entry was first added. */
+  createdAt: number;
+  /** ms epoch when this entry was last the active session. */
+  lastUsedAt: number;
+  /** How this entry joined the roster. */
+  source: "new" | "imported" | "migrated";
+}
+
+export interface IdentityRosterV2 {
+  version: 2;
+  entries: RosterEntry[];
+  /** Principal of the entry currently "signed in". Null = signed out. */
+  activePrincipal: string | null;
+}
+
+/** Read roster + migrate legacy slots if present. Idempotent. */
+export function loadRoster(): IdentityRosterV2 {
+  if (typeof window === "undefined") {
+    return { version: 2, entries: [], activePrincipal: null };
+  }
+  let roster: IdentityRosterV2;
   try {
-    const raw = window.localStorage.getItem(DEV_IDENTITY_KEY);
-    return raw ? Ed25519KeyIdentity.fromJSON(raw) : null;
+    const raw = window.localStorage.getItem(ROSTER_KEY);
+    roster = raw
+      ? (JSON.parse(raw) as IdentityRosterV2)
+      : { version: 2, entries: [], activePrincipal: null };
+  } catch {
+    roster = { version: 2, entries: [], activePrincipal: null };
+  }
+
+  // Migrate legacy slots. Never overwrites an existing entry with
+  // the same principal — if the user had one key in v1 and it's
+  // already in the roster, we just prune the legacy slot.
+  try {
+    const legacyActive = window.localStorage.getItem(LEGACY_ACTIVE_KEY);
+    const legacyArchive = window.localStorage.getItem(LEGACY_ARCHIVE_KEY);
+    const legacyJsons: string[] = [];
+    if (legacyActive) legacyJsons.push(legacyActive);
+    if (legacyArchive && legacyArchive !== legacyActive) {
+      legacyJsons.push(legacyArchive);
+    }
+    let changed = false;
+    for (const json of legacyJsons) {
+      try {
+        const id = Ed25519KeyIdentity.fromJSON(json);
+        const p = id.getPrincipal().toText();
+        if (!roster.entries.find((e) => e.principal === p)) {
+          const now = Date.now();
+          roster.entries.push({
+            principal: p,
+            secretJson: json,
+            createdAt: now,
+            lastUsedAt: now,
+            source: "migrated",
+          });
+          changed = true;
+          // If the legacy was the active session, make it active.
+          if (json === legacyActive && !roster.activePrincipal) {
+            roster.activePrincipal = p;
+          }
+        }
+      } catch {
+        /* corrupt legacy entry — ignore */
+      }
+    }
+    // Drop legacy slots either way — they're fully represented in
+    // the roster now, and leaving them would confuse future migrations.
+    if (legacyActive) window.localStorage.removeItem(LEGACY_ACTIVE_KEY);
+    if (legacyArchive) window.localStorage.removeItem(LEGACY_ARCHIVE_KEY);
+    if (changed) saveRoster(roster);
+  } catch {
+    /* legacy read failed — carry on with roster as-is */
+  }
+
+  return roster;
+}
+
+function saveRoster(r: IdentityRosterV2): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ROSTER_KEY, JSON.stringify(r));
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Convenience — is any key currently marked active. */
+export function activePrincipalText(): string | null {
+  return loadRoster().activePrincipal;
+}
+
+/** Load the Ed25519 identity for the active principal, if any. */
+export function loadActiveIdentity(): Ed25519KeyIdentity | null {
+  const r = loadRoster();
+  if (!r.activePrincipal) return null;
+  const entry = r.entries.find((e) => e.principal === r.activePrincipal);
+  if (!entry) return null;
+  try {
+    return Ed25519KeyIdentity.fromJSON(entry.secretJson);
   } catch {
     return null;
   }
 }
 
-/** Is there an archived key the user could log back into? */
-export function hasArchivedIdentity(): boolean {
-  if (typeof window === "undefined") return false;
+/** Make the given principal the active session. No-op if absent from roster. */
+export function setActiveRosterEntry(principal: string): Ed25519KeyIdentity | null {
+  const r = loadRoster();
+  const entry = r.entries.find((e) => e.principal === principal);
+  if (!entry) return null;
+  entry.lastUsedAt = Date.now();
+  r.activePrincipal = principal;
+  saveRoster(r);
+  cachedAgent = null;
+  cachedIdentityFingerprint = null;
   try {
-    return window.localStorage.getItem(DEV_IDENTITY_ARCHIVE_KEY) !== null;
+    return Ed25519KeyIdentity.fromJSON(entry.secretJson);
   } catch {
-    return false;
+    return null;
   }
 }
 
-/**
- * Explicit "log in" action. Three modes:
- *   - "resume"     Use the archived key if present; otherwise fall
- *                  through to "new". This is the default CTA behavior.
- *   - "new"        Always generate a fresh keypair. Archives any
- *                  existing key first (so the user can undo).
- *   - "import"     Accepts a JSON-serialized Ed25519KeyIdentity
- *                  string (the same shape toJSON() produces).
- *
- * Returns the resulting identity. After this call, subsequent
- * getLedgerActor(loadSessionIdentity() ?? undefined) calls use it.
- */
-export function loginDevIdentity(
-  mode: "resume" | "new" | "import" = "resume",
-  importJson?: string,
+/** Add a brand-new keypair to the roster + make it active. */
+export function createAndActivateRosterEntry(label?: string): Ed25519KeyIdentity {
+  const id = Ed25519KeyIdentity.generate();
+  const p = id.getPrincipal().toText();
+  const now = Date.now();
+  const r = loadRoster();
+  r.entries.push({
+    principal: p,
+    label,
+    secretJson: JSON.stringify(id.toJSON()),
+    createdAt: now,
+    lastUsedAt: now,
+    source: "new",
+  });
+  r.activePrincipal = p;
+  saveRoster(r);
+  cachedAgent = null;
+  cachedIdentityFingerprint = null;
+  return id;
+}
+
+/** Import a JSON keypair, add it to the roster, make it active. */
+export function importAndActivateRosterEntry(
+  json: string,
+  label?: string,
 ): Ed25519KeyIdentity {
-  if (typeof window === "undefined") {
-    throw new Error("loginDevIdentity requires a browser");
-  }
-
-  let identity: Ed25519KeyIdentity;
-  if (mode === "import") {
-    if (!importJson) throw new Error("importJson required for mode=import");
-    identity = Ed25519KeyIdentity.fromJSON(importJson);
-  } else if (mode === "resume") {
-    const archived = (() => {
-      try {
-        return window.localStorage.getItem(DEV_IDENTITY_ARCHIVE_KEY);
-      } catch {
-        return null;
-      }
-    })();
-    identity = archived
-      ? Ed25519KeyIdentity.fromJSON(archived)
-      : Ed25519KeyIdentity.generate();
+  const id = Ed25519KeyIdentity.fromJSON(json);
+  const p = id.getPrincipal().toText();
+  const now = Date.now();
+  const r = loadRoster();
+  let entry = r.entries.find((e) => e.principal === p);
+  if (!entry) {
+    entry = {
+      principal: p,
+      label,
+      secretJson: json,
+      createdAt: now,
+      lastUsedAt: now,
+      source: "imported",
+    };
+    r.entries.push(entry);
   } else {
-    // "new": archive any existing session or archive so the user
-    // could manually paste it back in via import; then generate.
-    identity = Ed25519KeyIdentity.generate();
+    // Already known — just refresh lastUsedAt + maybe label.
+    entry.lastUsedAt = now;
+    if (label && !entry.label) entry.label = label;
   }
-
-  try {
-    window.localStorage.setItem(
-      DEV_IDENTITY_KEY,
-      JSON.stringify(identity.toJSON()),
-    );
-    window.localStorage.setItem(
-      DEV_IDENTITY_ARCHIVE_KEY,
-      JSON.stringify(identity.toJSON()),
-    );
-  } catch {
-    /* private mode — session identity only */
-  }
-
-  // Bust the cached agent so the next call re-binds with the new identity.
+  r.activePrincipal = p;
+  saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
-
-  return identity;
+  return id;
 }
 
-/**
- * Explicit "log out": remove the active session key but KEEP the
- * archive so "Log back in" works. After this, all agent calls go
- * anonymous until the user logs in again.
- */
-export function logoutDevIdentity(): void {
+/** Rename a roster entry. */
+export function renameRosterEntry(principal: string, label: string): void {
+  const r = loadRoster();
+  const entry = r.entries.find((e) => e.principal === principal);
+  if (!entry) return;
+  entry.label = label.trim() || undefined;
+  saveRoster(r);
+}
+
+/** Remove one entry from the roster. If it was active, log out. */
+export function removeRosterEntry(principal: string): void {
+  const r = loadRoster();
+  r.entries = r.entries.filter((e) => e.principal !== principal);
+  if (r.activePrincipal === principal) r.activePrincipal = null;
+  saveRoster(r);
+  cachedAgent = null;
+  cachedIdentityFingerprint = null;
+}
+
+/** Wipe everything — all keys, active state, roster itself. */
+export function clearRoster(): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(DEV_IDENTITY_KEY);
+    window.localStorage.removeItem(ROSTER_KEY);
   } catch {
     /* ignore */
   }
@@ -225,26 +333,20 @@ export function logoutDevIdentity(): void {
   cachedIdentityFingerprint = null;
 }
 
-/**
- * Nuke-from-orbit: both the session AND the archive are wiped.
- * The next login generates a fresh principal.
- */
-export function forgetDevIdentity(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(DEV_IDENTITY_KEY);
-    window.localStorage.removeItem(DEV_IDENTITY_ARCHIVE_KEY);
-  } catch {
-    /* ignore */
-  }
+/** Log out without touching the roster. */
+export function logoutActiveRosterEntry(): void {
+  const r = loadRoster();
+  r.activePrincipal = null;
+  saveRoster(r);
   cachedAgent = null;
   cachedIdentityFingerprint = null;
 }
 
-/** Export the active session key as a JSON string (for backup). */
-export function exportSessionIdentityJson(): string | null {
-  const id = loadSessionIdentity();
-  return id ? JSON.stringify(id.toJSON()) : null;
+/** Export a roster entry's JSON for backup. */
+export function exportRosterEntryJson(principal: string): string | null {
+  const r = loadRoster();
+  const entry = r.entries.find((e) => e.principal === principal);
+  return entry ? entry.secretJson : null;
 }
 
 export type { Account, TransferArg, MintArgs, BurnArgs, _SERVICE };

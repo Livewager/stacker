@@ -1,71 +1,76 @@
 "use client";
 
 /**
- * /icrc — Testing surface for the on-IC LWP ledger.
+ * /icrc — Full LWP ledger test surface.
  *
  * Auth model:
- *   - No active session → signed-out screen with explicit "Log in"
- *     / "Log in with a fresh key" / "Import key" buttons. Calls to
- *     the canister are anonymous. Rate-limited faucet rejects
- *     anonymous callers, so the signed-out view can still show
- *     ledger metadata + balance lookups but not claim or transfer.
- *   - Active session → the dashboard. All cards use the session
- *     key to sign calls. Header carries a "Log out" button.
+ *   - Signed-out → splash with a roster of every key this browser
+ *     has ever created/imported. Each roster card shows the live
+ *     balance + last faucet claim from the canister, so "which key
+ *     is active?" is answered by the UI, not guesswork. Tap any
+ *     key to log back in, or hit "New key" / "Import key."
+ *   - Signed-in → dashboard with balance banner, faucet, ledger
+ *     metadata, transfer, burn, approve, and block-log viewer.
  *
- * Login/logout are both explicit user actions. No auto-login on
- * page mount — the user sees the signed-out splash first and
- * chooses to generate or resume a key.
+ * Roster storage is explained in src/lib/ic/agent.ts. All of this
+ * is plaintext local-dev only.
  *
- * The key itself lives in localStorage under lw-dev-identity-v1
- * (active) + lw-dev-identity-archive-v1 (last-used, preserved
- * across logout so "Log back in" doesn't force a new principal).
- * Plaintext by design — matches the local-dev scope of this page.
+ * Every destructive action (create-new-while-logged-in, forget a
+ * key, clear all) uses the in-page ConfirmModal below instead of
+ * window.confirm() — matches the site's tone and works on mobile.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Ed25519KeyIdentity } from "@dfinity/identity";
 import { Principal } from "@dfinity/principal";
 import {
   getLedgerActor,
-  loadSessionIdentity,
-  hasArchivedIdentity,
-  loginDevIdentity,
-  logoutDevIdentity,
-  forgetDevIdentity,
-  exportSessionIdentityJson,
+  loadRoster,
+  loadActiveIdentity,
+  setActiveRosterEntry,
+  createAndActivateRosterEntry,
+  importAndActivateRosterEntry,
+  renameRosterEntry,
+  removeRosterEntry,
+  logoutActiveRosterEntry,
+  exportRosterEntryJson,
+  clearRoster,
   accountOf,
   formatLwp,
   parseLwp,
   pointsLedgerCanisterId,
+  type RosterEntry,
+  type IdentityRosterV2,
 } from "@/lib/ic/agent";
 import type {
   _SERVICE,
   FaucetConfigView,
   FaucetStatusView,
   FaucetError,
+  FaucetWindowStatus,
 } from "@/declarations/points_ledger/points_ledger.did";
 import { ROUTES } from "@/lib/routes";
 import { Button } from "@/components/ui/Button";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 
 export default function IcrcPage() {
-  // Identity state. Null = signed out (agent calls go anonymous).
   const [identity, setIdentity] = useState<Ed25519KeyIdentity | null>(null);
+  const [roster, setRoster] = useState<IdentityRosterV2 | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [hasArchive, setHasArchive] = useState(false);
   const [actor, setActor] = useState<_SERVICE | null>(null);
 
-  // Hydrate identity from localStorage on mount. We do NOT
-  // auto-generate a fresh key — that's the whole point of the
-  // explicit login flow. If the user has never logged in, they
-  // see the signed-out splash.
-  useEffect(() => {
-    setMounted(true);
-    setIdentity(loadSessionIdentity());
-    setHasArchive(hasArchivedIdentity());
+  const refreshRoster = useCallback(() => {
+    const r = loadRoster();
+    setRoster(r);
+    setIdentity(loadActiveIdentity());
   }, []);
 
-  // Bind the actor whenever identity changes (signed-in or -out).
+  useEffect(() => {
+    setMounted(true);
+    refreshRoster();
+  }, [refreshRoster]);
+
   useEffect(() => {
     (async () => {
       const a = await getLedgerActor(identity ?? undefined);
@@ -73,35 +78,60 @@ export default function IcrcPage() {
     })();
   }, [identity]);
 
-  const handleLogin = useCallback(
-    (mode: "resume" | "new" | "import", importJson?: string) => {
-      try {
-        const id = loginDevIdentity(mode, importJson);
-        setIdentity(id);
-        setHasArchive(true);
-      } catch (e) {
-        alert((e as Error).message);
-      }
+  const handleActivate = useCallback(
+    (principal: string) => {
+      const id = setActiveRosterEntry(principal);
+      if (id) setIdentity(id);
+      refreshRoster();
     },
-    [],
+    [refreshRoster],
+  );
+
+  const handleCreate = useCallback(() => {
+    const id = createAndActivateRosterEntry();
+    setIdentity(id);
+    refreshRoster();
+  }, [refreshRoster]);
+
+  const handleImport = useCallback(
+    (json: string, label?: string) => {
+      const id = importAndActivateRosterEntry(json, label);
+      setIdentity(id);
+      refreshRoster();
+    },
+    [refreshRoster],
   );
 
   const handleLogout = useCallback(() => {
-    logoutDevIdentity();
+    logoutActiveRosterEntry();
     setIdentity(null);
-  }, []);
+    refreshRoster();
+  }, [refreshRoster]);
 
-  const handleForget = useCallback(() => {
-    if (
-      !window.confirm(
-        "This permanently deletes the saved key. If nobody else has backed it up, any LWP tokens that principal owns are gone forever. Continue?",
-      )
-    )
-      return;
-    forgetDevIdentity();
+  const handleRemove = useCallback(
+    (principal: string) => {
+      removeRosterEntry(principal);
+      if (identity?.getPrincipal().toText() === principal) {
+        setIdentity(null);
+      }
+      refreshRoster();
+    },
+    [identity, refreshRoster],
+  );
+
+  const handleRename = useCallback(
+    (principal: string, label: string) => {
+      renameRosterEntry(principal, label);
+      refreshRoster();
+    },
+    [refreshRoster],
+  );
+
+  const handleClearAll = useCallback(() => {
+    clearRoster();
     setIdentity(null);
-    setHasArchive(false);
-  }, []);
+    refreshRoster();
+  }, [refreshRoster]);
 
   const principal = identity?.getPrincipal().toText() ?? null;
 
@@ -142,21 +172,28 @@ export default function IcrcPage() {
           </p>
         </header>
 
-        {!mounted ? (
+        {!mounted || !roster ? (
           <div className="text-sm text-gray-500">Loading…</div>
-        ) : identity ? (
+        ) : identity && principal ? (
           <SignedInView
             identity={identity}
-            principal={principal!}
+            principal={principal}
             actor={actor}
             onLogout={handleLogout}
-            onForget={handleForget}
+            onSwitch={(p) => handleActivate(p)}
+            onRename={handleRename}
+            roster={roster}
           />
         ) : (
           <SignedOutView
-            hasArchive={hasArchive}
-            onLogin={handleLogin}
+            roster={roster}
             actor={actor}
+            onActivate={handleActivate}
+            onCreate={handleCreate}
+            onImport={handleImport}
+            onRemove={handleRemove}
+            onRename={handleRename}
+            onClearAll={handleClearAll}
           />
         )}
 
@@ -165,10 +202,9 @@ export default function IcrcPage() {
           <code className="font-mono text-gray-400">
             {pointsLedgerCanisterId()}
           </code>
-          . Keys stored in <code>localStorage</code> (<code>lw-dev-identity-v1</code>{" "}
-          active, <code>lw-dev-identity-archive-v1</code> last-used). Plaintext
-          by design for local dev; a production deploy would swap the login
-          card for Internet Identity without changing the rest of the UI.
+          . Keys stored in <code>localStorage</code> under{" "}
+          <code>lw-identity-roster-v2</code>. Plaintext by design for local
+          dev; swap the signed-out card for Internet Identity to ship.
         </footer>
       </div>
     </div>
@@ -176,25 +212,88 @@ export default function IcrcPage() {
 }
 
 // ================================================================
-// Signed-out splash
+// Confirm modal — replaces window.confirm()
+// ================================================================
+
+function ConfirmModal({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  confirmLabel = "Continue",
+  confirmTone = "cyan",
+  destructive = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  confirmTone?: "cyan" | "orange" | "rose" | "violet";
+  destructive?: boolean;
+}) {
+  return (
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title={title}
+      description={description}
+    >
+      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-2">
+        <Button variant="ghost" onClick={onClose} fullWidth className="sm:w-auto">
+          Cancel
+        </Button>
+        <Button
+          tone={destructive ? "rose" : confirmTone}
+          variant={destructive ? "danger" : "primary"}
+          onClick={() => {
+            onConfirm();
+            onClose();
+          }}
+          fullWidth
+          className="sm:w-auto"
+          data-autofocus
+        >
+          {confirmLabel}
+        </Button>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ================================================================
+// Signed-out splash — the roster lives here
 // ================================================================
 
 function SignedOutView({
-  hasArchive,
-  onLogin,
+  roster,
   actor,
+  onActivate,
+  onCreate,
+  onImport,
+  onRemove,
+  onRename,
+  onClearAll,
 }: {
-  hasArchive: boolean;
-  onLogin: (mode: "resume" | "new" | "import", importJson?: string) => void;
+  roster: IdentityRosterV2;
   actor: _SERVICE | null;
+  onActivate: (principal: string) => void;
+  onCreate: () => void;
+  onImport: (json: string, label?: string) => void;
+  onRemove: (principal: string) => void;
+  onRename: (principal: string, label: string) => void;
+  onClearAll: () => void;
 }) {
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importErr, setImportErr] = useState<string | null>(null);
+  const [clearConfirm, setClearConfirm] = useState(false);
 
   const doImport = () => {
     try {
-      onLogin("import", importText.trim());
+      onImport(importText.trim());
       setShowImport(false);
       setImportText("");
       setImportErr(null);
@@ -202,6 +301,13 @@ function SignedOutView({
       setImportErr((e as Error).message);
     }
   };
+
+  // Sort: most-recently-used first so the likely "next login"
+  // candidate is at the top.
+  const sorted = useMemo(
+    () => [...roster.entries].sort((a, b) => b.lastUsedAt - a.lastUsedAt),
+    [roster.entries],
+  );
 
   return (
     <>
@@ -213,52 +319,40 @@ function SignedOutView({
           Signed out
         </div>
         <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-3">
-          Log in to test the canister.
+          {sorted.length === 0
+            ? "Log in to test the canister."
+            : `${sorted.length} key${sorted.length > 1 ? "s" : ""} on this device.`}
         </h2>
         <p className="text-sm text-gray-300 leading-snug mb-5 max-w-xl">
-          Your identity is a local Ed25519 keypair stored in your browser.
-          No email, no password, no server — just a key your browser holds.
-          Click below to generate one (or resume the last one you used).
+          {sorted.length === 0
+            ? "Your identity is a local Ed25519 keypair stored in your browser. Click below to create one."
+            : "Pick a key to log back in, or create a new one. Each key is its own account on the canister — balances don't carry across."}
         </p>
 
-        <div className="flex flex-wrap gap-3 mb-4">
-          {hasArchive ? (
-            <>
-              <Button tone="cyan" size="lg" onClick={() => onLogin("resume")}>
-                Log in (resume last key)
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      "This creates a brand-new principal. Any LWP balance tied to the previous key stays with that key — you can import the JSON back later if you kept a backup. Continue?",
-                    )
-                  )
-                    return;
-                  onLogin("new");
-                }}
-              >
-                Log in with fresh key
-              </Button>
-            </>
-          ) : (
-            <Button tone="cyan" size="lg" onClick={() => onLogin("new")}>
-              Create key & log in
-            </Button>
-          )}
+        <div className="flex flex-wrap gap-3 mb-6">
+          <Button tone="cyan" size="lg" onClick={onCreate}>
+            {sorted.length === 0 ? "Create key & log in" : "New key"}
+          </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="lg"
             onClick={() => setShowImport((v) => !v)}
           >
             {showImport ? "Cancel import" : "Import key"}
           </Button>
+          {sorted.length > 0 && (
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={() => setClearConfirm(true)}
+            >
+              Clear all
+            </Button>
+          )}
         </div>
 
         {showImport && (
-          <div className="rounded-lg border border-white/10 bg-black/30 p-4">
+          <div className="rounded-lg border border-white/10 bg-black/30 p-4 mb-6">
             <label className="block text-[11px] uppercase tracking-widest text-gray-400 mb-2">
               Paste Ed25519 JSON
             </label>
@@ -275,17 +369,40 @@ function SignedOutView({
                 {importErr}
               </div>
             )}
-            <Button tone="cyan" size="sm" onClick={doImport} disabled={!importText.trim()}>
+            <Button
+              tone="cyan"
+              size="sm"
+              onClick={doImport}
+              disabled={!importText.trim()}
+            >
               Import & log in
             </Button>
           </div>
         )}
 
+        {/* Roster */}
+        {sorted.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-2">
+              Keys on this device
+            </div>
+            {sorted.map((e) => (
+              <RosterCard
+                key={e.principal}
+                entry={e}
+                actor={actor}
+                onActivate={() => onActivate(e.principal)}
+                onRemove={() => onRemove(e.principal)}
+                onRename={(label) => onRename(e.principal, label)}
+              />
+            ))}
+          </div>
+        )}
+
         <div className="mt-5 text-[11px] text-gray-500 leading-snug">
-          The keypair lives in your browser&apos;s localStorage. Clearing
-          site data erases it — there&apos;s no recovery unless you exported
-          the JSON first. This is a local-dev testing identity, not a
-          production auth scheme.
+          Each key is a local Ed25519 keypair — no email, no password.
+          Clearing site data wipes the roster; export JSON from a
+          signed-in session to back a key up.
         </div>
       </section>
 
@@ -298,18 +415,208 @@ function SignedOutView({
             Signed-out limits
           </div>
           <p>
-            Anonymous callers can query metadata and balances, but mutations
-            (faucet, transfer, approve, burn) require a signed-in principal.
-            Log in above to unlock them.
+            Anonymous callers can query metadata and balances, but
+            mutations (faucet, transfer, approve, burn) require a
+            signed-in principal. Log in above to unlock them.
           </p>
           <p className="mt-2">
-            Recent block log:{" "}
-            <InlineBlockCount actor={actor} />
+            Recent block log: <InlineBlockCount actor={actor} />
           </p>
         </div>
       </div>
+
+      <ConfirmModal
+        open={clearConfirm}
+        onClose={() => setClearConfirm(false)}
+        onConfirm={onClearAll}
+        title="Clear all saved keys?"
+        description="This permanently removes every key in the roster. Any LWP balance tied to a key you don't have backed up is gone."
+        confirmLabel="Yes, clear all"
+        destructive
+      />
     </>
   );
+}
+
+function RosterCard({
+  entry,
+  actor,
+  onActivate,
+  onRemove,
+  onRename,
+}: {
+  entry: RosterEntry;
+  actor: _SERVICE | null;
+  onActivate: () => void;
+  onRemove: () => void;
+  onRename: (label: string) => void;
+}) {
+  const [balance, setBalance] = useState<bigint | null>(null);
+  const [faucet, setFaucet] = useState<FaucetStatusView | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [labelDraft, setLabelDraft] = useState(entry.label ?? "");
+  const [removeConfirm, setRemoveConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!actor) return;
+    (async () => {
+      try {
+        const p = Principal.fromText(entry.principal);
+        const [bal, st] = await Promise.all([
+          actor.icrc1_balance_of(accountOf(entry.principal)),
+          actor.faucet_status(p),
+        ]);
+        setBalance(bal);
+        setFaucet(st);
+      } catch {
+        /* ignore — card just renders "—" */
+      }
+    })();
+  }, [actor, entry.principal]);
+
+  const mostRestrictive = useMemo(() => {
+    if (!faucet) return null;
+    return faucet.windows.find((w) => w.count >= w.max) ?? null;
+  }, [faucet]);
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 hover:border-cyan-300/30 hover:bg-white/[0.05] transition">
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                value={labelDraft}
+                onChange={(e) => setLabelDraft(e.target.value)}
+                placeholder="Nickname"
+                autoFocus
+                className="flex-1 bg-black/40 border border-white/10 rounded-md px-2 py-1 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+              />
+              <Button
+                size="sm"
+                tone="cyan"
+                onClick={() => {
+                  onRename(labelDraft);
+                  setEditing(false);
+                }}
+              >
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditing(false);
+                  setLabelDraft(entry.label ?? "");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-sm font-semibold text-white">
+                {entry.label || "Unnamed key"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-[10px] uppercase tracking-widest text-gray-500 hover:text-cyan-300 transition"
+              >
+                rename
+              </button>
+              <SourceChip source={entry.source} />
+            </div>
+          )}
+          <div className="font-mono text-[11px] text-gray-400 break-all">
+            {entry.principal}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
+            <div className="font-mono">
+              <span className="text-gray-500">Balance:</span>{" "}
+              <span className="text-white tabular-nums">
+                {balance === null ? "—" : `${formatLwp(balance, 4)} LWP`}
+              </span>
+            </div>
+            <div className="font-mono">
+              <span className="text-gray-500">Faucet claims:</span>{" "}
+              <span className="text-white tabular-nums">
+                {faucet?.total_claims.toString() ?? "—"}
+              </span>
+            </div>
+            {mostRestrictive && (
+              <div className="font-mono text-amber-300">
+                locked · {mostRestrictive.label} ·{" "}
+                {formatSeconds(Number(mostRestrictive.seconds_until_next))}
+              </div>
+            )}
+            <div className="font-mono text-gray-500">
+              last used {formatRelTime(entry.lastUsedAt)}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 shrink-0">
+          <Button size="sm" tone="cyan" onClick={onActivate}>
+            Log in
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setRemoveConfirm(true)}
+          >
+            Remove
+          </Button>
+        </div>
+      </div>
+      <ConfirmModal
+        open={removeConfirm}
+        onClose={() => setRemoveConfirm(false)}
+        onConfirm={onRemove}
+        title={`Remove ${entry.label || "this key"}?`}
+        description={`This deletes the key from the roster. If you haven't backed up the JSON, any LWP at ${short(entry.principal)} is unrecoverable.`}
+        confirmLabel="Remove"
+        destructive
+      />
+    </div>
+  );
+}
+
+function SourceChip({ source }: { source: RosterEntry["source"] }) {
+  const map: Record<RosterEntry["source"], { label: string; cls: string }> = {
+    new: {
+      label: "created",
+      cls: "border-cyan-300/40 bg-cyan-300/[0.08] text-cyan-200",
+    },
+    imported: {
+      label: "imported",
+      cls: "border-violet-300/40 bg-violet-300/[0.08] text-violet-200",
+    },
+    migrated: {
+      label: "migrated",
+      cls: "border-amber-300/40 bg-amber-300/[0.08] text-amber-200",
+    },
+  };
+  const { label, cls } = map[source];
+  return (
+    <span
+      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] uppercase tracking-widest border font-mono ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function formatRelTime(ms: number): string {
+  const delta = Date.now() - ms;
+  if (delta < 60_000) return "just now";
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+  if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h ago`;
+  return `${Math.floor(delta / 86_400_000)}d ago`;
+}
+
+function short(p: string): string {
+  if (p.length <= 14) return p;
+  return `${p.slice(0, 8)}…${p.slice(-5)}`;
 }
 
 function InlineBlockCount({ actor }: { actor: _SERVICE | null }) {
@@ -333,24 +640,30 @@ function InlineBlockCount({ actor }: { actor: _SERVICE | null }) {
 // ================================================================
 
 function SignedInView({
-  identity,
+  identity: _identity,
   principal,
   actor,
   onLogout,
-  onForget,
+  onSwitch,
+  onRename,
+  roster,
 }: {
   identity: Ed25519KeyIdentity;
   principal: string;
   actor: _SERVICE | null;
   onLogout: () => void;
-  onForget: () => void;
+  onSwitch: (principal: string) => void;
+  onRename: (principal: string, label: string) => void;
+  roster: IdentityRosterV2;
 }) {
   return (
     <>
       <SessionHeader
         principal={principal}
+        roster={roster}
         onLogout={onLogout}
-        onForget={onForget}
+        onSwitch={onSwitch}
+        onRename={onRename}
       />
       <BalanceBanner actor={actor} principal={principal} />
       <FaucetCard actor={actor} principal={principal} />
@@ -370,16 +683,29 @@ function SignedInView({
 
 function SessionHeader({
   principal,
+  roster,
   onLogout,
-  onForget,
+  onSwitch,
+  onRename,
 }: {
   principal: string;
+  roster: IdentityRosterV2;
   onLogout: () => void;
-  onForget: () => void;
+  onSwitch: (principal: string) => void;
+  onRename: (principal: string, label: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [exportJson, setExportJson] = useState<string | null>(null);
+  const [showSwitch, setShowSwitch] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [labelDraft, setLabelDraft] = useState<string>("");
+
+  const activeEntry = roster.entries.find((e) => e.principal === principal);
+
+  useEffect(() => {
+    setLabelDraft(activeEntry?.label ?? "");
+  }, [activeEntry?.label]);
 
   const copy = async () => {
     await navigator.clipboard.writeText(principal);
@@ -388,10 +714,12 @@ function SessionHeader({
   };
 
   const handleExport = () => {
-    const j = exportSessionIdentityJson();
+    const j = exportRosterEntryJson(principal);
     setExportJson(j);
     setShowExport(true);
   };
+
+  const otherKeys = roster.entries.filter((e) => e.principal !== principal);
 
   return (
     <section
@@ -399,14 +727,59 @@ function SessionHeader({
       className="mb-6 rounded-2xl border border-emerald-300/30 bg-emerald-300/[0.04] p-5 md:p-6"
     >
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[10px] uppercase tracking-widest text-emerald-300">
               Signed in
             </span>
+            {activeEntry && !editing && (
+              <>
+                <span className="text-sm font-semibold text-white ml-1">
+                  {activeEntry.label || "Unnamed key"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-[10px] uppercase tracking-widest text-gray-500 hover:text-cyan-300 transition"
+                >
+                  rename
+                </button>
+              </>
+            )}
+            {editing && (
+              <>
+                <input
+                  value={labelDraft}
+                  onChange={(e) => setLabelDraft(e.target.value)}
+                  autoFocus
+                  placeholder="Nickname"
+                  className="ml-1 bg-black/40 border border-white/10 rounded px-2 py-0.5 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+                />
+                <Button
+                  size="sm"
+                  tone="cyan"
+                  onClick={() => {
+                    onRename(principal, labelDraft);
+                    setEditing(false);
+                  }}
+                >
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditing(false);
+                    setLabelDraft(activeEntry?.label ?? "");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
           </div>
-          <div className="font-mono text-sm md:text-base text-white break-all">
+          <div className="font-mono text-xs md:text-sm text-white break-all">
             {principal}
           </div>
         </div>
@@ -421,10 +794,42 @@ function SessionHeader({
         <Button size="sm" variant="ghost" onClick={handleExport}>
           Export key
         </Button>
-        <Button size="sm" variant="danger" onClick={onForget}>
-          Forget key
-        </Button>
+        {otherKeys.length > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowSwitch((v) => !v)}
+          >
+            {showSwitch ? "Hide" : "Switch"} (
+            {otherKeys.length} other
+            {otherKeys.length > 1 ? "s" : ""})
+          </Button>
+        )}
       </div>
+      {showSwitch && otherKeys.length > 0 && (
+        <div className="mt-3 rounded-lg border border-white/10 bg-black/30 p-3 space-y-1.5">
+          <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-1">
+            Switch to
+          </div>
+          {otherKeys.map((e) => (
+            <button
+              key={e.principal}
+              type="button"
+              onClick={() => onSwitch(e.principal)}
+              className="w-full text-left rounded-md px-2 py-1.5 hover:bg-white/[0.05] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-white truncate">
+                  {e.label || "Unnamed key"}
+                </span>
+                <span className="text-[10px] font-mono text-gray-500">
+                  {short(e.principal)}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
       {showExport && exportJson && (
         <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/[0.05] p-3">
           <div className="text-[10px] uppercase tracking-widest text-amber-300 mb-2">
@@ -458,7 +863,7 @@ function SessionHeader({
 }
 
 // ================================================================
-// Session balance banner — headline LWP for the logged-in user
+// Balance banner
 // ================================================================
 
 function BalanceBanner({
@@ -470,7 +875,6 @@ function BalanceBanner({
 }) {
   const [balance, setBalance] = useState<bigint | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
   const refresh = useCallback(async () => {
     if (!actor) return;
@@ -484,8 +888,10 @@ function BalanceBanner({
   }, [actor, principal]);
 
   useEffect(() => {
-    refreshRef.current = refresh;
     refresh();
+    const handler = () => refresh();
+    window.addEventListener("lw-ledger-mutated", handler);
+    return () => window.removeEventListener("lw-ledger-mutated", handler);
   }, [refresh]);
 
   return (
@@ -549,7 +955,6 @@ function FaucetCard({
     refresh();
   }, [refresh]);
 
-  // Tick so countdowns stay fresh.
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick((n) => n + 1), 1000);
@@ -607,13 +1012,12 @@ function FaucetCard({
           Faucet · rate-limited
         </div>
         <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-2">
-          Get freebies.{" "}
-          <span className="text-yellow-300">10 LWP.</span>
+          Get freebies. <span className="text-yellow-300">10 LWP.</span>
         </h2>
         <p className="text-sm text-gray-300 mb-5 max-w-xl leading-snug">
-          The canister checks four rate-limit windows (minute / hour / day /
-          week), confirms your balance is under 100 LWP, and tops off the
-          global daily cap. All enforced server-side.
+          Four rate-limit windows (minute / hour / day / week), plus a
+          100 LWP max-balance gate and a 10,000 LWP / day global cap.
+          All enforced server-side.
         </p>
 
         <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -655,9 +1059,12 @@ function FaucetCard({
               Your limits
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {status.windows.map((w) => {
+              {status.windows.map((w: FaucetWindowStatus) => {
                 const full = w.count >= w.max;
-                const pct = Math.min(100, (Number(w.count) / Number(w.max)) * 100);
+                const pct = Math.min(
+                  100,
+                  (Number(w.count) / Number(w.max)) * 100,
+                );
                 return (
                   <div
                     key={w.label}
@@ -867,7 +1274,7 @@ function MetaItem({
 }
 
 // ================================================================
-// Balance lookup card (arbitrary principal)
+// Balance lookup
 // ================================================================
 
 function BalanceQueryCard({
@@ -927,7 +1334,9 @@ function BalanceQueryCard({
       ) : bal !== null ? (
         <div className="text-2xl font-black tabular-nums">
           {formatLwp(bal, 4)}{" "}
-          <span className="text-xs text-gray-400 font-mono font-normal">LWP</span>
+          <span className="text-xs text-gray-400 font-mono font-normal">
+            LWP
+          </span>
         </div>
       ) : (
         <div className="text-sm text-gray-500">—</div>
@@ -940,7 +1349,7 @@ function BalanceQueryCard({
 }
 
 // ================================================================
-// Transfer card (authenticated)
+// Transfer card
 // ================================================================
 
 function TransferCard({
@@ -956,10 +1365,7 @@ function TransferCard({
   const [kind, setKind] = useState<"ok" | "err" | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const disabled = useMemo(
-    () => !actor || !principal,
-    [actor, principal],
-  );
+  const disabled = useMemo(() => !actor || !principal, [actor, principal]);
 
   const send = async () => {
     if (!actor) return;
@@ -1123,7 +1529,7 @@ function BurnCard({ actor }: { actor: _SERVICE | null }) {
 }
 
 // ================================================================
-// ICRC-2 approve card
+// Approve card
 // ================================================================
 
 function ApproveCard({ actor }: { actor: _SERVICE | null }) {
@@ -1218,7 +1624,7 @@ function ApproveCard({ actor }: { actor: _SERVICE | null }) {
 }
 
 // ================================================================
-// Block log viewer — last 20 blocks
+// Block log
 // ================================================================
 
 function BlockLogCard({ actor }: { actor: _SERVICE | null }) {
@@ -1243,20 +1649,20 @@ function BlockLogCard({ actor }: { actor: _SERVICE | null }) {
       const total = Number(len);
       const take = Math.min(20, total);
       const start = BigInt(Math.max(0, total - take));
-      const res = await actor.icrc3_get_blocks([{ start, length: BigInt(take) }]);
+      const res = await actor.icrc3_get_blocks([
+        { start, length: BigInt(take) },
+      ]);
       const parsed = res.blocks
         .map((b) => {
-          const m = findMap(b.block);
+          const m = findMap(b.block as unknown as IcrcVal);
           const btype = (m && findText(m, "btype")) ?? "?";
           const tx = m && findMap2(m, "tx");
-          const amount = tx
-            ? findNat(tx, "amt")?.toString()
-            : undefined;
+          const amount = tx ? findNat(tx, "amt")?.toString() : undefined;
           const from = tx ? findAccountText(tx, "from") : null;
           const to = tx ? findAccountText(tx, "to") : null;
           return { id: b.id, btype, amount, from, to };
         })
-        .reverse(); // newest first
+        .reverse();
       setBlocks(parsed);
     } catch (e) {
       setErr((e as Error).message);
@@ -1303,7 +1709,9 @@ function BlockLogCard({ actor }: { actor: _SERVICE | null }) {
             <tbody>
               {blocks.map((b) => (
                 <tr key={b.id.toString()} className="border-t border-white/5">
-                  <td className="py-1.5 pr-3 text-gray-400">{b.id.toString()}</td>
+                  <td className="py-1.5 pr-3 text-gray-400">
+                    {b.id.toString()}
+                  </td>
                   <td className="py-1.5 pr-3">
                     <BlockTypeChip btype={b.btype} />
                   </td>
@@ -1313,7 +1721,8 @@ function BlockLogCard({ actor }: { actor: _SERVICE | null }) {
                       : "—"}
                   </td>
                   <td className="py-1.5 pr-3 text-gray-400 truncate max-w-[260px]">
-                    {b.from ? short(b.from) : "∅"} → {b.to ? short(b.to) : "∅"}
+                    {b.from ? short(b.from) : "∅"} →{" "}
+                    {b.to ? short(b.to) : "∅"}
                   </td>
                 </tr>
               ))}
@@ -1337,18 +1746,15 @@ function BlockTypeChip({ btype }: { btype: string }) {
             ? "border-yellow-300/40 bg-yellow-300/[0.08] text-yellow-200"
             : "border-white/20 bg-white/[0.05] text-gray-300";
   return (
-    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] border ${color}`}>
+    <span
+      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] border ${color}`}
+    >
       {btype}
     </span>
   );
 }
 
-function short(p: string): string {
-  if (p.length <= 14) return p;
-  return `${p.slice(0, 8)}…${p.slice(-5)}`;
-}
-
-// ICRC3Value shape helpers — the blocks are nested Map/Nat/Text/Blob.
+// ICRC3Value helpers
 type IcrcVal =
   | { Map: Array<[string, IcrcVal]> }
   | { Nat: bigint }
@@ -1385,7 +1791,6 @@ function findAccountText(
   m: Array<[string, IcrcVal]>,
   key: string,
 ): string | null {
-  // Account blocks are encoded as Array(Blob principal, maybe subaccount blob).
   const entry = m.find(([k]) => k === key);
   if (!entry) return null;
   const v = entry[1];
