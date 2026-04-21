@@ -50,7 +50,17 @@ function DepositInner() {
             Deposit
           </div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight">
-            Fund your wallet.
+            Fund your{" "}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+              }}
+            >
+              wallet
+            </span>
+            .
           </h1>
           <p className="text-sm text-gray-400 mt-1 max-w-xl">
             Litecoin is live in demo mode. Card + bank rails are queued for the next
