@@ -358,7 +358,7 @@ function Hero() {
             transition={{ duration: 0.5, delay: 0.18 }}
             className="flex flex-wrap items-center gap-3"
           >
-            <a href="#play" className="lw-hero-cta-primary">
+            <a href="#play">
               <Button tone="cyan" size="lg">
                 Play now
               </Button>

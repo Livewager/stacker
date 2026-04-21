@@ -144,7 +144,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
   // override — the chip-level gaps we've been auditing were call
   // sites that used raw <button>, not this primitive.
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-lg font-bold transition disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+    "inline-flex items-center justify-center gap-2 rounded-lg font-bold transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
   const variantCls =
     variant === "primary"
