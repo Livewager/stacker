@@ -208,13 +208,13 @@ export default function AppFooter() {
           <div className="md:ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link
               href={ROUTES.settings}
-              className="hover:text-white transition"
+              className="hover:text-white transition focus:outline-none focus-visible:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
             >
               Settings
             </Link>
             <Link
               href={ROUTES.leaderboard}
-              className="hover:text-white transition"
+              className="hover:text-white transition focus:outline-none focus-visible:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
             >
               Leaderboard
             </Link>
@@ -226,7 +226,7 @@ export default function AppFooter() {
               <Link
                 href={ROUTES.settings}
                 aria-label="Demo mode disclosure — open Settings"
-                className="text-gray-400 underline-offset-2 hover:text-white hover:underline transition"
+                className="text-gray-400 underline-offset-2 hover:text-white hover:underline transition focus:outline-none focus-visible:text-white focus-visible:underline focus-visible:ring-2 focus-visible:ring-cyan-300/40 rounded-sm"
                 title="Device prefs + data reset"
               >
                 demo
