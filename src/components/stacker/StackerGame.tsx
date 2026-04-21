@@ -1153,7 +1153,7 @@ export default function StackerGame({
             onClick={() => setSettingsOpen(true)}
             aria-label="In-game settings"
             title="In-game settings"
-            className="pointer-events-auto rounded-full border border-white/15 bg-black/40 backdrop-blur-sm p-1.5 text-gray-300 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+            className="pointer-events-auto cursor-pointer rounded-full border border-white/15 bg-black/40 backdrop-blur-sm p-1.5 text-gray-300 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden>
               <path
