@@ -1513,61 +1513,53 @@ function WagerPrimer() {
               ))}
             </div>
 
-            {/* STACKER-R1 — primary CTA on the wager panel. Routes to
-                /deposit which is the only way to grow LWP beyond the
-                15-free starter balance. Sits under the chip grid so
-                the gaze lands: "what are my chip options? ... okay
-                I need more LWP → DEPOSIT NOW". Orange gradient
-                matches the tone used in the top nav + hero CTA rail
-                so the deposit affordance reads as one consistent
-                accent across the page. */}
-            {/* STACKER-R1 + SUPER-13 — primary CTA sized to match the
-                chip row above. Originally two stacked lines (Deposit
-                now + subtitle) made the button ~72px while the chip
-                row is ~54px, leaving the button visually dwarfing
-                the chips it sits under. Collapsed to a single line
-                with the subtitle inlined as a subtle dot-separated
-                suffix on md+, dropped on mobile where space is
-                tight. Preserves the sheen sweep + hover scale. */}
-            <Link href={ROUTES.deposit} aria-label="Deposit LWP to unlock bigger chips">
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.35, delay: 0.28 }}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                className="relative overflow-hidden rounded-xl cursor-pointer text-center py-2.5 px-4 border border-orange-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 flex items-center justify-center gap-2"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #fdba74, #f97316 50%, #ea580c)",
-                }}
-              >
-                {/* Sheen sweep */}
+            {/* STACKER-R1 + SUPER-13 + SUPER-15 — primary CTA on
+                the wager panel. Originally a full-bleed orange bar
+                stretching the entire right column (~540px wide), which
+                visually crushed the 4 chip tiles above it. Now pill-
+                sized: inline-flex with its own width (not w-full),
+                centered under the chip grid via a flex wrapper. Reads
+                as 'here's one clear action' rather than 'here's a
+                massive orange stripe'. Routes to /deposit — the only
+                way to grow LWP beyond the 15-free starter. */}
+            <div className="flex justify-center pt-1">
+              <Link href={ROUTES.deposit} aria-label="Deposit LWP to unlock bigger chips">
                 <motion.span
-                  aria-hidden
-                  className="absolute inset-y-0 -left-1/3 w-1/3 pointer-events-none"
+                  initial={{ opacity: 0, y: 6 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.35, delay: 0.28 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="relative inline-flex items-center gap-2 overflow-hidden rounded-full cursor-pointer py-2 px-5 border border-orange-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 shadow-[0_8px_22px_-10px_rgba(249,115,22,0.65)]"
                   style={{
                     background:
-                      "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-                    mixBlendMode: "soft-light",
+                      "linear-gradient(90deg, #fdba74, #f97316 50%, #ea580c)",
                   }}
-                  animate={{ left: ["-33%", "133%"] }}
-                  transition={{
-                    duration: 2.6,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    repeatDelay: 1.2,
-                  }}
-                />
-                <span className="relative font-black uppercase tracking-widest text-sm text-black">
-                  Deposit now →
-                </span>
-                <span className="relative hidden md:inline text-[10px] uppercase tracking-widest font-mono text-black/60">
-                  · fund your next round
-                </span>
-              </motion.div>
-            </Link>
+                >
+                  {/* Sheen sweep */}
+                  <motion.span
+                    aria-hidden
+                    className="absolute inset-y-0 -left-1/3 w-1/3 pointer-events-none"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
+                      mixBlendMode: "soft-light",
+                    }}
+                    animate={{ left: ["-33%", "133%"] }}
+                    transition={{
+                      duration: 2.6,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      repeatDelay: 1.2,
+                    }}
+                  />
+                  <span className="relative font-black uppercase tracking-widest text-sm text-black">
+                    Deposit now →
+                  </span>
+                </motion.span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
