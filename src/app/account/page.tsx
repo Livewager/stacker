@@ -74,7 +74,18 @@ export default function AccountPage() {
               demo
             </Pill>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight">Your profile</h1>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+            Your{" "}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage:
+                  "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+              }}
+            >
+              profile
+            </span>
+          </h1>
           <p className="text-sm text-gray-400 mt-1 max-w-xl">
             Internet Identity-backed. You hold the keys. This page reads from the public
             ICRC-3 block log — nothing here is stored on our servers.
