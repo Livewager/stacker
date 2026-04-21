@@ -133,9 +133,14 @@ function StackerPageInner() {
       {/* -------------- WAGER PRIMER -------------- */}
       <WagerPrimer />
 
-      {/* Fair play explainer lives on its own /fair-play route (linked
-          from AppHeader). Previously inlined here; moved out so the
-          /stacker landing stays focused on the game itself. */}
+      {/* Fair play explainer lives on its own /fair-play route, linked
+          from the WagerPrimer's demo-pill row above (STACKER-24). The
+          /stacker page overrides AppHeader with its own custom hero
+          nav so the global header link isn't reachable from here —
+          the inline contextual link inside WagerPrimer is the only
+          path forward to fair-play details for users who land on
+          /stacker. Previously inlined here; moved out so the /stacker
+          landing stays focused on the game itself. */}
 
       {/* -------------- PLAY -------------- */}
       <section
@@ -1100,6 +1105,12 @@ function WagerPrimer() {
             <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
               <Pill status="demo">demo</Pill>
               <span>ICRC-1 wager canister shipping next.</span>
+              <Link
+                href={ROUTES.fairPlay}
+                className="ml-1 underline underline-offset-2 text-cyan-300/80 hover:text-cyan-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 rounded-sm"
+              >
+                How fair play works →
+              </Link>
             </div>
           </div>
 
