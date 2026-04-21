@@ -196,7 +196,11 @@ function RouteTransitionBar() {
       <div
         className="h-full origin-left"
         style={{
-          background: "linear-gradient(90deg,#22d3ee,#0891b2)",
+          // SUPER-30 — match the signature cyan→orange→yellow ramp
+          // used by /stacker's ScrollProgress (SUPER-05) and the
+          // hero title's pulsing glow. Route nav = site-level
+          // progress; gradient should match the site-level accent.
+          background: "linear-gradient(90deg,#22d3ee,#fdba74 55%,#facc15)",
           transform: `scaleX(${progress / 100})`,
           transition: "transform 160ms ease-out",
           width: "100%",
