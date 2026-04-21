@@ -532,9 +532,16 @@ function SignedOutPrompt({ onLogin, loading }: { onLogin: () => void; loading: b
       <p className="text-sm text-gray-300 max-w-md mx-auto mb-5 leading-snug">
         Internet Identity — no password, no seed phrase. A passkey anchor you control.
       </p>
-      <Button onClick={onLogin} loading={loading} tone="cyan" size="lg">
-        {loading ? "Connecting…" : "Connect Internet Identity"}
-      </Button>
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <Button onClick={onLogin} loading={loading} tone="cyan" size="lg">
+          {loading ? "Connecting…" : "Connect Internet Identity"}
+        </Button>
+        <Link href="/stacker">
+          <Button variant="outline" size="lg">
+            Try Stacker first
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }
