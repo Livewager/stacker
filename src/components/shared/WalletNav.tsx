@@ -278,7 +278,7 @@ export function WalletNav() {
       {/* Deposit CTA — scrolls to the wallet card. */}
       <a
         href={ANCHORS.dropWallet}
-        className="text-xs md:text-sm px-3 md:px-4 py-2 md:py-2 h-9 md:h-auto inline-flex items-center rounded-lg text-black font-bold transition hover:brightness-110 shrink-0"
+        className="text-xs md:text-sm px-3 md:px-4 py-2 md:py-2 h-9 md:h-auto inline-flex items-center rounded-lg text-black font-bold transition hover:brightness-110 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         style={{ background: "linear-gradient(90deg,#fdba74,#f97316)" }}
       >
         Deposit
