@@ -106,17 +106,20 @@
     scroll-behavior: smooth;
   }
   /* scroll-margin-top offset for deep-link anchors (POLISH-83,
-     re-audited POLISH-278). 72px ≈ AppHeader intrinsic height
-     (~60px: py-2.5 + 40px logo) + ~12px breathing room. When adding
-     a new deep-link-navigable section anywhere in the app (e.g.
-     /account#tips, /wallet#advanced), apply the .lw-section class
-     so the hash-nav lands below the sticky header instead of
-     hiding under it. Today only /settings uses deep-link anchors
+     re-audited POLISH-278, fixed STACKER-29). AppHeader intrinsic
+     height ≈ 60px (py-2.5 + 40px logo) + 12px breathing room = 72px
+     baseline. But notched iPhones add safe-area-inset-top (~47px on
+     iPhone 14+ portrait) to the header via the inset wrapper in
+     AppHeader.tsx — without accounting for it here, hash navigation
+     to /settings#display, #audio, etc. lands *under* the header on
+     those devices. Adding the inset to the offset keeps the anchor
+     visible across notched + non-notched viewports.
+     Today only /settings uses deep-link anchors
      (#display, #audio, #cap, #account, #diagnostics, #data), but
      the class is globally safe — it's zero-cost for sections that
      never receive hash navigation. */
   .lw-section {
-    scroll-margin-top: 72px;
+    scroll-margin-top: calc(72px + env(safe-area-inset-top, 0px));
   }
   @media (max-width: 767px) {
     html.lw-snap-page {
