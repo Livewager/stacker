@@ -361,7 +361,7 @@ export function StackerWager({ onStart, disabled, rankedLocked = false }: Props)
           type="button"
           onClick={() => onStart(effectiveStake, mode)}
           disabled={disabled || insufficient}
-          className="rounded-lg px-4 py-2 text-sm font-bold text-black transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-lg px-4 py-2 text-sm font-bold text-black transition cursor-pointer hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           style={{
             background:
               mode === "ranked"
