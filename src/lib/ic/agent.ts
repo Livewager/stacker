@@ -103,49 +103,148 @@ export function parseLwp(input: string): bigint {
 }
 
 /**
- * Dev identity — a localStorage-backed Ed25519 keypair. Used on the
- * /icrc test surface so faucet_claim (which rejects anonymous) has
- * a stable principal to call from. NOT suitable for production; a
- * real deploy uses Internet Identity instead. The key is stored in
- * plain JSON (insecure) since local dfx is already a single-user
- * plaintext environment — matches the scope the user asked for.
+ * Dev identity — a plain Ed25519 keypair stored in localStorage.
+ *
+ * Two storage slots:
+ *   - lw-dev-identity-v1  The active-session keypair. Present only
+ *                         when the user has clicked "Log in" (fresh
+ *                         signup) or "Log in with existing key".
+ *   - lw-dev-identity-archive-v1  The last-used keypair preserved
+ *                         across logout so "Log back in" works
+ *                         without regenerating a new principal.
+ *                         Cleared explicitly by the "Clear saved
+ *                         key" button.
+ *
+ * Why two slots: separating "logged in RIGHT NOW" from "have a
+ * saved identity" gives a real logout — calls revert to anonymous
+ * until the user consciously signs back in — without forcing a new
+ * principal on every logout cycle.
+ *
+ * Scope: local-dev test surface only. Plaintext, no password, no
+ * seed. A production deploy would swap the login button for an
+ * Internet Identity integration; the rest of the UI wouldn't change.
  */
 const DEV_IDENTITY_KEY = "lw-dev-identity-v1";
+const DEV_IDENTITY_ARCHIVE_KEY = "lw-dev-identity-archive-v1";
 
-export function getOrCreateDevIdentity(): Ed25519KeyIdentity {
-  if (typeof window === "undefined") {
-    // SSR path — just mint a fresh one; the real browser session
-    // will re-hit this and create/load its own.
-    return Ed25519KeyIdentity.generate();
-  }
+/** Read the active session identity from localStorage, if any. */
+export function loadSessionIdentity(): Ed25519KeyIdentity | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(DEV_IDENTITY_KEY);
-    if (raw) {
-      return Ed25519KeyIdentity.fromJSON(raw);
-    }
+    return raw ? Ed25519KeyIdentity.fromJSON(raw) : null;
   } catch {
-    /* storage disabled — fall through to new identity */
+    return null;
   }
-  const fresh = Ed25519KeyIdentity.generate();
-  try {
-    window.localStorage.setItem(DEV_IDENTITY_KEY, JSON.stringify(fresh.toJSON()));
-  } catch {
-    /* ignore — session-only identity */
-  }
-  return fresh;
 }
 
-/** Wipe the dev identity (used by "regenerate" button on the /icrc page). */
-export function clearDevIdentity(): void {
+/** Is there an archived key the user could log back into? */
+export function hasArchivedIdentity(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(DEV_IDENTITY_ARCHIVE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Explicit "log in" action. Three modes:
+ *   - "resume"     Use the archived key if present; otherwise fall
+ *                  through to "new". This is the default CTA behavior.
+ *   - "new"        Always generate a fresh keypair. Archives any
+ *                  existing key first (so the user can undo).
+ *   - "import"     Accepts a JSON-serialized Ed25519KeyIdentity
+ *                  string (the same shape toJSON() produces).
+ *
+ * Returns the resulting identity. After this call, subsequent
+ * getLedgerActor(loadSessionIdentity() ?? undefined) calls use it.
+ */
+export function loginDevIdentity(
+  mode: "resume" | "new" | "import" = "resume",
+  importJson?: string,
+): Ed25519KeyIdentity {
+  if (typeof window === "undefined") {
+    throw new Error("loginDevIdentity requires a browser");
+  }
+
+  let identity: Ed25519KeyIdentity;
+  if (mode === "import") {
+    if (!importJson) throw new Error("importJson required for mode=import");
+    identity = Ed25519KeyIdentity.fromJSON(importJson);
+  } else if (mode === "resume") {
+    const archived = (() => {
+      try {
+        return window.localStorage.getItem(DEV_IDENTITY_ARCHIVE_KEY);
+      } catch {
+        return null;
+      }
+    })();
+    identity = archived
+      ? Ed25519KeyIdentity.fromJSON(archived)
+      : Ed25519KeyIdentity.generate();
+  } else {
+    // "new": archive any existing session or archive so the user
+    // could manually paste it back in via import; then generate.
+    identity = Ed25519KeyIdentity.generate();
+  }
+
+  try {
+    window.localStorage.setItem(
+      DEV_IDENTITY_KEY,
+      JSON.stringify(identity.toJSON()),
+    );
+    window.localStorage.setItem(
+      DEV_IDENTITY_ARCHIVE_KEY,
+      JSON.stringify(identity.toJSON()),
+    );
+  } catch {
+    /* private mode — session identity only */
+  }
+
+  // Bust the cached agent so the next call re-binds with the new identity.
+  cachedAgent = null;
+  cachedIdentityFingerprint = null;
+
+  return identity;
+}
+
+/**
+ * Explicit "log out": remove the active session key but KEEP the
+ * archive so "Log back in" works. After this, all agent calls go
+ * anonymous until the user logs in again.
+ */
+export function logoutDevIdentity(): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(DEV_IDENTITY_KEY);
   } catch {
     /* ignore */
   }
-  // Also bust the agent cache so the next call re-binds with fresh identity.
   cachedAgent = null;
   cachedIdentityFingerprint = null;
+}
+
+/**
+ * Nuke-from-orbit: both the session AND the archive are wiped.
+ * The next login generates a fresh principal.
+ */
+export function forgetDevIdentity(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(DEV_IDENTITY_KEY);
+    window.localStorage.removeItem(DEV_IDENTITY_ARCHIVE_KEY);
+  } catch {
+    /* ignore */
+  }
+  cachedAgent = null;
+  cachedIdentityFingerprint = null;
+}
+
+/** Export the active session key as a JSON string (for backup). */
+export function exportSessionIdentityJson(): string | null {
+  const id = loadSessionIdentity();
+  return id ? JSON.stringify(id.toJSON()) : null;
 }
 
 export type { Account, TransferArg, MintArgs, BurnArgs, _SERVICE };
