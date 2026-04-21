@@ -150,13 +150,19 @@ function StackerPageInner() {
             />
           </Link>
           <div className="flex items-center gap-2">
-            <Link href={ROUTES.play} className="hidden sm:inline-flex">
-              <Button variant="outline" size="sm">
+            <Link
+              href={ROUTES.play}
+              className="hidden sm:inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Button variant="outline" size="sm" tabIndex={-1}>
                 ← All games
               </Button>
             </Link>
-            <Link href={ROUTES.deposit}>
-              <Button tone="orange" size="sm">
+            <Link
+              href={ROUTES.deposit}
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Button tone="orange" size="sm" tabIndex={-1}>
                 Deposit now
               </Button>
             </Link>
@@ -238,8 +244,11 @@ function StackerPageInner() {
               </Link>
             </p>
           </div>
-          <Link href={ROUTES.deposit} className="hidden md:block">
-            <Button tone="orange" size="lg">
+          <Link
+            href={ROUTES.deposit}
+            className="hidden md:block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Button tone="orange" size="lg" tabIndex={-1}>
               Deposit LWP
             </Button>
           </Link>
@@ -414,8 +423,11 @@ function Hero() {
                 Play now
               </Button>
             </a>
-            <Link href={ROUTES.deposit}>
-              <Button tone="orange" size="lg">
+            <Link
+              href={ROUTES.deposit}
+              className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <Button tone="orange" size="lg" tabIndex={-1}>
                 Deposit LWP
               </Button>
             </Link>
