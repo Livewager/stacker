@@ -81,9 +81,9 @@ export const metadata: Metadata = {
     images: ["/opengraph-image"],
   },
   icons: {
-    icon: [{ url: "/assets/logo43.png", type: "image/png" }],
-    apple: [{ url: "/assets/logo43.png", type: "image/png" }],
-    shortcut: ["/assets/logo43.png"],
+    icon: [{ url: "/assets/stacker-logo.png", type: "image/png" }],
+    apple: [{ url: "/assets/stacker-logo.png", type: "image/png" }],
+    shortcut: ["/assets/stacker-logo.png"],
   },
   category: "games",
 };

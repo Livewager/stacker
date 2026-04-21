@@ -200,13 +200,17 @@ export default function AppHeader() {
           className="inline-flex items-center shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
         >
           <Image
-            src="/assets/logo43.png"
-            alt="Livewager · Stacker"
-            width={200}
-            height={64}
+            src="/assets/stacker-logo.png"
+            alt="Stacker"
+            width={1536}
+            height={1024}
             priority
-            sizes="200px"
-            style={{ height: 40, width: "auto", objectFit: "contain" }}
+            sizes="(max-width: 768px) 180px, 240px"
+            // 3× the old 40px chrome height — new logo was requested
+            // larger, so the sticky header now carries a proper 120px
+            // brand mark. Intrinsic aspect 3:2 (1536×1024) means width
+            // comes out ~180px on desktop.
+            style={{ height: 120, width: "auto", objectFit: "contain" }}
           />
         </Link>
 

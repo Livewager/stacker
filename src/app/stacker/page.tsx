@@ -432,13 +432,16 @@ function StackerPageInner() {
             aria-label="Livewager Stacker home"
           >
             <Image
-              src="/assets/logo43.png"
-              alt="Livewager · Stacker"
-              width={440}
-              height={144}
+              src="/assets/stacker-logo.png"
+              alt="Stacker"
+              width={1536}
+              height={1024}
               priority
-              sizes="(max-width: 768px) 220px, 360px"
-              style={{ height: 56, width: "auto", objectFit: "contain" }}
+              sizes="(max-width: 768px) 260px, 360px"
+              // 3× the old 56px hero logo — matches the global chrome
+              // bump from AppHeader. 3:2 aspect means width lands
+              // around 252px at 168px tall.
+              style={{ height: 168, width: "auto", objectFit: "contain" }}
             />
           </Link>
           <div className="flex items-center gap-2">
@@ -1356,13 +1359,19 @@ function HowItWorks() {
   );
 }
 
-// ---- How-it-works mini animations ----
+// =============================================================
+// How-it-works mini animations — clean hero-style
+// =============================================================
 //
-// Shared rAF tick so all three cards animate in lockstep with a
-// common virtual clock. Avoids three independent rAF loops wasting
-// cycles; also lets the animations feel coordinated rather than
-// staggered when the user scans the row. Each sub-animation derives
-// its own phase by masking `t` over its own loop duration.
+// The prior SVG-blob animations read as busy (gradient-fill rects,
+// arrow brackets, red flash text). The hero tower above uses a
+// very restrained grammar: flat rects with subtle tone fill, soft
+// stroke, drop-shadow glow at the tone color, grid dots at 0.08
+// opacity, no chrome. These mini-anims mirror that grammar so the
+// "Three rules" row reads as a zoomed-in view of the same mechanic.
+//
+// Shared rAF tick — one loop drives all three anims. Cheaper and
+// coordinates the row when scanning.
 
 function useSharedTick(reduced: boolean | null) {
   const [t, setT] = useState(0);
@@ -1380,478 +1389,282 @@ function useSharedTick(reduced: boolean | null) {
   return reduced ? 0 : t;
 }
 
-/**
- * 01 · CORE — the slider bounce. Full 7-cell grid dots in the
- * background, a 2-block stack of previous locks at the bottom, and
- * the active slider sweeping side-to-side with a motion trail +
- * cyan glow. Triangle-wave phase with a sin-squared ease so the
- * direction reversals feel elastic, not robotic. Grid dots light
- * up as the slider passes over them.
- */
-function SliderAnim() {
-  const reduced = useReducedMotion();
-  const t = useSharedTick(reduced);
-  const LOOP = 2800;
-  const p = (t % LOOP) / LOOP; // 0..1
-  // Triangle phase: 0 → 1 → 0 with sin-ease at the edges so
-  // reversals feel elastic.
-  const tri = 1 - Math.abs(p * 2 - 1);
-  const eased = 0.5 - 0.5 * Math.cos(tri * Math.PI);
-  // 7-col grid in a 100-wide viewbox: each cell 12 wide, starting
-  // at x=6 so there's 4px gutter each side.
+// Tone-keyed palette so each card's chip color maps to its
+// animation fill directly.
+const TONE_FILLS = {
+  cyan: {
+    block: "#22d3ee",
+    ghost: "rgba(34,211,238,0.28)",
+    glow: "rgba(34,211,238,0.9)",
+  },
+  violet: {
+    block: "#a78bfa",
+    ghost: "rgba(167,139,250,0.28)",
+    glow: "rgba(167,139,250,0.9)",
+  },
+  orange: {
+    block: "#f97316",
+    ghost: "rgba(249,115,22,0.28)",
+    glow: "rgba(250,204,21,0.7)",
+  },
+} as const;
+
+// Shared chrome: 100×60 viewbox + grid dots at 0.08 opacity.
+function AnimChrome({ children }: { children: React.ReactNode }) {
   const CELL = 12;
-  const X0 = 6;
-  const sliderW = CELL * 3; // 3-cell slider
-  const maxX = 100 - X0 * 2 - sliderW;
-  const sliderX = X0 + eased * maxX;
-
-  // Grid dots light up when the slider is overhead.
-  const overCol = (col: number) => {
-    const colX = X0 + col * CELL + CELL / 2;
-    return colX > sliderX && colX < sliderX + sliderW;
-  };
-
+  const X0 = 8;
   return (
     <svg
       viewBox="0 0 100 60"
       preserveAspectRatio="xMidYMid meet"
       className="absolute inset-0 w-full h-full"
     >
-      <defs>
-        <linearGradient id="core-slider" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#67e8f9" />
-          <stop offset="100%" stopColor="#06b6d4" />
-        </linearGradient>
-        <linearGradient id="core-stack" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#0e7490" />
-          <stop offset="100%" stopColor="#164e63" />
-        </linearGradient>
-        <radialGradient id="core-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(34,211,238,0.55)" />
-          <stop offset="100%" stopColor="rgba(34,211,238,0)" />
-        </radialGradient>
-      </defs>
-
-      {/* Soft top-of-card ambient glow that pulses with the slider */}
-      {!reduced && (
-        <circle
-          cx={sliderX + sliderW / 2}
-          cy={18}
-          r={20}
-          fill="url(#core-glow)"
-          opacity={0.5}
-        />
-      )}
-
-      {/* Grid dots — 7 cols × 3 rows, brighter when slider is above */}
       {Array.from({ length: 7 }, (_, c) =>
-        Array.from({ length: 3 }, (_, r) => {
-          const lit = r === 1 && overCol(c);
-          return (
-            <circle
-              key={`${c}-${r}`}
-              cx={X0 + c * CELL + CELL / 2}
-              cy={30 + r * 9}
-              r={lit ? 1.1 : 0.6}
-              fill={
-                lit
-                  ? "rgba(103,232,249,0.9)"
-                  : "rgba(255,255,255,0.12)"
-              }
-            />
-          );
-        }),
+        Array.from({ length: 3 }, (_, r) => (
+          <circle
+            key={`${c}-${r}`}
+            cx={X0 + c * CELL - 4}
+            cy={16 + r * 14}
+            r={0.8}
+            fill="rgba(255,255,255,0.08)"
+          />
+        )),
       )}
-
-      {/* Existing stack (3 blocks at the bottom) */}
-      <rect
-        x={X0 + CELL * 2}
-        y={49}
-        width={CELL * 3 - 2}
-        height={8}
-        rx={2}
-        fill="url(#core-stack)"
-      />
-      <rect
-        x={X0 + CELL * 2 + 1}
-        y={40}
-        width={CELL * 3 - 4}
-        height={8}
-        rx={2}
-        fill="url(#core-stack)"
-        opacity={0.85}
-      />
-
-      {/* Motion trail — three fading ghosts behind the slider */}
-      {!reduced &&
-        [0.08, 0.14, 0.2].map((lag, i) => {
-          const px = (((p - lag) % 1) + 1) % 1;
-          const triL = 1 - Math.abs(px * 2 - 1);
-          const eL = 0.5 - 0.5 * Math.cos(triL * Math.PI);
-          const xL = X0 + eL * maxX;
-          return (
-            <rect
-              key={i}
-              x={xL}
-              y={18}
-              width={sliderW - 2}
-              height={8}
-              rx={2}
-              fill="#22d3ee"
-              opacity={0.22 - i * 0.06}
-            />
-          );
-        })}
-
-      {/* Active slider */}
-      <rect
-        x={sliderX}
-        y={18}
-        width={sliderW - 2}
-        height={8}
-        rx={2}
-        fill="url(#core-slider)"
-        style={{ filter: "drop-shadow(0 0 3px rgba(34,211,238,0.8))" }}
-      />
+      {children}
     </svg>
   );
 }
 
 /**
- * 02 · TAP — slider travels in, you tap (finger ring), slider locks
- * with a pulse + ripple, overhang breaks off and falls. Full round-
- * end beat in ~3s loop.
+ * 01 · CORE — slider sweeps side-to-side over an empty slot.
+ * One slider, one small ghost trail, flat fill + drop-shadow glow.
+ */
+function SliderAnim() {
+  const reduced = useReducedMotion();
+  const t = useSharedTick(reduced);
+  const LOOP = 2600;
+  const p = (t % LOOP) / LOOP;
+  const tri = 1 - Math.abs(p * 2 - 1);
+  const eased = 0.5 - 0.5 * Math.cos(tri * Math.PI);
+
+  const LEFT = 10;
+  const RIGHT = 90;
+  const W = 22;
+  const x = LEFT + eased * (RIGHT - LEFT - W);
+  const tone = TONE_FILLS.cyan;
+
+  return (
+    <AnimChrome>
+      {/* Empty slot below — ghost outline implies "above your stack"
+          without drawing a literal stack. */}
+      <rect
+        x={LEFT}
+        y={42}
+        width={RIGHT - LEFT}
+        height={8}
+        rx={2}
+        fill="none"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth={0.5}
+        strokeDasharray="2 2"
+      />
+      {!reduced &&
+        (() => {
+          const lag = 0.08;
+          const px = (((p - lag) % 1) + 1) % 1;
+          const triL = 1 - Math.abs(px * 2 - 1);
+          const eL = 0.5 - 0.5 * Math.cos(triL * Math.PI);
+          const xL = LEFT + eL * (RIGHT - LEFT - W);
+          return (
+            <rect
+              x={xL}
+              y={22}
+              width={W}
+              height={8}
+              rx={2}
+              fill={tone.ghost}
+            />
+          );
+        })()}
+      <rect
+        x={x}
+        y={22}
+        width={W}
+        height={8}
+        rx={2}
+        fill={tone.block}
+        fillOpacity={0.95}
+        style={{ filter: `drop-shadow(0 0 4px ${tone.glow})` }}
+      />
+    </AnimChrome>
+  );
+}
+
+/**
+ * 02 · TAP — slider arrives, locks, overhang falls off. Three
+ * beats. No finger cursor, no ripple ring — the slider visibly
+ * lands on the stack and sheds its overhang, which is enough.
  */
 function LockAnim() {
   const reduced = useReducedMotion();
   const t = useSharedTick(reduced);
   const LOOP = 3200;
-  const p = (t % LOOP) / LOOP; // 0..1
+  const p = (t % LOOP) / LOOP;
 
-  // Phases:
-  //   0.00 → 0.45  slider slides from left toward lock position
-  //   0.45 → 0.55  finger presses + ripple
-  //   0.55 → 0.70  slider snaps to lock position + pulse
-  //   0.70 → 1.00  overhang falls, hold, fade
-  const CELL = 10;
-  const X0 = 8;
-  const lockX = X0 + CELL * 2.3; // where the locked block should end up
-  const sliderW = CELL * 4.5;
-  const stackX = X0 + CELL * 2.3;
-  const stackW = CELL * 3; // stack below is only 3 cells wide
-  const overhang = sliderW - stackW; // portion that falls off
+  const LEFT = 10;
+  const stackX = 42;
+  const stackW = 24;
+  const sliderW = 36;
+  const overhangW = sliderW - stackW;
+  const tone = TONE_FILLS.violet;
 
-  // Slide phase
   let sliderXx = 0;
-  let lockT = 0; // 0..1 during snap
-  let overhangAlive = false; // true when the detached overhang should render
+  let lockT = 0;
+  let overhangAlive = false;
   let overhangY = 0;
   let overhangRot = 0;
   let overhangAlpha = 0;
-  let tapT = 0; // 0..1 during press moment
 
-  if (p < 0.45) {
-    const ease = 1 - Math.pow(1 - p / 0.45, 3);
-    sliderXx = -sliderW + ease * (lockX + sliderW);
-  } else if (p < 0.55) {
-    sliderXx = lockX;
-    tapT = (p - 0.45) / 0.1;
-  } else if (p < 0.7) {
-    sliderXx = lockX;
-    lockT = (p - 0.55) / 0.15;
+  if (p < 0.5) {
+    const ease = 1 - Math.pow(1 - p / 0.5, 3);
+    sliderXx = LEFT - sliderW + ease * (stackX - (LEFT - sliderW));
+  } else if (p < 0.6) {
+    sliderXx = stackX;
+    lockT = (p - 0.5) / 0.1;
   } else {
-    sliderXx = lockX;
+    sliderXx = stackX;
     lockT = 1;
-    // Overhang falls.
-    const fallP = (p - 0.7) / 0.3;
+    const fallP = (p - 0.6) / 0.4;
     overhangAlive = true;
-    overhangY = fallP * fallP * 38; // accelerating drop
-    overhangRot = fallP * 35;
-    overhangAlpha = Math.max(0, 1 - fallP * 1.2);
+    overhangY = fallP * fallP * 32;
+    overhangRot = fallP * 28;
+    overhangAlpha = Math.max(0, 1 - fallP * 1.3);
   }
 
-  // Pulse factor on the locked slider during lockT.
   const pulse =
-    lockT > 0 && lockT < 1
-      ? 1 + Math.sin(lockT * Math.PI) * 0.08
-      : 1;
+    lockT > 0 && lockT < 1 ? 1 + Math.sin(lockT * Math.PI) * 0.1 : 1;
 
   return (
-    <svg
-      viewBox="0 0 100 60"
-      preserveAspectRatio="xMidYMid meet"
-      className="absolute inset-0 w-full h-full"
-    >
-      <defs>
-        <linearGradient id="tap-slider" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#c4b5fd" />
-          <stop offset="100%" stopColor="#8b5cf6" />
-        </linearGradient>
-        <linearGradient id="tap-stack" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#6d28d9" />
-          <stop offset="100%" stopColor="#3b0764" />
-        </linearGradient>
-      </defs>
-
-      {/* Grid dots */}
-      {Array.from({ length: 7 }, (_, c) =>
-        Array.from({ length: 3 }, (_, r) => (
-          <circle
-            key={`${c}-${r}`}
-            cx={X0 + c * CELL + CELL / 2}
-            cy={14 + r * 12}
-            r={0.5}
-            fill="rgba(255,255,255,0.10)"
-          />
-        )),
-      )}
-
-      {/* Stack below (3 cells wide) */}
+    <AnimChrome>
       <rect
         x={stackX}
         y={40}
         width={stackW}
         height={8}
         rx={2}
-        fill="url(#tap-stack)"
+        fill={tone.block}
+        fillOpacity={0.55}
       />
 
-      {/* Active slider — animated via computed transform */}
       {(() => {
         const cx = sliderXx + sliderW / 2;
-        const cy = 28 + 4;
+        const cy = 26;
         return (
           <g
             transform={`translate(${cx} ${cy}) scale(${pulse}) translate(${-cx} ${-cy})`}
           >
             <rect
               x={sliderXx}
-              y={28}
+              y={22}
               width={sliderW}
               height={8}
               rx={2}
-              fill="url(#tap-slider)"
+              fill={tone.block}
+              fillOpacity={0.95}
               style={{
-                filter: `drop-shadow(0 0 ${2 + lockT * 4}px rgba(167,139,250,0.8))`,
+                filter: `drop-shadow(0 0 ${3 + lockT * 5}px ${tone.glow})`,
               }}
             />
           </g>
         );
       })()}
 
-      {/* Lock ripple: expanding ring at the lock point during lockT */}
-      {!reduced && lockT > 0 && (
-        <g opacity={1 - lockT}>
-          <circle
-            cx={lockX + stackW / 2}
-            cy={32}
-            r={2 + lockT * 20}
-            fill="none"
-            stroke="rgba(167,139,250,0.9)"
-            strokeWidth={0.8}
-          />
-          <circle
-            cx={lockX + stackW / 2}
-            cy={32}
-            r={2 + lockT * 14}
-            fill="none"
-            stroke="rgba(196,181,253,0.6)"
-            strokeWidth={0.4}
-          />
-        </g>
-      )}
-
-      {/* Finger/cursor ring appearing at tap moment */}
-      {!reduced && tapT > 0 && (
-        <g
-          transform={`translate(${lockX + stackW / 2}, 32)`}
-          opacity={tapT < 0.5 ? tapT * 2 : (1 - tapT) * 2}
-        >
-          {/* Outer pointer ring */}
-          <circle
-            cx={0}
-            cy={0}
-            r={5 - tapT * 2}
-            fill="none"
-            stroke="rgba(221,214,254,0.95)"
-            strokeWidth={1.2}
-          />
-          {/* Inner dot */}
-          <circle cx={0} cy={0} r={1.2} fill="rgba(221,214,254,1)" />
-        </g>
-      )}
-
-      {/* Falling overhang — the hanging-off piece */}
       {!reduced && overhangAlive && (
         <g
-          transform={`translate(${lockX + stackW + overhang / 2}, ${32 + overhangY}) rotate(${overhangRot})`}
+          transform={`translate(${stackX + stackW + overhangW / 2}, ${26 + overhangY}) rotate(${overhangRot})`}
           opacity={overhangAlpha}
         >
           <rect
-            x={-overhang / 2}
+            x={-overhangW / 2}
             y={-4}
-            width={overhang}
+            width={overhangW}
             height={8}
             rx={2}
-            fill="url(#tap-slider)"
+            fill={tone.block}
+            fillOpacity={0.9}
           />
         </g>
       )}
-    </svg>
+    </AnimChrome>
   );
 }
 
 /**
- * 03 · DECAY — three progressively narrower locks, ending in game-
- * over flash. Sells "zero width = game over" viscerally. Each lock
- * sheds a shard that falls away.
+ * 03 · DECAY — stack narrows row by row. Three rows (5, 4, 3 cells
+ * wide), each lock sheds a shard that falls. Tone ramps cyan →
+ * orange → gold on ascent (matches hero's cool-to-warm rise).
+ * No red flash, no text overlay — the narrowing tells the story.
  */
 function ChopAnim() {
   const reduced = useReducedMotion();
   const t = useSharedTick(reduced);
-  const LOOP = 4800;
+  const LOOP = 4200;
   const p = (t % LOOP) / LOOP;
 
-  // Four phases of the decay story:
-  //   0.00 → 0.25  start — wide block (5) settled on top of (5)
-  //   0.25 → 0.50  first chop — drops to (3) on top of (5); shard A falls
-  //   0.50 → 0.75  second chop — drops to (2) on top of (3); shard B falls
-  //   0.75 → 0.90  third chop — zero-width, game-over flash
-  //   0.90 → 1.00  brief hold + reset fade
   const CELL = 10;
-  const X0 = 8;
+  const centerX = 50;
+  const phase = p < 0.3 ? 0 : p < 0.55 ? 1 : p < 0.8 ? 2 : 3;
+  const widths = [5, 4, 3];
+  const stackedCount = phase === 0 ? 1 : phase === 1 ? 2 : 3;
 
-  // Stacks bottom-up. Base (row 0) = 5 wide, row 1 shrinks, row 2 shrinks.
-  // All anchored on the same centerline for the decay narrative.
-  const centerX = X0 + CELL * 3.5;
-  // What width is the TOP active block in each phase?
-  // And what's the center offset (to sell the chop happening
-  // asymmetrically on one side)?
-  const phase =
-    p < 0.25 ? 0 : p < 0.5 ? 1 : p < 0.75 ? 2 : p < 0.9 ? 3 : 4;
+  let newRowPulse = 0;
+  if (phase === 1 && p < 0.4) newRowPulse = 1 - (p - 0.3) / 0.1;
+  else if (phase === 2 && p < 0.65) newRowPulse = 1 - (p - 0.55) / 0.1;
 
-  // Stacked block widths — row from bottom up.
-  const stackWidths: number[] = [5, 3, 2]; // always shown once locked
-  // Number of stacked blocks currently on the tower.
-  const stackedCount = phase === 0 ? 1 : phase === 1 ? 2 : phase >= 2 ? 3 : 1;
-
-  // During each chop phase transition, emit a falling shard.
-  // Shard spec: (emittedAtPhase, originX, originY, width, color)
   const shards: Array<{
     x: number;
     y: number;
     w: number;
-    vy: number;
     rot: number;
     alpha: number;
   }> = [];
-
-  // Helper: spawn shard during fall window
-  const spawnShard = (phaseStart: number, phaseEnd: number, originX: number, originY: number, w: number) => {
+  const spawnShard = (
+    phaseStart: number,
+    phaseEnd: number,
+    originX: number,
+    originY: number,
+    w: number,
+  ) => {
     if (p < phaseStart || p > phaseEnd) return;
     const age = (p - phaseStart) / (phaseEnd - phaseStart);
     shards.push({
       x: originX,
       y: originY + age * age * 30,
       w,
-      vy: age * 20,
-      rot: age * 40,
+      rot: age * 32,
       alpha: Math.max(0, 1 - age),
     });
   };
+  spawnShard(0.3, 0.55, centerX + CELL * 2, 36, CELL);
+  spawnShard(0.55, 0.8, centerX + CELL * 1.5, 27, CELL);
 
-  // Shard A: chops off the right side when row-1 locks (width 5 → 3).
-  spawnShard(0.25, 0.5, centerX + CELL * 1.2, 30, CELL * 2);
-  // Shard B: chops when row-2 locks (width 3 → 2).
-  spawnShard(0.5, 0.75, centerX + CELL * 0.8, 22, CELL * 1);
-
-  // Zero-width flash during phase 3: red tone + screen shake.
-  const gameOverActive = phase === 3;
-  const flashAlpha =
-    phase === 3
-      ? Math.abs(Math.sin(((p - 0.75) / 0.15) * Math.PI * 6)) * 0.8
-      : 0;
+  const rowFill = (i: number) =>
+    i === 0 ? "#22d3ee" : i === 1 ? "#fb923c" : "#facc15";
+  const rowGlow = (i: number) =>
+    i === 0
+      ? "rgba(34,211,238,0.7)"
+      : i === 1
+        ? "rgba(251,146,60,0.8)"
+        : "rgba(250,204,21,0.9)";
 
   return (
-    <svg
-      viewBox="0 0 100 60"
-      preserveAspectRatio="xMidYMid meet"
-      className="absolute inset-0 w-full h-full"
-    >
-      <defs>
-        <linearGradient id="decay-0" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#fdba74" />
-          <stop offset="100%" stopColor="#b45309" />
-        </linearGradient>
-        <linearGradient id="decay-1" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#fb923c" />
-          <stop offset="100%" stopColor="#c2410c" />
-        </linearGradient>
-        <linearGradient id="decay-2" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#f97316" />
-          <stop offset="100%" stopColor="#9a3412" />
-        </linearGradient>
-        <linearGradient id="decay-red" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#f87171" />
-          <stop offset="100%" stopColor="#991b1b" />
-        </linearGradient>
-        <radialGradient id="decay-flash" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(239,68,68,0.6)" />
-          <stop offset="100%" stopColor="rgba(239,68,68,0)" />
-        </radialGradient>
-      </defs>
-
-      {/* Game-over red flash layer */}
-      {flashAlpha > 0 && (
-        <>
-          <rect
-            x={0}
-            y={0}
-            width={100}
-            height={60}
-            fill="url(#decay-flash)"
-            opacity={flashAlpha}
-          />
-          <text
-            x={50}
-            y={16}
-            textAnchor="middle"
-            fontSize={5}
-            fontFamily="ui-monospace, monospace"
-            fontWeight="bold"
-            letterSpacing="1.5"
-            fill="#fecaca"
-            opacity={flashAlpha}
-          >
-            ZERO WIDTH
-          </text>
-        </>
-      )}
-
-      {/* Grid dots */}
-      {Array.from({ length: 7 }, (_, c) =>
-        Array.from({ length: 4 }, (_, r) => (
-          <circle
-            key={`${c}-${r}`}
-            cx={X0 + c * CELL + CELL / 2}
-            cy={14 + r * 10}
-            r={0.5}
-            fill="rgba(255,255,255,0.08)"
-          />
-        )),
-      )}
-
-      {/* Stack — bottom-up, each row narrower than the last */}
-      {stackWidths.slice(0, stackedCount).map((w, i) => {
-        const y = 48 - i * 9;
+    <AnimChrome>
+      {widths.slice(0, stackedCount).map((w, i) => {
         const rowW = w * CELL;
-        const rowX = centerX - rowW / 2 + (i === 2 ? -CELL / 2 : 0); // row 2 offsets left for drama
-        const grad =
-          i === 0
-            ? "url(#decay-0)"
-            : i === 1
-              ? "url(#decay-1)"
-              : "url(#decay-2)";
+        const rowX = centerX - rowW / 2;
+        const y = 47 - i * 9;
+        const isTop = i === stackedCount - 1;
+        const glowIntensity = isTop ? 4 + newRowPulse * 6 : 2;
         return (
           <rect
             key={i}
@@ -1860,40 +1673,20 @@ function ChopAnim() {
             width={rowW}
             height={8}
             rx={2}
-            fill={grad}
+            fill={rowFill(i)}
+            fillOpacity={isTop ? 0.95 : 0.85}
             style={{
-              filter:
-                i === stackedCount - 1
-                  ? "drop-shadow(0 0 4px rgba(249,115,22,0.7))"
-                  : undefined,
+              filter: `drop-shadow(0 0 ${glowIntensity}px ${rowGlow(i)})`,
             }}
           />
         );
       })}
 
-      {/* Zero-width final block: a single thin sliver that flashes
-          red and breaks. Rendered only in phase 3. */}
-      {gameOverActive && (
-        <rect
-          x={centerX - 2}
-          y={22}
-          width={4}
-          height={8}
-          rx={1}
-          fill="url(#decay-red)"
-          opacity={0.9}
-          style={{
-            filter: "drop-shadow(0 0 6px rgba(239,68,68,0.9))",
-          }}
-        />
-      )}
-
-      {/* Falling shards */}
       {!reduced &&
         shards.map((s, i) => (
           <g
             key={i}
-            transform={`translate(${s.x + s.w / 2}, ${s.y}) rotate(${s.rot})`}
+            transform={`translate(${s.x}, ${s.y}) rotate(${s.rot})`}
             opacity={s.alpha}
           >
             <rect
@@ -1902,38 +1695,12 @@ function ChopAnim() {
               width={s.w}
               height={8}
               rx={2}
-              fill="url(#decay-1)"
+              fill="#fb923c"
+              fillOpacity={0.8}
             />
           </g>
         ))}
-
-      {/* Narrowness indicator — little arrow brackets pointing at
-          the current top row's width. Only shown during active phase. */}
-      {phase > 0 && phase < 3 && (
-        <g opacity={0.6}>
-          {(() => {
-            const topW = stackWidths[stackedCount - 1] * CELL;
-            const topX = centerX - topW / 2;
-            return (
-              <>
-                <path
-                  d={`M ${topX - 4} 12 L ${topX} 14 L ${topX - 4} 16`}
-                  stroke="rgba(251,146,60,0.8)"
-                  strokeWidth={0.8}
-                  fill="none"
-                />
-                <path
-                  d={`M ${topX + topW + 4} 12 L ${topX + topW} 14 L ${topX + topW + 4} 16`}
-                  stroke="rgba(251,146,60,0.8)"
-                  strokeWidth={0.8}
-                  fill="none"
-                />
-              </>
-            );
-          })()}
-        </g>
-      )}
-    </svg>
+    </AnimChrome>
   );
 }
 

@@ -17,13 +17,13 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#020b18",
     icons: [
       {
-        src: "/assets/logo43.png",
+        src: "/assets/stacker-logo.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/assets/logo43.png",
+        src: "/assets/stacker-logo.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
