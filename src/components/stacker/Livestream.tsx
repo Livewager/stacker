@@ -198,7 +198,7 @@ export function Livestream() {
           {/* Top-right viewer/stream label. Plain text, no counter
               spin — over-the-top HUDs read as placeholder. */}
           <div className="absolute top-3 right-3 rounded-full border border-white/10 bg-black/60 backdrop-blur px-2.5 py-1 text-[10px] font-mono uppercase tracking-widest text-gray-300">
-stacker · livewager
+            stacker · livewager
           </div>
 
           {/* Center play glyph — the only "this is a video" cue.

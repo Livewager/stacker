@@ -1328,7 +1328,8 @@ function HowItWorks() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.4 }}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 overflow-hidden"
+            whileHover={{ y: -2 }}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 overflow-hidden transition-[border-color,background-color] hover:border-white/25 hover:bg-white/[0.05]"
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-[10px] font-mono tracking-widest text-gray-500">
