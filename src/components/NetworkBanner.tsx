@@ -108,13 +108,13 @@ export function NetworkBanner() {
         <button
           onClick={onRetry}
           disabled={retrying}
-          className="shrink-0 rounded-md border border-red-400/50 bg-red-500/10 px-2.5 py-1 text-[11px] uppercase tracking-widest text-red-100 hover:bg-red-500/20 transition disabled:opacity-60"
+          className="shrink-0 rounded-md border border-red-400/50 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest text-red-100 hover:bg-red-500/25 hover:border-red-400/70 hover:text-white transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           {retrying ? "Retrying…" : "Retry"}
         </button>
         <button
           onClick={onDismiss}
-          className="shrink-0 rounded-md p-1 text-red-200/80 hover:text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="shrink-0 rounded-md p-1 text-red-200/80 hover:text-white hover:bg-red-500/15 transition cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           aria-label="Dismiss network banner for this session"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
