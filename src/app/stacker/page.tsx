@@ -1253,7 +1253,7 @@ function HeroTower() {
         </div>
         <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-yellow-300/40 bg-yellow-400/[0.08] backdrop-blur-sm px-2 py-0.5 text-[10px] uppercase tracking-widest text-yellow-300 font-mono">
           <span aria-hidden className="h-1 w-1 rounded-full bg-yellow-300" />
-          ×3 prize
+          ×{PAYOUT_MULTIPLIER.win} prize
         </div>
         <div className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/50 backdrop-blur-sm px-2 py-0.5 text-[10px] uppercase tracking-widest text-gray-400 font-mono">
           demo preview
