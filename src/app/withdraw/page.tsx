@@ -486,9 +486,9 @@ function EmptyBalance({ principal }: { principal: string }) {
             Deposit LWP
           </Button>
         </Link>
-        <Link href="/play">
+        <Link href="/stacker">
           <Button variant="outline" size="lg">
-            Or play to win some
+            Or play Stacker
           </Button>
         </Link>
       </div>
