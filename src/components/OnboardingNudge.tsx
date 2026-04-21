@@ -143,22 +143,30 @@ export default function OnboardingNudge() {
       </div>
 
       <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-        <Link href={ROUTES.account} className="inline-flex">
+        <Link
+          href={ROUTES.account}
+          className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
           <Button
             variant="outline"
             onClick={close}
             fullWidth
+            tabIndex={-1}
             className="sm:w-auto"
           >
             Learn more
           </Button>
         </Link>
-        <Link href={ROUTES.stacker} className="inline-flex">
+        <Link
+          href={ROUTES.stacker}
+          data-autofocus
+          className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
           <Button
-            data-autofocus
             onClick={close}
             tone="cyan"
             fullWidth
+            tabIndex={-1}
             className="sm:w-auto"
           >
             Let&apos;s play
