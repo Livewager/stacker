@@ -1583,11 +1583,11 @@ function ChopAnim() {
 // =============================================================
 
 function WagerPrimer() {
-  const chips = [
-    { label: "Free", sub: "no stake" },
-    { label: "5 LWP", sub: "→ 15" },
-    { label: "25 LWP", sub: "→ 75" },
-    { label: "100 LWP", sub: "→ 300" },
+  const chips: Array<{ label: string; sub: string; accent: string }> = [
+    { label: "Free", sub: "no stake", accent: "bg-white/30" },
+    { label: "5 LWP", sub: "→ 15", accent: "bg-cyan-300" },
+    { label: "25 LWP", sub: "→ 75", accent: "bg-orange-300" },
+    { label: "100 LWP", sub: "→ 300", accent: "bg-yellow-300" },
   ];
   return (
     <section className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
@@ -1630,8 +1630,15 @@ function WagerPrimer() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.3, delay: i * 0.06 }}
-                  className="rounded-xl border border-white/10 bg-black/40 p-3 text-center"
+                  className="relative overflow-hidden rounded-xl border border-white/10 bg-black/40 p-3 text-center"
                 >
+                  {/* SUPER-18 — tier accent bar. Cool → warm ramp
+                      (white/30 → cyan → orange → yellow) so the
+                      'bigger stake, hotter reward' story reads as
+                      a visual gradient across the 4 chips without
+                      needing to scan the sub-values. 2px top bar,
+                      full width of each chip. */}
+                  <span aria-hidden className={`absolute inset-x-0 top-0 h-[2px] ${c.accent}`} />
                   <div className="text-sm font-bold text-white">{c.label}</div>
                   <div className="text-[10px] uppercase tracking-widest text-yellow-300/90 font-mono mt-1">
                     {c.sub}
