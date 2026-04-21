@@ -36,6 +36,7 @@ import {
   logoutActiveRosterEntry,
   exportRosterEntryJson,
   clearRoster,
+  loginFromSeedPhrase,
   accountOf,
   formatLwp,
   parseLwp,
@@ -43,6 +44,7 @@ import {
   type RosterEntry,
   type IdentityRosterV2,
 } from "@/lib/ic/agent";
+import { isValidSeedPhrase } from "@/lib/ic/seed";
 import type {
   _SERVICE,
   FaucetConfigView,
@@ -96,6 +98,15 @@ export default function IcrcPage() {
   const handleImport = useCallback(
     (json: string, label?: string) => {
       const id = importAndActivateRosterEntry(json, label);
+      setIdentity(id);
+      refreshRoster();
+    },
+    [refreshRoster],
+  );
+
+  const handleSeedLogin = useCallback(
+    (phrase: string) => {
+      const id = loginFromSeedPhrase(phrase);
       setIdentity(id);
       refreshRoster();
     },
@@ -191,6 +202,7 @@ export default function IcrcPage() {
             onActivate={handleActivate}
             onCreate={handleCreate}
             onImport={handleImport}
+            onSeedLogin={handleSeedLogin}
             onRemove={handleRemove}
             onRename={handleRename}
             onClearAll={handleClearAll}
@@ -273,6 +285,7 @@ function SignedOutView({
   onActivate,
   onCreate,
   onImport,
+  onSeedLogin,
   onRemove,
   onRename,
   onClearAll,
@@ -282,6 +295,7 @@ function SignedOutView({
   onActivate: (principal: string) => void;
   onCreate: () => void;
   onImport: (json: string, label?: string) => void;
+  onSeedLogin: (phrase: string) => void;
   onRemove: (principal: string) => void;
   onRename: (principal: string, label: string) => void;
   onClearAll: () => void;
@@ -289,7 +303,25 @@ function SignedOutView({
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importErr, setImportErr] = useState<string | null>(null);
+  const [showSeed, setShowSeed] = useState(false);
+  const [seedText, setSeedText] = useState("");
+  const [seedErr, setSeedErr] = useState<string | null>(null);
   const [clearConfirm, setClearConfirm] = useState(false);
+
+  const submitSeed = () => {
+    try {
+      if (!isValidSeedPhrase(seedText)) {
+        setSeedErr("Invalid — check spelling and that you have 12 words");
+        return;
+      }
+      onSeedLogin(seedText);
+      setShowSeed(false);
+      setSeedText("");
+      setSeedErr(null);
+    } catch (e) {
+      setSeedErr((e as Error).message);
+    }
+  };
 
   const doImport = () => {
     try {
@@ -340,6 +372,13 @@ function SignedOutView({
           >
             {showImport ? "Cancel import" : "Import key"}
           </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setShowSeed((v) => !v)}
+          >
+            {showSeed ? "Cancel seed" : "Recover with seed phrase"}
+          </Button>
           {sorted.length > 0 && (
             <Button
               variant="ghost"
@@ -350,6 +389,46 @@ function SignedOutView({
             </Button>
           )}
         </div>
+
+        {showSeed && (
+          <div className="rounded-lg border border-white/10 bg-black/30 p-4 mb-6">
+            <label className="block text-[11px] uppercase tracking-widest text-gray-400 mb-2">
+              Enter 12-word seed phrase
+            </label>
+            <textarea
+              value={seedText}
+              onChange={(e) => setSeedText(e.target.value)}
+              rows={3}
+              placeholder="word one two three … twelve"
+              spellCheck={false}
+              className="w-full text-sm bg-black/40 border border-white/10 rounded-md px-3 py-2 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 mb-3"
+            />
+            {seedErr && (
+              <div className="text-xs text-red-300 font-mono mb-3">
+                {seedErr}
+              </div>
+            )}
+            <Button
+              tone="cyan"
+              size="sm"
+              onClick={submitSeed}
+              disabled={!seedText.trim()}
+            >
+              Recover & log in
+            </Button>
+            <div className="mt-3 text-[10px] text-gray-500 leading-snug">
+              Works for phrases you made earlier on{" "}
+              <Link
+                href={ROUTES.accounts}
+                className="text-cyan-300 underline underline-offset-2"
+              >
+                /accounts
+              </Link>
+              . The derived principal must already be an account member;
+              otherwise the key logs in standalone.
+            </div>
+          </div>
+        )}
 
         {showImport && (
           <div className="rounded-lg border border-white/10 bg-black/30 p-4 mb-6">
@@ -594,6 +673,10 @@ function SourceChip({ source }: { source: RosterEntry["source"] }) {
     migrated: {
       label: "migrated",
       cls: "border-amber-300/40 bg-amber-300/[0.08] text-amber-200",
+    },
+    seed: {
+      label: "seed",
+      cls: "border-yellow-300/40 bg-yellow-300/[0.08] text-yellow-200",
     },
   };
   const { label, cls } = map[source];

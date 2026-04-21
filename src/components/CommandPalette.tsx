@@ -339,6 +339,7 @@ export default function CommandPalette() {
       { id: "leaderboard", label: "Leaderboard", hint: ROUTES.leaderboard, run: () => go(ROUTES.leaderboard) },
       { id: "tokens", label: "Tokens · On-chain LWP", hint: ROUTES.tokens, run: () => go(ROUTES.tokens) },
       { id: "icrc", label: "ICRC · Faucet & test ops", hint: ROUTES.icrc, run: () => go(ROUTES.icrc) },
+      { id: "accounts", label: "Accounts · Key manager", hint: ROUTES.accounts, run: () => go(ROUTES.accounts) },
       { id: "settings", label: "Settings", hint: ROUTES.settings, run: () => go(ROUTES.settings) },
       { id: "settings-display", label: "Settings · Display & motion", hint: `${ROUTES.settings}#display`, run: () => go(`${ROUTES.settings}#display`) },
       { id: "settings-audio", label: "Settings · Audio & feedback", hint: `${ROUTES.settings}#audio`, run: () => go(`${ROUTES.settings}#audio`) },

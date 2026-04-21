@@ -210,6 +210,26 @@ type FaucetError = variant {
     };
 };
 
+// -------- Account (multi-key) types --------
+
+type AccountInfo = record {
+    account_id : nat64;
+    members : vec principal;
+    aggregate_balance : nat;
+};
+
+type AccountError = variant {
+    AnonymousCaller;
+    AlreadyMember : record { account_id : nat64 };
+    PrincipalAlreadyMemberElsewhere : record { account_id : nat64 };
+    DuplicateMember;
+    NotMember;
+    AccountNotFound;
+    WouldOrphanAccount;
+    TooManyMembers : record { max : nat32 };
+    AnonymousPrincipal;
+};
+
 service : (InitArgs) -> {
     // ICRC-1 queries
     icrc1_name : () -> (text) query;
@@ -262,4 +282,13 @@ service : (InitArgs) -> {
     faucet_config : () -> (FaucetConfigView) query;
     faucet_status : (principal) -> (FaucetStatusView) query;
     faucet_claim : () -> (variant { Ok : FaucetClaimOk; Err : FaucetError });
+
+    // Multi-key accounts (ICP-05). One account can have many member
+    // principals; faucet rate-limits + balance gates become account-
+    // scoped when the caller is a member.
+    create_account : () -> (variant { Ok : AccountInfo; Err : AccountError });
+    my_account : () -> (opt AccountInfo) query;
+    get_account : (nat64) -> (opt AccountInfo) query;
+    add_account_member : (principal) -> (variant { Ok : AccountInfo; Err : AccountError });
+    remove_account_member : (principal) -> (variant { Ok : AccountInfo; Err : AccountError });
 }

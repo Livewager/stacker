@@ -1,6 +1,24 @@
 export const idlFactory = ({ IDL }) => {
   const ICRC3Value = IDL.Rec();
   const InitArgs = IDL.Record({ 'minter' : IDL.Principal });
+  const AccountInfo = IDL.Record({
+    'account_id' : IDL.Nat64,
+    'members' : IDL.Vec(IDL.Principal),
+    'aggregate_balance' : IDL.Nat,
+  });
+  const AccountError = IDL.Variant({
+    'PrincipalAlreadyMemberElsewhere' : IDL.Record({
+      'account_id' : IDL.Nat64,
+    }),
+    'AccountNotFound' : IDL.Null,
+    'NotMember' : IDL.Null,
+    'WouldOrphanAccount' : IDL.Null,
+    'DuplicateMember' : IDL.Null,
+    'AnonymousPrincipal' : IDL.Null,
+    'TooManyMembers' : IDL.Record({ 'max' : IDL.Nat32 }),
+    'AlreadyMember' : IDL.Record({ 'account_id' : IDL.Nat64 }),
+    'AnonymousCaller' : IDL.Null,
+  });
   const Memo = IDL.Vec(IDL.Nat8);
   const Subaccount = IDL.Vec(IDL.Nat8);
   const Timestamp = IDL.Nat64;
@@ -190,12 +208,22 @@ export const idlFactory = ({ IDL }) => {
     'AmountOverflow' : IDL.Null,
   });
   return IDL.Service({
+    'add_account_member' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Variant({ 'Ok' : AccountInfo, 'Err' : AccountError })],
+        [],
+      ),
     'burn' : IDL.Func(
         [BurnArgs],
         [IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : BurnError })],
         [],
       ),
     'canister_principal' : IDL.Func([], [IDL.Principal], ['query']),
+    'create_account' : IDL.Func(
+        [],
+        [IDL.Variant({ 'Ok' : AccountInfo, 'Err' : AccountError })],
+        [],
+      ),
     'faucet_claim' : IDL.Func(
         [],
         [IDL.Variant({ 'Ok' : FaucetClaimOk, 'Err' : FaucetError })],
@@ -203,6 +231,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'faucet_config' : IDL.Func([], [FaucetConfigView], ['query']),
     'faucet_status' : IDL.Func([IDL.Principal], [FaucetStatusView], ['query']),
+    'get_account' : IDL.Func([IDL.Nat64], [IDL.Opt(AccountInfo)], ['query']),
     'get_minter' : IDL.Func([], [IDL.Principal], ['query']),
     'icrc1_balance_of' : IDL.Func([Account], [IDL.Nat], ['query']),
     'icrc1_decimals' : IDL.Func([], [IDL.Nat8], ['query']),
@@ -272,6 +301,12 @@ export const idlFactory = ({ IDL }) => {
     'mint' : IDL.Func(
         [MintArgs],
         [IDL.Variant({ 'Ok' : IDL.Nat, 'Err' : MintError })],
+        [],
+      ),
+    'my_account' : IDL.Func([], [IDL.Opt(AccountInfo)], ['query']),
+    'remove_account_member' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Variant({ 'Ok' : AccountInfo, 'Err' : AccountError })],
         [],
       ),
     'set_minter' : IDL.Func(

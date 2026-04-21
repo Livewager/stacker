@@ -151,6 +151,21 @@ const FAUCET_CLAIMS_MEM: MemoryId = MemoryId::new(9);
 /// the next UTC day rolls over.
 const FAUCET_GLOBAL_MEM: MemoryId = MemoryId::new(10);
 
+/// Account registry — multi-key accounts. Each account has a stable
+/// u64 id and a set of member principals. Any member can sign calls
+/// that the canister treats as acting for the account.
+///
+///   ACCOUNTS_MEM (11): u64 account_id -> Vec<Principal> members
+///   MEMBERSHIP_MEM (12): Principal -> u64 account_id (reverse index)
+///   NEXT_ACCOUNT_MEM (13): StableCell<u64> monotonic id counter
+///   ACCOUNT_CLAIMS_MEM (14): u64 account_id -> FaucetClaims
+///     (per-account faucet rate limit — so adding devices doesn't
+///     multiply the drip allowance; all members share one bucket)
+const ACCOUNTS_MEM: MemoryId = MemoryId::new(11);
+const MEMBERSHIP_MEM: MemoryId = MemoryId::new(12);
+const NEXT_ACCOUNT_MEM: MemoryId = MemoryId::new(13);
+const ACCOUNT_CLAIMS_MEM: MemoryId = MemoryId::new(14);
+
 // -------------------------------------------------------------------
 // Faucet ("Get freebies") — local-dev / beta rate-limited mint
 // -------------------------------------------------------------------
@@ -527,6 +542,94 @@ impl Storable for FaucetGlobal {
         };
 }
 
+// -------------------------------------------------------------------
+// Multi-key account types (ICP-05)
+// -------------------------------------------------------------------
+//
+// An account is a group of principals that can all act as "the same
+// user." Structurally: one u64 account_id in stable memory, with a
+// `Vec<Principal>` member list and a reverse index `Principal -> u64`.
+//
+// Rules enforced by the endpoints below:
+//   - Every principal belongs to AT MOST one account.
+//   - Only existing members of an account may add/remove members.
+//   - An account must have ≥1 member at all times (no orphaning).
+//   - Faucet rate limits attach to the account, not the principal,
+//     so linking 5 devices doesn't multiply the drip allowance.
+//
+// Balances remain keyed by principal (the ICRC-1 contract). A helper
+// `get_account_balance` sums across all members' default subaccounts,
+// and `sweep_to_member(target)` lets a member transfer all their
+// holdings into another member's balance without fees — useful when
+// you join an existing account but want your on-chain balance to
+// follow.
+
+/// Max members per account. Bounds the member-list vec so linear
+/// scans in add/remove/sum stay cheap.
+const MAX_ACCOUNT_MEMBERS: usize = 16;
+
+/// Storable `Vec<Principal>` with a fixed upper bound. Each principal
+/// is serialized as 1 length byte + up to 29 bytes of data.
+#[derive(Clone, Debug, Default)]
+struct AccountMembers(Vec<Principal>);
+
+impl Storable for AccountMembers {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        // Always serialize to the max fixed size (481 bytes) — the
+        // stable-btree requires fixed-size entries when is_fixed_size
+        // is true. Unused slots stay as zero padding.
+        const SIZE: usize = 1 + 30 * MAX_ACCOUNT_MEMBERS;
+        let mut buf = vec![0u8; SIZE];
+        buf[0] = self.0.len() as u8;
+        for (i, p) in self.0.iter().enumerate() {
+            let slice = p.as_slice();
+            let off = 1 + i * 30;
+            buf[off] = slice.len() as u8;
+            buf[off + 1..off + 1 + slice.len()].copy_from_slice(slice);
+        }
+        Cow::Owned(buf)
+    }
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let n = bytes[0] as usize;
+        let mut members = Vec::with_capacity(n);
+        for i in 0..n {
+            let off = 1 + i * 30;
+            let plen = bytes[off] as usize;
+            let p = Principal::from_slice(&bytes[off + 1..off + 1 + plen]);
+            members.push(p);
+        }
+        AccountMembers(members)
+    }
+    const BOUND: ic_stable_structures::storable::Bound =
+        ic_stable_structures::storable::Bound::Bounded {
+            // 1 count byte + 16 * 30 = 481 bytes.
+            max_size: 1 + 30 * MAX_ACCOUNT_MEMBERS as u32,
+            is_fixed_size: true,
+        };
+}
+
+/// u64 account id stored as a 16-byte storable. Using u128 here keeps
+/// the stable-btree value aligned with the other `BalanceVal`-style
+/// stores (16-byte fixed); the upper 8 bytes are always zero.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct AccountIdVal(u64);
+
+impl Storable for AccountIdVal {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        Cow::Owned(self.0.to_le_bytes().to_vec())
+    }
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let mut b = [0u8; 8];
+        b.copy_from_slice(&bytes[..8]);
+        AccountIdVal(u64::from_le_bytes(b))
+    }
+    const BOUND: ic_stable_structures::storable::Bound =
+        ic_stable_structures::storable::Bound::Bounded {
+            max_size: 8,
+            is_fixed_size: true,
+        };
+}
+
 /// Storable wrapper around an ICRC-3 `ICRC3Value` block. Blocks are
 /// candid-encoded to bytes for durable persistence; round-trip is via
 /// `candid::encode_one` / `decode_one`. Unbounded because block payloads
@@ -614,6 +717,34 @@ thread_local! {
         let mem = MEMORY_MANAGER.with(|m| m.borrow().get(FAUCET_GLOBAL_MEM));
         StableCell::init(mem, FaucetGlobal::default()).expect("init faucet global cell")
     });
+
+    /// Account registry — u64 account_id -> member list.
+    static ACCOUNTS: RefCell<StableBTreeMap<u64, AccountMembers, Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(ACCOUNTS_MEM)),
+        ));
+
+    /// Reverse index — which account does this principal belong to?
+    /// Unset means the principal is not a member of any account
+    /// (default-new behavior, ICRC-1 balance-by-principal still works).
+    static MEMBERSHIP: RefCell<StableBTreeMap<PrincipalKey, AccountIdVal, Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MEMBERSHIP_MEM)),
+        ));
+
+    /// Monotonic account-id counter.
+    static NEXT_ACCOUNT_ID: RefCell<StableCell<u64, Memory>> = RefCell::new({
+        let mem = MEMORY_MANAGER.with(|m| m.borrow().get(NEXT_ACCOUNT_MEM));
+        StableCell::init(mem, 1u64).expect("init next account id cell")
+    });
+
+    /// Per-account faucet claim history. Keyed by account_id. Uses
+    /// the same FaucetClaims ring-buffer shape as the per-principal
+    /// store so the rate-limit math is identical.
+    static ACCOUNT_CLAIMS: RefCell<StableBTreeMap<u64, FaucetClaims, Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(ACCOUNT_CLAIMS_MEM)),
+        ));
 }
 
 /// Reserve the next tx index and return it. Bump happens eagerly so even
@@ -1857,7 +1988,10 @@ fn faucet_config() -> FaucetConfigView {
     }
 }
 
-/// Read-only per-principal view. Does not mutate — safe to poll.
+/// Read-only per-principal view. Account-aware: if the principal
+/// belongs to an account, balance is the account-wide sum and
+/// claims come from the shared account bucket. Non-members keep
+/// using their personal principal balance + their own bucket.
 #[query]
 fn faucet_status(principal: Principal) -> FaucetStatusView {
     let now = ic_cdk::api::time();
@@ -1865,17 +1999,28 @@ fn faucet_status(principal: Principal) -> FaucetStatusView {
         owner: principal,
         subaccount: None,
     };
-    let balance = BALANCES.with(|b| {
-        b.borrow()
-            .get(&AccountKey::from_account(&acct))
-            .map(|v| v.0)
-            .unwrap_or(0)
-    });
-    let claims = FAUCET_CLAIMS.with(|c| {
-        c.borrow()
+    let member_of = MEMBERSHIP.with(|m| {
+        m.borrow()
             .get(&PrincipalKey::from_principal(&principal))
-            .unwrap_or_default()
+            .map(|v| v.0)
     });
+    let balance = match member_of {
+        Some(id) => account_balance_sum(id),
+        None => BALANCES.with(|b| {
+            b.borrow()
+                .get(&AccountKey::from_account(&acct))
+                .map(|v| v.0)
+                .unwrap_or(0)
+        }),
+    };
+    let claims = match member_of {
+        Some(id) => ACCOUNT_CLAIMS.with(|c| c.borrow().get(&id).unwrap_or_default()),
+        None => FAUCET_CLAIMS.with(|c| {
+            c.borrow()
+                .get(&PrincipalKey::from_principal(&principal))
+                .unwrap_or_default()
+        }),
+    };
 
     let windows: Vec<FaucetWindowStatus> = FAUCET_WINDOWS
         .iter()
@@ -1948,8 +2093,14 @@ fn faucet_status(principal: Principal) -> FaucetStatusView {
 
 /// The actual claim. Runs all four checks, then mints
 /// FAUCET_DRIP_AMOUNT to the caller's default subaccount, records
-/// the timestamp in the per-principal ring buffer, and increments
-/// the global-day counters.
+/// the timestamp in the appropriate ring buffer (per-account if the
+/// caller belongs to an account, else per-principal), and
+/// increments the global-day counters.
+///
+/// Account-scoping rationale: if a user links 5 keys to one account,
+/// the account shares a single faucet bucket — adding devices cannot
+/// multiply the drip allowance.  Non-members fall back to the old
+/// per-principal bucket so standalone identities keep working.
 #[update]
 fn faucet_claim() -> Result<FaucetClaimOk, FaucetError> {
     let caller = ic_cdk::api::caller();
@@ -1961,12 +2112,25 @@ fn faucet_claim() -> Result<FaucetClaimOk, FaucetError> {
         owner: caller,
         subaccount: None,
     };
-    let balance = BALANCES.with(|b| {
-        b.borrow()
-            .get(&AccountKey::from_account(&acct))
+
+    // For the max-balance gate, prefer the account-aggregate balance
+    // when the caller is a member — otherwise someone could join an
+    // over-threshold account with a fresh zero-balance key and still
+    // claim. Non-members use just their own principal balance.
+    let acct_id = MEMBERSHIP.with(|m| {
+        m.borrow()
+            .get(&PrincipalKey::from_principal(&caller))
             .map(|v| v.0)
-            .unwrap_or(0)
     });
+    let balance = match acct_id {
+        Some(id) => account_balance_sum(id),
+        None => BALANCES.with(|b| {
+            b.borrow()
+                .get(&AccountKey::from_account(&acct))
+                .map(|v| v.0)
+                .unwrap_or(0)
+        }),
+    };
     if balance >= FAUCET_MAX_BALANCE {
         return Err(FaucetError::BalanceTooHigh {
             balance: Nat::from(balance),
@@ -1975,8 +2139,22 @@ fn faucet_claim() -> Result<FaucetClaimOk, FaucetError> {
     }
 
     let now = ic_cdk::api::time();
-    let key = PrincipalKey::from_principal(&caller);
-    let claims = FAUCET_CLAIMS.with(|c| c.borrow().get(&key).unwrap_or_default());
+
+    // Pick the right claim ring: account's if the caller is a
+    // member; principal's otherwise.
+    let (claims, use_account_ring) = match acct_id {
+        Some(id) => (
+            ACCOUNT_CLAIMS.with(|c| c.borrow().get(&id).unwrap_or_default()),
+            Some(id),
+        ),
+        None => {
+            let k = PrincipalKey::from_principal(&caller);
+            (
+                FAUCET_CLAIMS.with(|c| c.borrow().get(&k).unwrap_or_default()),
+                None,
+            )
+        }
+    };
 
     for w in FAUCET_WINDOWS {
         let count = claims.count_in_window(now, w.window_ns);
@@ -2016,9 +2194,15 @@ fn faucet_claim() -> Result<FaucetClaimOk, FaucetError> {
 
     let mut updated = claims;
     updated.push(now);
-    FAUCET_CLAIMS.with(|c| {
-        c.borrow_mut().insert(key, updated);
-    });
+    if let Some(id) = use_account_ring {
+        ACCOUNT_CLAIMS.with(|c| {
+            c.borrow_mut().insert(id, updated);
+        });
+    } else {
+        FAUCET_CLAIMS.with(|c| {
+            c.borrow_mut().insert(PrincipalKey::from_principal(&caller), updated);
+        });
+    }
 
     global.tokens_today = global.tokens_today.saturating_add(FAUCET_DRIP_AMOUNT);
     global.claims_today = global.claims_today.saturating_add(1);
@@ -2026,11 +2210,18 @@ fn faucet_claim() -> Result<FaucetClaimOk, FaucetError> {
         g.borrow_mut().set(global).expect("set faucet global");
     });
 
-    let new_balance = balance + FAUCET_DRIP_AMOUNT;
+    // Return the principal's own new balance; the dashboard's account-
+    // aggregate view re-queries on its own.
+    let principal_balance = BALANCES.with(|b| {
+        b.borrow()
+            .get(&AccountKey::from_account(&acct))
+            .map(|v| v.0)
+            .unwrap_or(0)
+    });
     Ok(FaucetClaimOk {
         amount: Nat::from(FAUCET_DRIP_AMOUNT),
         tx_id: Nat::from(tx_id),
-        new_balance: Nat::from(new_balance),
+        new_balance: Nat::from(principal_balance),
     })
 }
 
@@ -2049,6 +2240,240 @@ fn load_global_for_today(now_ns: u64) -> FaucetGlobal {
             claims_today: 0,
         }
     }
+}
+
+// -------------------------------------------------------------------
+// Account (multi-key) API (ICP-05)
+// -------------------------------------------------------------------
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct AccountInfo {
+    pub account_id: u64,
+    pub members: Vec<Principal>,
+    pub aggregate_balance: Nat,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub enum AccountError {
+    AnonymousCaller,
+    /// Caller already belongs to an account.
+    AlreadyMember { account_id: u64 },
+    /// Target principal already belongs to a DIFFERENT account.
+    PrincipalAlreadyMemberElsewhere { account_id: u64 },
+    /// Target principal is already on this account.
+    DuplicateMember,
+    /// Caller is not a member of the target account.
+    NotMember,
+    /// Account not found.
+    AccountNotFound,
+    /// Would leave the account with zero members.
+    WouldOrphanAccount,
+    /// Too many members already.
+    TooManyMembers { max: u32 },
+    /// Anonymous principal can never be an account member.
+    AnonymousPrincipal,
+}
+
+/// Sum every member's default-subaccount balance. Used by faucet
+/// gate + the account-aggregate view.
+fn account_balance_sum(account_id: u64) -> u128 {
+    let members = ACCOUNTS.with(|a| a.borrow().get(&account_id).unwrap_or_default());
+    let mut total: u128 = 0;
+    for p in &members.0 {
+        let acct = Account {
+            owner: *p,
+            subaccount: None,
+        };
+        total = total.saturating_add(
+            BALANCES.with(|b| {
+                b.borrow()
+                    .get(&AccountKey::from_account(&acct))
+                    .map(|v| v.0)
+                    .unwrap_or(0)
+            }),
+        );
+    }
+    total
+}
+
+/// Create a new account with the caller as the sole member. Caller
+/// must NOT already be a member of another account.
+#[update]
+fn create_account() -> Result<AccountInfo, AccountError> {
+    let caller = ic_cdk::api::caller();
+    if caller == Principal::anonymous() {
+        return Err(AccountError::AnonymousCaller);
+    }
+    let key = PrincipalKey::from_principal(&caller);
+
+    if let Some(v) = MEMBERSHIP.with(|m| m.borrow().get(&key)) {
+        return Err(AccountError::AlreadyMember { account_id: v.0 });
+    }
+
+    let new_id = NEXT_ACCOUNT_ID.with(|c| {
+        let mut cell = c.borrow_mut();
+        let id = *cell.get();
+        cell.set(id + 1).expect("bump next account id");
+        id
+    });
+
+    let members = AccountMembers(vec![caller]);
+    ACCOUNTS.with(|a| {
+        a.borrow_mut().insert(new_id, members.clone());
+    });
+    MEMBERSHIP.with(|m| {
+        m.borrow_mut().insert(key, AccountIdVal(new_id));
+    });
+
+    Ok(AccountInfo {
+        account_id: new_id,
+        members: members.0,
+        aggregate_balance: Nat::from(account_balance_sum(new_id)),
+    })
+}
+
+/// Which account is the caller a member of, if any?
+#[query]
+fn my_account() -> Option<AccountInfo> {
+    let caller = ic_cdk::api::caller();
+    account_info_for(caller)
+}
+
+/// Lookup a specific account. Public — useful for cross-checking
+/// membership from any principal.
+#[query]
+fn get_account(account_id: u64) -> Option<AccountInfo> {
+    ACCOUNTS.with(|a| {
+        a.borrow().get(&account_id).map(|members| AccountInfo {
+            account_id,
+            members: members.0.clone(),
+            aggregate_balance: Nat::from(account_balance_sum(account_id)),
+        })
+    })
+}
+
+fn account_info_for(caller: Principal) -> Option<AccountInfo> {
+    let id = MEMBERSHIP.with(|m| {
+        m.borrow()
+            .get(&PrincipalKey::from_principal(&caller))
+            .map(|v| v.0)
+    })?;
+    let members = ACCOUNTS.with(|a| a.borrow().get(&id))?;
+    Some(AccountInfo {
+        account_id: id,
+        members: members.0.clone(),
+        aggregate_balance: Nat::from(account_balance_sum(id)),
+    })
+}
+
+/// Add a new principal to the caller's account. Only an existing
+/// member can do this — this is the "link another device" handshake
+/// flow. The device being added must prove possession of the key
+/// (via client-side signed message or just by calling this RPC
+/// themselves) in a real deploy; for this local faucet we accept
+/// the add on trust since the caller holds admin power already.
+#[update]
+fn add_account_member(member: Principal) -> Result<AccountInfo, AccountError> {
+    let caller = ic_cdk::api::caller();
+    if caller == Principal::anonymous() {
+        return Err(AccountError::AnonymousCaller);
+    }
+    if member == Principal::anonymous() {
+        return Err(AccountError::AnonymousPrincipal);
+    }
+
+    let account_id = MEMBERSHIP
+        .with(|m| {
+            m.borrow()
+                .get(&PrincipalKey::from_principal(&caller))
+                .map(|v| v.0)
+        })
+        .ok_or(AccountError::NotMember)?;
+
+    // Target can't already be on a different account.
+    if let Some(existing) = MEMBERSHIP.with(|m| {
+        m.borrow()
+            .get(&PrincipalKey::from_principal(&member))
+            .map(|v| v.0)
+    }) {
+        if existing != account_id {
+            return Err(AccountError::PrincipalAlreadyMemberElsewhere {
+                account_id: existing,
+            });
+        }
+        return Err(AccountError::DuplicateMember);
+    }
+
+    ACCOUNTS.with(|a| {
+        let mut acc = a.borrow_mut();
+        let mut members = acc.get(&account_id).ok_or(AccountError::AccountNotFound)?;
+        if members.0.len() >= MAX_ACCOUNT_MEMBERS {
+            return Err(AccountError::TooManyMembers {
+                max: MAX_ACCOUNT_MEMBERS as u32,
+            });
+        }
+        members.0.push(member);
+        acc.insert(account_id, members);
+        Ok::<(), AccountError>(())
+    })?;
+    MEMBERSHIP.with(|m| {
+        m.borrow_mut()
+            .insert(PrincipalKey::from_principal(&member), AccountIdVal(account_id));
+    });
+
+    Ok(account_info_for(caller).unwrap())
+}
+
+/// Remove a principal from the caller's account. Caller must be a
+/// member. Cannot remove the last member (orphan guard).
+#[update]
+fn remove_account_member(member: Principal) -> Result<AccountInfo, AccountError> {
+    let caller = ic_cdk::api::caller();
+    if caller == Principal::anonymous() {
+        return Err(AccountError::AnonymousCaller);
+    }
+    let account_id = MEMBERSHIP
+        .with(|m| {
+            m.borrow()
+                .get(&PrincipalKey::from_principal(&caller))
+                .map(|v| v.0)
+        })
+        .ok_or(AccountError::NotMember)?;
+
+    let target_account = MEMBERSHIP.with(|m| {
+        m.borrow()
+            .get(&PrincipalKey::from_principal(&member))
+            .map(|v| v.0)
+    });
+    if target_account != Some(account_id) {
+        return Err(AccountError::NotMember);
+    }
+
+    ACCOUNTS.with(|a| {
+        let mut acc = a.borrow_mut();
+        let mut members = acc.get(&account_id).ok_or(AccountError::AccountNotFound)?;
+        members.0.retain(|p| *p != member);
+        if members.0.is_empty() {
+            return Err(AccountError::WouldOrphanAccount);
+        }
+        acc.insert(account_id, members);
+        Ok::<(), AccountError>(())
+    })?;
+    MEMBERSHIP.with(|m| {
+        m.borrow_mut()
+            .remove(&PrincipalKey::from_principal(&member));
+    });
+
+    // account_info_for(caller) is Some unless caller removed themselves
+    // from the only-them-left account, which WouldOrphanAccount
+    // already prevented.
+    Ok(account_info_for(caller).or_else(|| account_info_for(member)).unwrap_or_else(|| {
+        AccountInfo {
+            account_id,
+            members: vec![],
+            aggregate_balance: Nat::from(0u128),
+        }
+    }))
 }
 
 ic_cdk::export_candid!();

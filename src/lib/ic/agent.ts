@@ -133,7 +133,7 @@ export interface RosterEntry {
   /** ms epoch when this entry was last the active session. */
   lastUsedAt: number;
   /** How this entry joined the roster. */
-  source: "new" | "imported" | "migrated";
+  source: "new" | "imported" | "migrated" | "seed";
 }
 
 export interface IdentityRosterV2 {
@@ -347,6 +347,39 @@ export function exportRosterEntryJson(principal: string): string | null {
   const r = loadRoster();
   const entry = r.entries.find((e) => e.principal === principal);
   return entry ? entry.secretJson : null;
+}
+
+/**
+ * Add a seed-phrase-derived identity to the roster and make it
+ * active. Marks the entry as source="seed" so the UI can show it
+ * with a distinct chip.
+ */
+import { seedPhraseToIdentity } from "./seed";
+
+export function loginFromSeedPhrase(phrase: string, label?: string): Ed25519KeyIdentity {
+  const id = seedPhraseToIdentity(phrase);
+  const p = id.getPrincipal().toText();
+  const now = Date.now();
+  const r = loadRoster();
+  let entry = r.entries.find((e) => e.principal === p);
+  if (!entry) {
+    entry = {
+      principal: p,
+      label: label ?? "Seed phrase key",
+      secretJson: JSON.stringify(id.toJSON()),
+      createdAt: now,
+      lastUsedAt: now,
+      source: "seed" as RosterEntry["source"],
+    };
+    r.entries.push(entry);
+  } else {
+    entry.lastUsedAt = now;
+  }
+  r.activePrincipal = p;
+  saveRoster(r);
+  cachedAgent = null;
+  cachedIdentityFingerprint = null;
+  return id;
 }
 
 export type { Account, TransferArg, MintArgs, BurnArgs, _SERVICE };

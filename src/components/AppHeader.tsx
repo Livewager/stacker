@@ -33,6 +33,7 @@ const TABS: Tab[] = [
   { href: ROUTES.withdraw, label: "Withdraw" },
   { href: ROUTES.leaderboard, label: "Leaderboard" },
   { href: ROUTES.icrc, label: "ICRC" },
+  { href: ROUTES.accounts, label: "Keys" },
   { href: ROUTES.fairPlay, label: "Fair play" },
   { href: ROUTES.account, label: "Account" },
   { href: ROUTES.settings, label: "Settings" },

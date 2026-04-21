@@ -6,6 +6,25 @@ export interface Account {
   'owner' : Principal,
   'subaccount' : [] | [Subaccount],
 }
+export type AccountError = {
+    'PrincipalAlreadyMemberElsewhere' : { 'account_id' : bigint }
+  } |
+  { 'AccountNotFound' : null } |
+  { 'NotMember' : null } |
+  { 'WouldOrphanAccount' : null } |
+  { 'DuplicateMember' : null } |
+  { 'AnonymousPrincipal' : null } |
+  { 'TooManyMembers' : { 'max' : number } } |
+  { 'AlreadyMember' : { 'account_id' : bigint } } |
+  { 'AnonymousCaller' : null };
+/**
+ * -------- Account (multi-key) types --------
+ */
+export interface AccountInfo {
+  'account_id' : bigint,
+  'members' : Array<Principal>,
+  'aggregate_balance' : bigint,
+}
 export interface Allowance {
   'allowance' : bigint,
   'expires_at' : [] | [Timestamp],
@@ -190,11 +209,26 @@ export type TransferFromError = {
   { 'TooOld' : null } |
   { 'InsufficientFunds' : { 'balance' : bigint } };
 export interface _SERVICE {
+  'add_account_member' : ActorMethod<
+    [Principal],
+    { 'Ok' : AccountInfo } |
+      { 'Err' : AccountError }
+  >,
   'burn' : ActorMethod<[BurnArgs], { 'Ok' : bigint } | { 'Err' : BurnError }>,
   /**
    * Canister meta
    */
   'canister_principal' : ActorMethod<[], Principal>,
+  /**
+   * Multi-key accounts (ICP-05). One account can have many member
+   * principals; faucet rate-limits + balance gates become account-
+   * scoped when the caller is a member.
+   */
+  'create_account' : ActorMethod<
+    [],
+    { 'Ok' : AccountInfo } |
+      { 'Err' : AccountError }
+  >,
   'faucet_claim' : ActorMethod<
     [],
     { 'Ok' : FaucetClaimOk } |
@@ -205,6 +239,7 @@ export interface _SERVICE {
    */
   'faucet_config' : ActorMethod<[], FaucetConfigView>,
   'faucet_status' : ActorMethod<[Principal], FaucetStatusView>,
+  'get_account' : ActorMethod<[bigint], [] | [AccountInfo]>,
   'get_minter' : ActorMethod<[], Principal>,
   'icrc1_balance_of' : ActorMethod<[Account], bigint>,
   'icrc1_decimals' : ActorMethod<[], number>,
@@ -270,6 +305,12 @@ export interface _SERVICE {
    * Mint / burn (ICP-04) — non-ICRC but indexer-friendly
    */
   'mint' : ActorMethod<[MintArgs], { 'Ok' : bigint } | { 'Err' : MintError }>,
+  'my_account' : ActorMethod<[], [] | [AccountInfo]>,
+  'remove_account_member' : ActorMethod<
+    [Principal],
+    { 'Ok' : AccountInfo } |
+      { 'Err' : AccountError }
+  >,
   'set_minter' : ActorMethod<
     [Principal],
     { 'Ok' : null } |

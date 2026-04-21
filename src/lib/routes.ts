@@ -24,6 +24,7 @@ export const ROUTES = {
   fairPlay: "/fair-play",
   tokens: "/tokens",
   icrc: "/icrc",
+  accounts: "/accounts",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
