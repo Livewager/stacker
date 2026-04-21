@@ -286,6 +286,59 @@ export default function StackerGame({
     true,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Fullscreen toggle. Uses the native Fullscreen API; some Safari
+  // versions prefix it, so we check both. Falls back to a soft
+  // "expanded" CSS class if the API is blocked (iframes in strict
+  // policies, file://) — better to render SOMETHING than fail silent.
+  const toggleFullscreen = useCallback(async () => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void>;
+    };
+    const elx = el as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+    };
+    const alreadyFs = doc.fullscreenElement || doc.webkitFullscreenElement;
+    try {
+      if (alreadyFs) {
+        if (doc.exitFullscreen) await doc.exitFullscreen();
+        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+      } else if (elx.requestFullscreen) {
+        await elx.requestFullscreen();
+      } else if (elx.webkitRequestFullscreen) {
+        await elx.webkitRequestFullscreen();
+      } else {
+        // Fallback: CSS-based soft fullscreen.
+        setIsFullscreen((v) => !v);
+      }
+    } catch {
+      // iOS Safari on iPhone refuses fullscreen on non-<video>
+      // elements; gracefully fall through to the soft mode.
+      setIsFullscreen((v) => !v);
+    }
+  }, []);
+
+  // Sync local state with browser fullscreen changes so the icon
+  // flips correctly when the user hits ESC.
+  useEffect(() => {
+    const onChange = () => {
+      const doc = document as Document & {
+        webkitFullscreenElement?: Element | null;
+      };
+      const active = !!(doc.fullscreenElement || doc.webkitFullscreenElement);
+      setIsFullscreen(active);
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
   const copy = useCopyable();
 
   // Restore best score + best streak once on mount.
@@ -747,6 +800,20 @@ export default function StackerGame({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
+      // Escape exits soft-fullscreen (native browser fullscreen
+      // already handles ESC itself — this branch only runs when
+      // the Fullscreen API was unavailable and we fell back to
+      // the CSS-based fixed-inset mode).
+      if (e.key === "Escape" && isFullscreen) {
+        const doc = document as Document & {
+          webkitFullscreenElement?: Element | null;
+        };
+        if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+          e.preventDefault();
+          setIsFullscreen(false);
+          return;
+        }
+      }
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
         handleTap();
@@ -774,7 +841,7 @@ export default function StackerGame({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleTap, startRound, gateStart]);
+  }, [handleTap, startRound, gateStart, isFullscreen]);
 
   // ----------------------------------------------------------------
   // Render loop
@@ -1179,9 +1246,19 @@ export default function StackerGame({
     return { title: "", sub: "", cta: "" };
   }, [hudState.phase, hudState.score, stake, winMultiplier]);
 
+  // Soft-fullscreen class — kicks in only when isFullscreen is true
+  // AND the browser API path didn't succeed (no :fullscreen pseudo-
+  // class). In browser fullscreen, the native behavior fills the
+  // viewport and this class is a no-op (z-index + fixed just keep
+  // paint consistent); in soft mode, it pins the wrapper to fill
+  // the viewport with the bg-background backdrop.
+  const wrapperCls = isFullscreen
+    ? "fixed inset-0 z-[100] w-full h-full max-w-none aspect-auto rounded-none ring-0 shadow-none bg-background select-none"
+    : "relative mx-auto w-full max-w-[560px] aspect-[3/5] rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-2xl select-none";
+
   return (
     <div
-      className="relative mx-auto w-full max-w-[560px] aspect-[3/5] rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-2xl select-none"
+      className={wrapperCls}
       // touchAction: "manipulation" suppresses the 300ms double-tap-
       // to-zoom wait iOS Safari imposes on ad-hoc tappable elements
       // that aren't obvious buttons. Without it, rhythm taps on the
@@ -1226,6 +1303,31 @@ export default function StackerGame({
         </div>
         <div className="flex items-center gap-2">
           <HudPill label="Best" value={String(hudState.best || "—")} />
+          {/* Fullscreen toggle. Uses the native Fullscreen API on
+              the wrapper div so the whole game surface — canvas +
+              HUD + end-of-round overlay — goes edge-to-edge. ESC
+              exits in both browser-fullscreen and soft-fullscreen
+              paths (handled via the global keydown effect below). */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="pointer-events-auto cursor-pointer rounded-full border border-white/15 bg-black/40 backdrop-blur-sm p-1.5 text-gray-300 hover:text-white hover:border-white/30 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+              aria-hidden
+            >
+              {isFullscreen ? (
+                <path d="M8 4a1 1 0 1 0-2 0v2H4a1 1 0 1 0 0 2h3a1 1 0 0 0 1-1V4Zm4 0a1 1 0 1 1 2 0v2h2a1 1 0 1 1 0 2h-3a1 1 0 0 1-1-1V4Zm-4 12a1 1 0 1 1-2 0v-2H4a1 1 0 1 1 0-2h3a1 1 0 0 1 1 1v3Zm4 0a1 1 0 1 0 2 0v-2h2a1 1 0 1 0 0-2h-3a1 1 0 0 0-1 1v3Z" />
+              ) : (
+                <path d="M4 3a1 1 0 0 0-1 1v3a1 1 0 0 0 2 0V5h2a1 1 0 0 0 0-2H4Zm12 0a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0V5h-2a1 1 0 1 1 0-2h3Zm-12 14a1 1 0 0 1-1-1v-3a1 1 0 1 1 2 0v2h2a1 1 0 1 1 0 2H4Zm12 0a1 1 0 0 0 1-1v-3a1 1 0 1 0-2 0v2h-2a1 1 0 1 0 0 2h3Z" />
+              )}
+            </svg>
+          </button>
           {/* In-game settings gear (POLISH-248). Opens a BottomSheet
               with the three most-relevant toggles so the player
               doesn't have to leave the round to /settings. Gated

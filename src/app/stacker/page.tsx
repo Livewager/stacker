@@ -613,6 +613,15 @@ function StackerPageInner() {
                 move on-chain in this demo round.
               </Tip>
             </div>
+
+            {/* Compact livestream — watch-while-playing widget that
+                sits in the right column's previously-empty space
+                below the wager tips. Same Livestream component as
+                the top-of-page banner; `compact` mode drops the
+                outer section wrapper, hides the big h2, and stacks
+                chat under the video so the whole thing fits a
+                narrow column. */}
+            <Livestream compact />
           </div>
         </div>
 

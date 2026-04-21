@@ -87,7 +87,17 @@ function toneClasses(tone: ChatMsg["tone"]): string {
   }
 }
 
-export function Livestream() {
+export interface LivestreamProps {
+  /**
+   * Compact rendering mode. Drops the outer <section> with the
+   * max-w-7xl container, drops the giant h2 eyebrow, and stacks
+   * video + chat vertically instead of side-by-side. Designed to
+   * slot into a narrow right-column next to the game.
+   */
+  compact?: boolean;
+}
+
+export function Livestream({ compact = false }: LivestreamProps = {}) {
   const reducedMotion = useReducedMotion();
   // Start with the last VISIBLE entries of the pool so the first
   // render isn't a blank column that fills in. Slice from the end
@@ -130,21 +140,24 @@ export function Livestream() {
     };
   }, [reducedMotion]);
 
+  // Compact mode: drop the big section wrapper + max-w container so
+  // the component can slot into any narrow column. Full mode keeps
+  // the original landing-page section for the in-flow placement
+  // above the /stacker "Your round" block.
+  const Shell = compact ? "div" : "section";
+  const shellClass = compact
+    ? "rounded-2xl border border-white/10 bg-white/[0.02] p-3"
+    : "lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12";
+
   return (
-    <section
+    <Shell
       aria-label="Stacker livestream (demo placeholder)"
-      className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12"
+      className={shellClass}
     >
-      {/* POLISH-379 — pin the header to Shape 1 from CONTRIBUTING
-          (POLISH-343): flat text eyebrow + inline <Pill size="xs"
-          mono>demo</Pill> as a sibling span. Originally shipped the
-          Pill top-right via justify-between which was Pattern B
-          (tile-right, used inside cards like /wallet Mint tile) and
-          drifted from how /send and /withdraw render their section
-          headers. Now matches the money-flow shape verbatim — one
-          placement pattern for section-level eyebrows across
-          demo-labeled surfaces. */}
-      <div className="mb-4">
+      {/* Header. Compact hides the big h2 since the right-column
+          context already knows what this is; full keeps it for the
+          landing-page banner above. */}
+      <div className={compact ? "mb-2" : "mb-4"}>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-[10px] uppercase tracking-widest text-rose-300">
             Live now · Stacker
@@ -153,12 +166,20 @@ export function Livestream() {
             demo
           </Pill>
         </div>
-        <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-          Watch a round in progress
-        </h2>
+        {!compact && (
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight">
+            Watch a round in progress
+          </h2>
+        )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[1.6fr_1fr]">
+      <div
+        className={
+          compact
+            ? "grid gap-2"
+            : "grid gap-4 md:grid-cols-[1.6fr_1fr]"
+        }
+      >
         {/* -------- video placeholder -------- */}
         <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black">
           {/* Gradient stand-in for the stream canvas. Radial glows
@@ -308,7 +329,9 @@ export function Livestream() {
             audit). */}
         <aside
           aria-label="Demo stream chat placeholder"
-          className="hidden md:flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4"
+          className={`${
+            compact ? "flex" : "hidden md:flex"
+          } flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-4`}
         >
           <div
             className="flex items-center justify-between pb-3 mb-3 border-b border-white/5"
@@ -348,6 +371,6 @@ export function Livestream() {
           </div>
         </aside>
       </div>
-    </section>
+    </Shell>
   );
 }
