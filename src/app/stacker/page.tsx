@@ -163,7 +163,7 @@ function StackerPageInner() {
       {/* -------------- PLAY -------------- */}
       <section
         id="play"
-        className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-8 pb-16 scroll-mt-20"
+        className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 pt-8 pb-16"
       >
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -1257,7 +1257,7 @@ function HowItWorks() {
   ];
 
   return (
-    <section id="how" className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10 scroll-mt-20">
+    <section id="how" className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
       <div className="mb-6 max-w-xl">
         <div className="text-[10px] uppercase tracking-widest text-cyan-300 mb-2">
           How it works
