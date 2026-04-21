@@ -173,7 +173,17 @@ export default function PlayHubPage() {
               Play
             </div>
             <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-2">
-              Play Stacker.
+              Play{" "}
+              <span
+                className="bg-clip-text text-transparent"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg,#22d3ee,#fdba74 50%,#facc15)",
+                }}
+              >
+                Stacker
+              </span>
+              .
             </h1>
             <p className="text-gray-400 text-sm md:text-base max-w-lg">
               Non-custodial wallet. Arcade skill. Points, prizes, and leaderboard
