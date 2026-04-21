@@ -272,7 +272,7 @@ function ArrivingMethod({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={status === "sending" || status === "done"}
-            className="flex-1 min-w-0 rounded-md border border-white/15 bg-black/40 h-11 px-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-white/30 disabled:opacity-60"
+            className="flex-1 min-w-0 rounded-md border border-white/15 bg-black/40 h-11 px-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-white/30 focus-visible:ring-2 focus-visible:ring-cyan-300/50 disabled:opacity-60"
             aria-label={`Email address for ${label} notification`}
           />
           <Button
