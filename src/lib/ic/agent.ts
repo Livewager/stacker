@@ -13,6 +13,7 @@
 import { Actor, HttpAgent } from "@dfinity/agent";
 import type { Identity } from "@dfinity/agent";
 import { Principal } from "@dfinity/principal";
+import { Ed25519KeyIdentity } from "@dfinity/identity";
 import { idlFactory } from "@/declarations/points_ledger/points_ledger.did.js";
 import type {
   _SERVICE,
@@ -99,6 +100,52 @@ export function parseLwp(input: string): bigint {
   const wholeBig = BigInt(whole) * 10n ** 8n;
   const fracPadded = (frac + "00000000").slice(0, 8);
   return wholeBig + BigInt(fracPadded || "0");
+}
+
+/**
+ * Dev identity — a localStorage-backed Ed25519 keypair. Used on the
+ * /icrc test surface so faucet_claim (which rejects anonymous) has
+ * a stable principal to call from. NOT suitable for production; a
+ * real deploy uses Internet Identity instead. The key is stored in
+ * plain JSON (insecure) since local dfx is already a single-user
+ * plaintext environment — matches the scope the user asked for.
+ */
+const DEV_IDENTITY_KEY = "lw-dev-identity-v1";
+
+export function getOrCreateDevIdentity(): Ed25519KeyIdentity {
+  if (typeof window === "undefined") {
+    // SSR path — just mint a fresh one; the real browser session
+    // will re-hit this and create/load its own.
+    return Ed25519KeyIdentity.generate();
+  }
+  try {
+    const raw = window.localStorage.getItem(DEV_IDENTITY_KEY);
+    if (raw) {
+      return Ed25519KeyIdentity.fromJSON(raw);
+    }
+  } catch {
+    /* storage disabled — fall through to new identity */
+  }
+  const fresh = Ed25519KeyIdentity.generate();
+  try {
+    window.localStorage.setItem(DEV_IDENTITY_KEY, JSON.stringify(fresh.toJSON()));
+  } catch {
+    /* ignore — session-only identity */
+  }
+  return fresh;
+}
+
+/** Wipe the dev identity (used by "regenerate" button on the /icrc page). */
+export function clearDevIdentity(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(DEV_IDENTITY_KEY);
+  } catch {
+    /* ignore */
+  }
+  // Also bust the agent cache so the next call re-binds with fresh identity.
+  cachedAgent = null;
+  cachedIdentityFingerprint = null;
 }
 
 export type { Account, TransferArg, MintArgs, BurnArgs, _SERVICE };

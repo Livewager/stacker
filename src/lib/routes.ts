@@ -23,6 +23,7 @@ export const ROUTES = {
   settings: "/settings",
   fairPlay: "/fair-play",
   tokens: "/tokens",
+  icrc: "/icrc",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

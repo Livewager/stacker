@@ -16,6 +16,55 @@ export const idlFactory = ({ IDL }) => {
     'AmountOverflow' : IDL.Null,
     'InsufficientFunds' : IDL.Record({ 'balance' : IDL.Nat }),
   });
+  const FaucetClaimOk = IDL.Record({
+    'tx_id' : IDL.Nat,
+    'new_balance' : IDL.Nat,
+    'amount' : IDL.Nat,
+  });
+  const FaucetError = IDL.Variant({
+    'BalanceTooHigh' : IDL.Record({
+      'balance' : IDL.Nat,
+      'threshold' : IDL.Nat,
+    }),
+    'GlobalCapReached' : IDL.Record({
+      'cap' : IDL.Nat,
+      'seconds_until_reset' : IDL.Nat64,
+      'tokens_today' : IDL.Nat,
+    }),
+    'RateLimited' : IDL.Record({
+      'max' : IDL.Nat32,
+      'seconds_until_next' : IDL.Nat64,
+      'window_label' : IDL.Text,
+    }),
+    'AnonymousCaller' : IDL.Null,
+  });
+  const FaucetWindowView = IDL.Record({
+    'max_claims' : IDL.Nat32,
+    'label' : IDL.Text,
+    'window_seconds' : IDL.Nat64,
+  });
+  const FaucetConfigView = IDL.Record({
+    'ring_size' : IDL.Nat32,
+    'global_claims_today' : IDL.Nat64,
+    'drip_amount' : IDL.Nat,
+    'global_tokens_today' : IDL.Nat,
+    'windows' : IDL.Vec(FaucetWindowView),
+    'global_daily_cap' : IDL.Nat,
+    'max_balance' : IDL.Nat,
+  });
+  const FaucetWindowStatus = IDL.Record({
+    'max' : IDL.Nat32,
+    'count' : IDL.Nat32,
+    'label' : IDL.Text,
+    'seconds_until_next' : IDL.Nat64,
+  });
+  const FaucetStatusView = IDL.Record({
+    'balance' : IDL.Nat,
+    'total_claims' : IDL.Nat64,
+    'eligible' : IDL.Bool,
+    'windows' : IDL.Vec(FaucetWindowStatus),
+    'reason' : IDL.Opt(IDL.Text),
+  });
   const Account = IDL.Record({
     'owner' : IDL.Principal,
     'subaccount' : IDL.Opt(Subaccount),
@@ -147,6 +196,13 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'canister_principal' : IDL.Func([], [IDL.Principal], ['query']),
+    'faucet_claim' : IDL.Func(
+        [],
+        [IDL.Variant({ 'Ok' : FaucetClaimOk, 'Err' : FaucetError })],
+        [],
+      ),
+    'faucet_config' : IDL.Func([], [FaucetConfigView], ['query']),
+    'faucet_status' : IDL.Func([IDL.Principal], [FaucetStatusView], ['query']),
     'get_minter' : IDL.Func([], [IDL.Principal], ['query']),
     'icrc1_balance_of' : IDL.Func([Account], [IDL.Nat], ['query']),
     'icrc1_decimals' : IDL.Func([], [IDL.Nat8], ['query']),

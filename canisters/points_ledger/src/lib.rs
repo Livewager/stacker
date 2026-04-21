@@ -138,6 +138,93 @@ const PERMITTED_DRIFT_NS: u64 = 2 * 60 * 1_000_000_000;
 /// hash for the next block we append.
 const TIP_HASH_MEM: MemoryId = MemoryId::new(8);
 
+/// Per-principal faucet claim ring buffer. Stored in a stable-btree
+/// keyed by principal, value is a compact `FaucetClaims` struct with
+/// the most recent claim timestamps. Bounded so iteration is cheap
+/// and abuse doesn't bloat stable memory.
+const FAUCET_CLAIMS_MEM: MemoryId = MemoryId::new(9);
+
+/// Global per-day emission cap — a single StableCell holding
+/// `(day_epoch_index, claims_in_day, tokens_in_day)`. Protects the
+/// canister from sybil drainage: even if one attacker spins up a
+/// thousand fresh principals, the global cap halts emission until
+/// the next UTC day rolls over.
+const FAUCET_GLOBAL_MEM: MemoryId = MemoryId::new(10);
+
+// -------------------------------------------------------------------
+// Faucet ("Get freebies") — local-dev / beta rate-limited mint
+// -------------------------------------------------------------------
+//
+// Lets any caller with a low balance claim a small LWP drip through
+// a public-but-throttled endpoint. Designed so one caller, or a
+// coordinated set of attackers using fresh principals, cannot drain
+// the canister's ability to keep minting. Four independent safeguards
+// stack:
+//
+//   1. Per-principal time windows. A claim records a timestamp; the
+//      canister counts claims in the trailing minute / hour / day /
+//      week and refuses if any window is saturated.
+//   2. Max-balance gate. If the caller already holds ≥ MAX_BALANCE,
+//      no drip — the faucet is for bootstrapping, not farming.
+//   3. Global daily cap. Across all principals combined, the faucet
+//      mints at most GLOBAL_DAILY_CAP per UTC day. Once hit, every
+//      subsequent claim returns `GlobalCapReached` until the next
+//      day's midnight.
+//   4. Non-anonymous callers only. Anonymous principals (2vxsx-fae)
+//      cannot claim — every legitimate user has a real principal
+//      (II, dev identity, or otherwise), and rate limits are
+//      meaningless if an infinite supply of anonymous callers can
+//      share the same bucket.
+//
+// All numbers are tuned for a local-dev faucet. Mainnet deploys that
+// reuse this code should crank the limits down and lower the drip.
+
+/// Amount credited on each successful claim. 1 LWP = 10^8 base units.
+const FAUCET_DRIP_AMOUNT: u128 = 1_000_000_000; // 10 LWP
+
+/// Cap on how much a caller may hold before being denied. 100 LWP.
+const FAUCET_MAX_BALANCE: u128 = 10_000_000_000; // 100 LWP
+
+/// Per-principal rolling-window limits. Each field is the maximum
+/// number of successful claims in the trailing `window` duration
+/// from `now`. Cheapest to cheapest-most-restrictive.
+struct FaucetWindow {
+    window_ns: u64,
+    max_claims: u32,
+    label: &'static str,
+}
+const FAUCET_WINDOWS: &[FaucetWindow] = &[
+    FaucetWindow {
+        window_ns: 60 * 1_000_000_000,
+        max_claims: 1,
+        label: "minute",
+    },
+    FaucetWindow {
+        window_ns: 60 * 60 * 1_000_000_000,
+        max_claims: 5,
+        label: "hour",
+    },
+    FaucetWindow {
+        window_ns: 24 * 60 * 60 * 1_000_000_000,
+        max_claims: 20,
+        label: "day",
+    },
+    FaucetWindow {
+        window_ns: 7 * 24 * 60 * 60 * 1_000_000_000,
+        max_claims: 50,
+        label: "week",
+    },
+];
+
+/// Bounded ring buffer of claim timestamps per principal. 64 is enough
+/// headroom above the weekly ceiling (50) that normal usage never
+/// rotates; abuse can't force unbounded growth.
+const FAUCET_RING_SIZE: usize = 64;
+
+/// Hard ceiling on faucet emission per UTC day across ALL callers.
+/// 10_000 LWP = 1000 drips/day maximum. Denominated in base units.
+const FAUCET_GLOBAL_DAILY_CAP: u128 = 1_000_000_000_000; // 10_000 LWP
+
 /// (owner, spender) pair — 2× AccountKey side-by-side = 122 bytes fixed.
 /// Lets us range-query allowances by owner if we ever need to list them.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -257,6 +344,189 @@ impl Storable for TipHashVal {
         };
 }
 
+/// Compact fixed-size per-principal faucet claim log. Stores up to
+/// FAUCET_RING_SIZE most-recent claim timestamps (u64 ns) in a ring
+/// buffer, plus a `len` counter + `head` index so a read returns the
+/// last N timestamps in chronological order regardless of wrap.
+///
+/// Layout (LE):
+///   bytes 0..8     head (u64) — index where the NEXT write lands
+///   bytes 8..16    len  (u64) — number of slots filled (saturates at RING_SIZE)
+///   bytes 16..16+N u64 ring  (N = FAUCET_RING_SIZE, each 8 bytes)
+///   bytes ...      total_claims (u64) — lifetime count for telemetry
+///
+/// Fixed size = 16 + 8*RING_SIZE + 8 = 16 + 512 + 8 = 536 bytes.
+#[derive(Clone, Copy, Debug)]
+struct FaucetClaims {
+    head: u64,
+    len: u64,
+    ring: [u64; FAUCET_RING_SIZE],
+    total_claims: u64,
+}
+
+impl Default for FaucetClaims {
+    fn default() -> Self {
+        Self {
+            head: 0,
+            len: 0,
+            ring: [0u64; FAUCET_RING_SIZE],
+            total_claims: 0,
+        }
+    }
+}
+
+impl FaucetClaims {
+    /// Iterate stored timestamps, most-recent last, in chronological order.
+    /// Skips empty slots when `len < RING_SIZE`.
+    fn iter_chronological(&self) -> Vec<u64> {
+        let n = self.len as usize;
+        if n == 0 {
+            return Vec::new();
+        }
+        let mut out = Vec::with_capacity(n);
+        // Oldest index is head - len (mod SIZE).
+        let start = (self.head as usize + FAUCET_RING_SIZE - n) % FAUCET_RING_SIZE;
+        for i in 0..n {
+            out.push(self.ring[(start + i) % FAUCET_RING_SIZE]);
+        }
+        out
+    }
+
+    fn push(&mut self, ts: u64) {
+        let idx = self.head as usize % FAUCET_RING_SIZE;
+        self.ring[idx] = ts;
+        self.head = (self.head + 1) % FAUCET_RING_SIZE as u64;
+        if (self.len as usize) < FAUCET_RING_SIZE {
+            self.len += 1;
+        }
+        self.total_claims = self.total_claims.saturating_add(1);
+    }
+
+    /// Count timestamps that fall within `now - window_ns ..= now`.
+    fn count_in_window(&self, now_ns: u64, window_ns: u64) -> u32 {
+        let cutoff = now_ns.saturating_sub(window_ns);
+        self.iter_chronological()
+            .into_iter()
+            .filter(|&ts| ts >= cutoff)
+            .count() as u32
+    }
+}
+
+impl Storable for FaucetClaims {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        let mut v = Vec::with_capacity(536);
+        v.extend_from_slice(&self.head.to_le_bytes());
+        v.extend_from_slice(&self.len.to_le_bytes());
+        for ts in &self.ring {
+            v.extend_from_slice(&ts.to_le_bytes());
+        }
+        v.extend_from_slice(&self.total_claims.to_le_bytes());
+        Cow::Owned(v)
+    }
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let mut head_b = [0u8; 8];
+        let mut len_b = [0u8; 8];
+        head_b.copy_from_slice(&bytes[..8]);
+        len_b.copy_from_slice(&bytes[8..16]);
+        let mut ring = [0u64; FAUCET_RING_SIZE];
+        for (i, slot) in ring.iter_mut().enumerate() {
+            let off = 16 + i * 8;
+            let mut b = [0u8; 8];
+            b.copy_from_slice(&bytes[off..off + 8]);
+            *slot = u64::from_le_bytes(b);
+        }
+        let mut total_b = [0u8; 8];
+        let total_off = 16 + FAUCET_RING_SIZE * 8;
+        total_b.copy_from_slice(&bytes[total_off..total_off + 8]);
+        Self {
+            head: u64::from_le_bytes(head_b),
+            len: u64::from_le_bytes(len_b),
+            ring,
+            total_claims: u64::from_le_bytes(total_b),
+        }
+    }
+    const BOUND: ic_stable_structures::storable::Bound =
+        ic_stable_structures::storable::Bound::Bounded {
+            max_size: 536,
+            is_fixed_size: true,
+        };
+}
+
+/// Fixed-length key wrapper for storing a Principal in a StableBTreeMap.
+/// 30 bytes = 1 length prefix + up to 29 Principal bytes.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct PrincipalKey([u8; 30]);
+
+impl PrincipalKey {
+    fn from_principal(p: &Principal) -> Self {
+        let mut bytes = [0u8; 30];
+        let slice = p.as_slice();
+        bytes[0] = slice.len() as u8;
+        bytes[1..=slice.len()].copy_from_slice(slice);
+        PrincipalKey(bytes)
+    }
+}
+
+impl Storable for PrincipalKey {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        Cow::Borrowed(&self.0)
+    }
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let mut arr = [0u8; 30];
+        arr.copy_from_slice(&bytes[..30]);
+        PrincipalKey(arr)
+    }
+    const BOUND: ic_stable_structures::storable::Bound =
+        ic_stable_structures::storable::Bound::Bounded {
+            max_size: 30,
+            is_fixed_size: true,
+        };
+}
+
+/// Global per-day faucet bookkeeping. `day_epoch` is (now_ns / NS_PER_DAY)
+/// so when the UTC day rolls, the stored-vs-current mismatch signals a
+/// reset (claims_today / tokens_today revert to 0). Stored as a single
+/// StableCell keyed by FAUCET_GLOBAL_MEM.
+///
+/// Layout (LE, 32 bytes total):
+///   bytes 0..8   day_epoch (u64)
+///   bytes 8..24  tokens_today (u128)
+///   bytes 24..32 claims_today (u64)
+#[derive(Clone, Copy, Debug, Default)]
+struct FaucetGlobal {
+    day_epoch: u64,
+    tokens_today: u128,
+    claims_today: u64,
+}
+
+impl Storable for FaucetGlobal {
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        let mut v = Vec::with_capacity(32);
+        v.extend_from_slice(&self.day_epoch.to_le_bytes());
+        v.extend_from_slice(&self.tokens_today.to_le_bytes());
+        v.extend_from_slice(&self.claims_today.to_le_bytes());
+        Cow::Owned(v)
+    }
+    fn from_bytes(bytes: Cow<[u8]>) -> Self {
+        let mut d = [0u8; 8];
+        let mut t = [0u8; 16];
+        let mut c = [0u8; 8];
+        d.copy_from_slice(&bytes[..8]);
+        t.copy_from_slice(&bytes[8..24]);
+        c.copy_from_slice(&bytes[24..32]);
+        Self {
+            day_epoch: u64::from_le_bytes(d),
+            tokens_today: u128::from_le_bytes(t),
+            claims_today: u64::from_le_bytes(c),
+        }
+    }
+    const BOUND: ic_stable_structures::storable::Bound =
+        ic_stable_structures::storable::Bound::Bounded {
+            max_size: 32,
+            is_fixed_size: true,
+        };
+}
+
 /// Storable wrapper around an ICRC-3 `ICRC3Value` block. Blocks are
 /// candid-encoded to bytes for durable persistence; round-trip is via
 /// `candid::encode_one` / `decode_one`. Unbounded because block payloads
@@ -329,6 +599,20 @@ thread_local! {
     static TIP_HASH: RefCell<StableCell<TipHashVal, Memory>> = RefCell::new({
         let mem = MEMORY_MANAGER.with(|m| m.borrow().get(TIP_HASH_MEM));
         StableCell::init(mem, TipHashVal([0u8; 32])).expect("init tip hash cell")
+    });
+
+    /// Per-principal faucet claim timestamps — ring buffer keyed by
+    /// caller. Inserted/updated on every successful faucet_claim.
+    static FAUCET_CLAIMS: RefCell<StableBTreeMap<PrincipalKey, FaucetClaims, Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(FAUCET_CLAIMS_MEM)),
+        ));
+
+    /// Global per-day emission counter. Reset lazily on first claim
+    /// of a new UTC day.
+    static FAUCET_GLOBAL: RefCell<StableCell<FaucetGlobal, Memory>> = RefCell::new({
+        let mem = MEMORY_MANAGER.with(|m| m.borrow().get(FAUCET_GLOBAL_MEM));
+        StableCell::init(mem, FaucetGlobal::default()).expect("init faucet global cell")
     });
 }
 
@@ -1469,6 +1753,302 @@ fn mint_to(account: &Account, amount: u128) {
         let cur = cell.get().0;
         cell.set(BalanceVal(cur + amount)).expect("bump supply");
     });
+}
+
+// -------------------------------------------------------------------
+// Faucet: throttled public mint for "Get freebies" flows
+// -------------------------------------------------------------------
+
+const NS_PER_DAY: u64 = 24 * 60 * 60 * 1_000_000_000;
+
+/// Public view of faucet configuration + current global state. Pure
+/// read, no side effects — safe to call on every page mount.
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct FaucetConfigView {
+    pub drip_amount: Nat,
+    pub max_balance: Nat,
+    pub global_daily_cap: Nat,
+    pub global_tokens_today: Nat,
+    pub global_claims_today: u64,
+    pub windows: Vec<FaucetWindowView>,
+    pub ring_size: u32,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct FaucetWindowView {
+    pub window_seconds: u64,
+    pub max_claims: u32,
+    pub label: String,
+}
+
+/// Per-principal status — used by the UI to render "you've claimed
+/// X/Y this hour, next claim available in Zs" without needing to
+/// guess from error messages. Never mutates state.
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct FaucetStatusView {
+    pub balance: Nat,
+    pub eligible: bool,
+    pub reason: Option<String>,
+    /// Per-window snapshot: (label, count_in_window, max_claims, seconds_until_next_slot).
+    /// seconds_until_next_slot is 0 when `count < max` (can claim now vis-à-vis this
+    /// window alone); otherwise the wait for the oldest claim to age out.
+    pub windows: Vec<FaucetWindowStatus>,
+    pub total_claims: u64,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct FaucetWindowStatus {
+    pub label: String,
+    pub count: u32,
+    pub max: u32,
+    pub seconds_until_next: u64,
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub enum FaucetError {
+    /// Anonymous principal tried to claim. Rate limits need a stable
+    /// identity key to work.
+    AnonymousCaller,
+    /// Caller's balance is already at or above FAUCET_MAX_BALANCE.
+    BalanceTooHigh { balance: Nat, threshold: Nat },
+    /// One of the per-principal windows is saturated.
+    RateLimited {
+        window_label: String,
+        max: u32,
+        seconds_until_next: u64,
+    },
+    /// Global daily cap reached. Resets at the next UTC midnight.
+    GlobalCapReached {
+        tokens_today: Nat,
+        cap: Nat,
+        seconds_until_reset: u64,
+    },
+}
+
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct FaucetClaimOk {
+    pub amount: Nat,
+    pub tx_id: Nat,
+    pub new_balance: Nat,
+}
+
+/// Read-only — returns the faucet's static config + live global-day
+/// counters. Callers use this to decide whether to show the claim
+/// CTA at all (e.g., hide it when the global cap is saturated).
+#[query]
+fn faucet_config() -> FaucetConfigView {
+    let now = ic_cdk::api::time();
+    let global = load_global_for_today(now);
+    FaucetConfigView {
+        drip_amount: Nat::from(FAUCET_DRIP_AMOUNT),
+        max_balance: Nat::from(FAUCET_MAX_BALANCE),
+        global_daily_cap: Nat::from(FAUCET_GLOBAL_DAILY_CAP),
+        global_tokens_today: Nat::from(global.tokens_today),
+        global_claims_today: global.claims_today,
+        windows: FAUCET_WINDOWS
+            .iter()
+            .map(|w| FaucetWindowView {
+                window_seconds: w.window_ns / 1_000_000_000,
+                max_claims: w.max_claims,
+                label: w.label.to_string(),
+            })
+            .collect(),
+        ring_size: FAUCET_RING_SIZE as u32,
+    }
+}
+
+/// Read-only per-principal view. Does not mutate — safe to poll.
+#[query]
+fn faucet_status(principal: Principal) -> FaucetStatusView {
+    let now = ic_cdk::api::time();
+    let acct = Account {
+        owner: principal,
+        subaccount: None,
+    };
+    let balance = BALANCES.with(|b| {
+        b.borrow()
+            .get(&AccountKey::from_account(&acct))
+            .map(|v| v.0)
+            .unwrap_or(0)
+    });
+    let claims = FAUCET_CLAIMS.with(|c| {
+        c.borrow()
+            .get(&PrincipalKey::from_principal(&principal))
+            .unwrap_or_default()
+    });
+
+    let windows: Vec<FaucetWindowStatus> = FAUCET_WINDOWS
+        .iter()
+        .map(|w| {
+            let count = claims.count_in_window(now, w.window_ns);
+            let seconds_until_next = if count < w.max_claims {
+                0
+            } else {
+                // Oldest in-window claim becomes eligible when it ages past window_ns.
+                // Find it via chronological iteration.
+                let ts = claims.iter_chronological();
+                let cutoff = now.saturating_sub(w.window_ns);
+                let oldest_in_window = ts
+                    .into_iter()
+                    .find(|&t| t >= cutoff)
+                    .unwrap_or(now);
+                let expires = oldest_in_window.saturating_add(w.window_ns);
+                expires.saturating_sub(now) / 1_000_000_000
+            };
+            FaucetWindowStatus {
+                label: w.label.to_string(),
+                count,
+                max: w.max_claims,
+                seconds_until_next,
+            }
+        })
+        .collect();
+
+    // Eligibility check mirrors faucet_claim's validation order so the
+    // view reflects exactly why a claim would fail.
+    let (eligible, reason) = if principal == Principal::anonymous() {
+        (false, Some("Anonymous caller cannot claim".to_string()))
+    } else if balance >= FAUCET_MAX_BALANCE {
+        (
+            false,
+            Some(format!(
+                "Balance {} ≥ threshold {}",
+                balance, FAUCET_MAX_BALANCE
+            )),
+        )
+    } else if let Some(ws) = windows.iter().find(|w| w.count >= w.max) {
+        (
+            false,
+            Some(format!(
+                "Rate-limited ({}/{} per {}; {}s until next)",
+                ws.count, ws.max, ws.label, ws.seconds_until_next
+            )),
+        )
+    } else {
+        let global = load_global_for_today(now);
+        if global
+            .tokens_today
+            .saturating_add(FAUCET_DRIP_AMOUNT)
+            > FAUCET_GLOBAL_DAILY_CAP
+        {
+            (false, Some("Global daily cap reached".to_string()))
+        } else {
+            (true, None)
+        }
+    };
+
+    FaucetStatusView {
+        balance: Nat::from(balance),
+        eligible,
+        reason,
+        windows,
+        total_claims: claims.total_claims,
+    }
+}
+
+/// The actual claim. Runs all four checks, then mints
+/// FAUCET_DRIP_AMOUNT to the caller's default subaccount, records
+/// the timestamp in the per-principal ring buffer, and increments
+/// the global-day counters.
+#[update]
+fn faucet_claim() -> Result<FaucetClaimOk, FaucetError> {
+    let caller = ic_cdk::api::caller();
+    if caller == Principal::anonymous() {
+        return Err(FaucetError::AnonymousCaller);
+    }
+
+    let acct = Account {
+        owner: caller,
+        subaccount: None,
+    };
+    let balance = BALANCES.with(|b| {
+        b.borrow()
+            .get(&AccountKey::from_account(&acct))
+            .map(|v| v.0)
+            .unwrap_or(0)
+    });
+    if balance >= FAUCET_MAX_BALANCE {
+        return Err(FaucetError::BalanceTooHigh {
+            balance: Nat::from(balance),
+            threshold: Nat::from(FAUCET_MAX_BALANCE),
+        });
+    }
+
+    let now = ic_cdk::api::time();
+    let key = PrincipalKey::from_principal(&caller);
+    let claims = FAUCET_CLAIMS.with(|c| c.borrow().get(&key).unwrap_or_default());
+
+    for w in FAUCET_WINDOWS {
+        let count = claims.count_in_window(now, w.window_ns);
+        if count >= w.max_claims {
+            let ts = claims.iter_chronological();
+            let cutoff = now.saturating_sub(w.window_ns);
+            let oldest_in_window = ts.into_iter().find(|&t| t >= cutoff).unwrap_or(now);
+            let expires = oldest_in_window.saturating_add(w.window_ns);
+            let secs = expires.saturating_sub(now) / 1_000_000_000;
+            return Err(FaucetError::RateLimited {
+                window_label: w.label.to_string(),
+                max: w.max_claims,
+                seconds_until_next: secs,
+            });
+        }
+    }
+
+    // Global cap — roll the day if needed, then check.
+    let mut global = load_global_for_today(now);
+    if global
+        .tokens_today
+        .saturating_add(FAUCET_DRIP_AMOUNT)
+        > FAUCET_GLOBAL_DAILY_CAP
+    {
+        let day_end = (global.day_epoch + 1) * NS_PER_DAY;
+        return Err(FaucetError::GlobalCapReached {
+            tokens_today: Nat::from(global.tokens_today),
+            cap: Nat::from(FAUCET_GLOBAL_DAILY_CAP),
+            seconds_until_reset: day_end.saturating_sub(now) / 1_000_000_000,
+        });
+    }
+
+    // All checks pass — mint + record.
+    mint_to(&acct, FAUCET_DRIP_AMOUNT);
+    append_block("1mint", build_mint_tx(&acct, FAUCET_DRIP_AMOUNT, None));
+    let tx_id = next_tx_index();
+
+    let mut updated = claims;
+    updated.push(now);
+    FAUCET_CLAIMS.with(|c| {
+        c.borrow_mut().insert(key, updated);
+    });
+
+    global.tokens_today = global.tokens_today.saturating_add(FAUCET_DRIP_AMOUNT);
+    global.claims_today = global.claims_today.saturating_add(1);
+    FAUCET_GLOBAL.with(|g| {
+        g.borrow_mut().set(global).expect("set faucet global");
+    });
+
+    let new_balance = balance + FAUCET_DRIP_AMOUNT;
+    Ok(FaucetClaimOk {
+        amount: Nat::from(FAUCET_DRIP_AMOUNT),
+        tx_id: Nat::from(tx_id),
+        new_balance: Nat::from(new_balance),
+    })
+}
+
+/// Lazy reset: if the stored day_epoch no longer matches the current
+/// day, the global record is effectively zeroed. Returns the live
+/// view so callers don't need to persist the reset before they query.
+fn load_global_for_today(now_ns: u64) -> FaucetGlobal {
+    let today = now_ns / NS_PER_DAY;
+    let stored = FAUCET_GLOBAL.with(|g| *g.borrow().get());
+    if stored.day_epoch == today {
+        stored
+    } else {
+        FaucetGlobal {
+            day_epoch: today,
+            tokens_today: 0,
+            claims_today: 0,
+        }
+    }
 }
 
 ic_cdk::export_candid!();

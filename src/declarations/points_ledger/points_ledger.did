@@ -156,6 +156,60 @@ type BurnError = variant {
     InsufficientFunds : record { balance : nat };
 };
 
+// -------- Faucet types --------
+
+type FaucetWindowView = record {
+    window_seconds : nat64;
+    max_claims : nat32;
+    label : text;
+};
+
+type FaucetConfigView = record {
+    drip_amount : nat;
+    max_balance : nat;
+    global_daily_cap : nat;
+    global_tokens_today : nat;
+    global_claims_today : nat64;
+    windows : vec FaucetWindowView;
+    ring_size : nat32;
+};
+
+type FaucetWindowStatus = record {
+    label : text;
+    count : nat32;
+    max : nat32;
+    seconds_until_next : nat64;
+};
+
+type FaucetStatusView = record {
+    balance : nat;
+    eligible : bool;
+    reason : opt text;
+    windows : vec FaucetWindowStatus;
+    total_claims : nat64;
+};
+
+type FaucetClaimOk = record {
+    amount : nat;
+    tx_id : nat;
+    new_balance : nat;
+};
+
+type FaucetError = variant {
+    AnonymousCaller;
+    BalanceTooHigh : record { balance : nat; threshold : nat };
+    RateLimited : record {
+        window_label : text;
+        max : nat32;
+        seconds_until_next : nat64;
+    };
+    GlobalCapReached : record {
+        tokens_today : nat;
+        cap : nat;
+        seconds_until_reset : nat64;
+    };
+};
+
 service : (InitArgs) -> {
     // ICRC-1 queries
     icrc1_name : () -> (text) query;
@@ -203,4 +257,9 @@ service : (InitArgs) -> {
     /// Monotonic transaction counter. Incremented on every successful
     /// state-mutating call. Returned as the Ok nat from those calls.
     tx_counter : () -> (nat) query;
+
+    // Faucet — rate-limited public "Get freebies" mint.
+    faucet_config : () -> (FaucetConfigView) query;
+    faucet_status : (principal) -> (FaucetStatusView) query;
+    faucet_claim : () -> (variant { Ok : FaucetClaimOk; Err : FaucetError });
 }

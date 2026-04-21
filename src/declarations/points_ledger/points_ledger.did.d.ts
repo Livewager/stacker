@@ -55,6 +55,59 @@ export type BurnError = { 'MemoTooLong' : null } |
   { 'AmountZero' : null } |
   { 'AmountOverflow' : null } |
   { 'InsufficientFunds' : { 'balance' : bigint } };
+export interface FaucetClaimOk {
+  'tx_id' : bigint,
+  'new_balance' : bigint,
+  'amount' : bigint,
+}
+export interface FaucetConfigView {
+  'ring_size' : number,
+  'global_claims_today' : bigint,
+  'drip_amount' : bigint,
+  'global_tokens_today' : bigint,
+  'windows' : Array<FaucetWindowView>,
+  'global_daily_cap' : bigint,
+  'max_balance' : bigint,
+}
+export type FaucetError = {
+    'BalanceTooHigh' : { 'balance' : bigint, 'threshold' : bigint }
+  } |
+  {
+    'GlobalCapReached' : {
+      'cap' : bigint,
+      'seconds_until_reset' : bigint,
+      'tokens_today' : bigint,
+    }
+  } |
+  {
+    'RateLimited' : {
+      'max' : number,
+      'seconds_until_next' : bigint,
+      'window_label' : string,
+    }
+  } |
+  { 'AnonymousCaller' : null };
+export interface FaucetStatusView {
+  'balance' : bigint,
+  'total_claims' : bigint,
+  'eligible' : boolean,
+  'windows' : Array<FaucetWindowStatus>,
+  'reason' : [] | [string],
+}
+export interface FaucetWindowStatus {
+  'max' : number,
+  'count' : number,
+  'label' : string,
+  'seconds_until_next' : bigint,
+}
+/**
+ * -------- Faucet types --------
+ */
+export interface FaucetWindowView {
+  'max_claims' : number,
+  'label' : string,
+  'window_seconds' : bigint,
+}
 /**
  * ICRC-3 generic value type. Mirrors icrc_ledger_types::ICRC3Value.
  */
@@ -142,6 +195,16 @@ export interface _SERVICE {
    * Canister meta
    */
   'canister_principal' : ActorMethod<[], Principal>,
+  'faucet_claim' : ActorMethod<
+    [],
+    { 'Ok' : FaucetClaimOk } |
+      { 'Err' : FaucetError }
+  >,
+  /**
+   * Faucet — rate-limited public "Get freebies" mint.
+   */
+  'faucet_config' : ActorMethod<[], FaucetConfigView>,
+  'faucet_status' : ActorMethod<[Principal], FaucetStatusView>,
   'get_minter' : ActorMethod<[], Principal>,
   'icrc1_balance_of' : ActorMethod<[Account], bigint>,
   'icrc1_decimals' : ActorMethod<[], number>,
