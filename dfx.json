@@ -4,6 +4,11 @@
       "type": "rust",
       "package": "points_ledger",
       "candid": "canisters/points_ledger/points_ledger.did"
+    },
+    "stacker_frontend": {
+      "type": "assets",
+      "source": ["out"],
+      "dependencies": ["points_ledger"]
     }
   },
   "defaults": {
@@ -12,5 +17,6 @@
       "args": ""
     }
   },
+  "output_env_file": ".env.local",
   "version": 1
 }

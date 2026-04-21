@@ -1,0 +1,206 @@
+// Livewager Points Ledger — ICRC-1 + ICRC-2 compliant candid interface.
+// ICP-02: core ICRC-1 surface.
+// ICP-03: ICRC-2 approve / transfer_from / allowance.
+
+type Subaccount = blob;
+
+type Account = record {
+    owner : principal;
+    subaccount : opt Subaccount;
+};
+
+type Memo = blob;
+type Timestamp = nat64;
+
+// ICRC-1 transfer
+type TransferArg = record {
+    from_subaccount : opt Subaccount;
+    to : Account;
+    amount : nat;
+    fee : opt nat;
+    memo : opt Memo;
+    created_at_time : opt Timestamp;
+};
+
+type TransferError = variant {
+    BadFee : record { expected_fee : nat };
+    BadBurn : record { min_burn_amount : nat };
+    InsufficientFunds : record { balance : nat };
+    TooOld;
+    CreatedInFuture : record { ledger_time : nat64 };
+    Duplicate : record { duplicate_of : nat };
+    TemporarilyUnavailable;
+    GenericError : record { error_code : nat; message : text };
+};
+
+// ICRC-2 approve
+type ApproveArgs = record {
+    from_subaccount : opt Subaccount;
+    spender : Account;
+    amount : nat;
+    expected_allowance : opt nat;
+    expires_at : opt Timestamp;
+    fee : opt nat;
+    memo : opt Memo;
+    created_at_time : opt Timestamp;
+};
+
+type ApproveError = variant {
+    BadFee : record { expected_fee : nat };
+    InsufficientFunds : record { balance : nat };
+    AllowanceChanged : record { current_allowance : nat };
+    Expired : record { ledger_time : nat64 };
+    TooOld;
+    CreatedInFuture : record { ledger_time : nat64 };
+    Duplicate : record { duplicate_of : nat };
+    TemporarilyUnavailable;
+    GenericError : record { error_code : nat; message : text };
+};
+
+// ICRC-2 transfer_from
+type TransferFromArgs = record {
+    spender_subaccount : opt Subaccount;
+    from : Account;
+    to : Account;
+    amount : nat;
+    fee : opt nat;
+    memo : opt Memo;
+    created_at_time : opt Timestamp;
+};
+
+type TransferFromError = variant {
+    BadFee : record { expected_fee : nat };
+    BadBurn : record { min_burn_amount : nat };
+    InsufficientFunds : record { balance : nat };
+    InsufficientAllowance : record { allowance : nat };
+    TooOld;
+    CreatedInFuture : record { ledger_time : nat64 };
+    Duplicate : record { duplicate_of : nat };
+    TemporarilyUnavailable;
+    GenericError : record { error_code : nat; message : text };
+};
+
+// ICRC-2 allowance query
+type AllowanceArgs = record {
+    account : Account;
+    spender : Account;
+};
+
+type Allowance = record {
+    allowance : nat;
+    expires_at : opt Timestamp;
+};
+
+type MetadataValue = variant {
+    Nat : nat;
+    Int : int;
+    Text : text;
+    Blob : blob;
+};
+
+type SupportedStandard = record {
+    name : text;
+    url : text;
+};
+
+type InitArgs = record {
+    minter : principal;
+};
+
+// ICRC-3 generic value type. Mirrors icrc_ledger_types::ICRC3Value.
+type ICRC3Value = variant {
+    Blob : blob;
+    Text : text;
+    Nat : nat;
+    Int : int;
+    Array : vec ICRC3Value;
+    Map : vec record { text; ICRC3Value };
+};
+
+// ICRC-3 archive pointer (empty in ICP-12a — no archive canister yet).
+type ArchivedBlocks = record {
+    args : vec record { start : nat; length : nat };
+    callback : func (vec record { start : nat; length : nat })
+        -> (record {
+              blocks : vec record { id : nat; block : ICRC3Value };
+           }) query;
+};
+
+// Mint / burn (ICP-04)
+type MintArgs = record {
+    to : Account;
+    amount : nat;
+    memo : opt Memo;
+    created_at_time : opt Timestamp;
+};
+
+type MintError = variant {
+    NotMinter;
+    AmountZero;
+    AmountOverflow;
+    MemoTooLong;
+    InvalidMinter;
+};
+
+type BurnArgs = record {
+    from_subaccount : opt Subaccount;
+    amount : nat;
+    memo : opt Memo;
+    created_at_time : opt Timestamp;
+};
+
+type BurnError = variant {
+    AmountZero;
+    AmountOverflow;
+    MemoTooLong;
+    InsufficientFunds : record { balance : nat };
+};
+
+service : (InitArgs) -> {
+    // ICRC-1 queries
+    icrc1_name : () -> (text) query;
+    icrc1_symbol : () -> (text) query;
+    icrc1_decimals : () -> (nat8) query;
+    icrc1_fee : () -> (nat) query;
+    icrc1_total_supply : () -> (nat) query;
+    icrc1_minting_account : () -> (opt Account) query;
+    icrc1_metadata : () -> (vec record { text; MetadataValue }) query;
+    icrc1_supported_standards : () -> (vec SupportedStandard) query;
+    icrc1_balance_of : (Account) -> (nat) query;
+
+    // ICRC-1 update
+    icrc1_transfer : (TransferArg) -> (variant { Ok : nat; Err : TransferError });
+
+    // ICRC-2
+    icrc2_allowance : (AllowanceArgs) -> (Allowance) query;
+    icrc2_approve : (ApproveArgs) -> (variant { Ok : nat; Err : ApproveError });
+    icrc2_transfer_from : (TransferFromArgs) -> (variant { Ok : nat; Err : TransferFromError });
+
+    // Mint / burn (ICP-04) — non-ICRC but indexer-friendly
+    mint : (MintArgs) -> (variant { Ok : nat; Err : MintError });
+    burn : (BurnArgs) -> (variant { Ok : nat; Err : BurnError });
+    get_minter : () -> (principal) query;
+    set_minter : (principal) -> (variant { Ok; Err : MintError });
+
+    // ICRC-3 (block log, ICP-12a)
+    icrc3_get_blocks : (vec record { start : nat; length : nat })
+        -> (record {
+             log_length : nat;
+             blocks : vec record { id : nat; block : ICRC3Value };
+             archived_blocks : vec ArchivedBlocks;
+           }) query;
+    icrc3_supported_block_types : () -> (vec record { block_type : text; url : text }) query;
+    icrc3_log_length : () -> (nat) query;
+    icrc3_tip_hash : () -> (blob) query;
+    icrc3_get_tip_certificate : () -> (opt record {
+        certificate : blob;
+        hash_tree : blob;
+    }) query;
+
+    // Canister meta
+    canister_principal : () -> (principal) query;
+    version : () -> (text) query;
+    /// Monotonic transaction counter. Incremented on every successful
+    /// state-mutating call. Returned as the Ok nat from those calls.
+    tx_counter : () -> (nat) query;
+}

@@ -337,6 +337,7 @@ export default function CommandPalette() {
       { id: "send", label: "Send", hint: ROUTES.send, run: () => go(ROUTES.send) },
       { id: "withdraw", label: "Withdraw", hint: ROUTES.withdraw, run: () => go(ROUTES.withdraw) },
       { id: "leaderboard", label: "Leaderboard", hint: ROUTES.leaderboard, run: () => go(ROUTES.leaderboard) },
+      { id: "tokens", label: "Tokens · On-chain LWP", hint: ROUTES.tokens, run: () => go(ROUTES.tokens) },
       { id: "settings", label: "Settings", hint: ROUTES.settings, run: () => go(ROUTES.settings) },
       { id: "settings-display", label: "Settings · Display & motion", hint: `${ROUTES.settings}#display`, run: () => go(`${ROUTES.settings}#display`) },
       { id: "settings-audio", label: "Settings · Audio & feedback", hint: `${ROUTES.settings}#audio`, run: () => go(`${ROUTES.settings}#audio`) },

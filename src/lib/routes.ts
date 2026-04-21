@@ -22,6 +22,7 @@ export const ROUTES = {
   leaderboard: "/leaderboard",
   settings: "/settings",
   fairPlay: "/fair-play",
+  tokens: "/tokens",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
