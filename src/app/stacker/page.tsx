@@ -1644,12 +1644,22 @@ function ChopAnim() {
 // =============================================================
 
 function WagerPrimer() {
-  const chips: Array<{ label: string; sub: string; accent: string }> = [
-    { label: "Free", sub: "no stake", accent: "bg-white/30" },
-    { label: "5 LWP", sub: "→ 15", accent: "bg-cyan-300" },
-    { label: "25 LWP", sub: "→ 75", accent: "bg-orange-300" },
-    { label: "100 LWP", sub: "→ 300", accent: "bg-yellow-300" },
+  // Sub-values derived from PAYOUT_MULTIPLIER.win so the chip
+  // payouts never drift if the multiplier is ever tuned.
+  // SUPER-39 — was hardcoded '→ 15' / '→ 75' / '→ 300' which
+  // silently went stale after any payout adjustment. Same
+  // drift-guard pattern as SUPER-22 (HeroTower prize badge).
+  const stakes: Array<{ label: string; stake: number; accent: string }> = [
+    { label: "Free", stake: 0, accent: "bg-white/30" },
+    { label: "5 LWP", stake: 5, accent: "bg-cyan-300" },
+    { label: "25 LWP", stake: 25, accent: "bg-orange-300" },
+    { label: "100 LWP", stake: 100, accent: "bg-yellow-300" },
   ];
+  const chips = stakes.map((s) => ({
+    label: s.label,
+    accent: s.accent,
+    sub: s.stake === 0 ? "no stake" : `→ ${s.stake * PAYOUT_MULTIPLIER.win}`,
+  }));
   return (
     <section className="lw-section relative z-10 max-w-7xl mx-auto px-5 md:px-8 py-10">
       <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.02] p-6 md:p-8">
