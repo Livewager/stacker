@@ -1545,53 +1545,10 @@ function WagerPrimer() {
               ))}
             </div>
 
-            {/* STACKER-R1 + SUPER-13 + SUPER-15 — primary CTA on
-                the wager panel. Originally a full-bleed orange bar
-                stretching the entire right column (~540px wide), which
-                visually crushed the 4 chip tiles above it. Now pill-
-                sized: inline-flex with its own width (not w-full),
-                centered under the chip grid via a flex wrapper. Reads
-                as 'here's one clear action' rather than 'here's a
-                massive orange stripe'. Routes to /deposit — the only
-                way to grow LWP beyond the 15-free starter. */}
-            <div className="flex justify-center pt-1">
-              <Link href={ROUTES.deposit} aria-label="Deposit LWP to unlock bigger chips">
-                <motion.span
-                  initial={{ opacity: 0, y: 6 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.35, delay: 0.28 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="relative inline-flex items-center gap-2 overflow-hidden rounded-full cursor-pointer py-2 px-5 border border-orange-300/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 shadow-[0_8px_22px_-10px_rgba(249,115,22,0.65)]"
-                  style={{
-                    background:
-                      "linear-gradient(90deg, #fdba74, #f97316 50%, #ea580c)",
-                  }}
-                >
-                  {/* Sheen sweep */}
-                  <motion.span
-                    aria-hidden
-                    className="absolute inset-y-0 -left-1/3 w-1/3 pointer-events-none"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
-                      mixBlendMode: "soft-light",
-                    }}
-                    animate={{ left: ["-33%", "133%"] }}
-                    transition={{
-                      duration: 2.6,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      repeatDelay: 1.2,
-                    }}
-                  />
-                  <span className="relative font-black uppercase tracking-widest text-sm text-black">
-                    Deposit now →
-                  </span>
-                </motion.span>
-              </Link>
-            </div>
+            {/* Deposit CTA removed — duplicate of the sticky rail +
+                per-round wager Deposit buttons elsewhere on the page.
+                The chip row stands on its own as the wager-card
+                primary content. */}
           </div>
         </div>
       </div>
