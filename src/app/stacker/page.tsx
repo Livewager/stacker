@@ -612,21 +612,26 @@ function WinnersMarquee() {
       role="region"
       className="mt-10 relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-r from-white/[0.03] via-white/[0.05] to-white/[0.03]"
     >
-      {/* Left + right fade masks */}
+      {/* Left + right fade masks. ENHANCE-01 — w-16 + linear gradient
+          left partial chips readable past the fade on wide viewports
+          (a half-rendered `@minimal...` chip was visibly clipped at
+          the right edge). Widened to w-24 and pushed the opaque stop
+          to 55% so the rightmost ~14px fully obscures any partial
+          glyph while the inner 40–50px still feathers smoothly. */}
       <div
         aria-hidden
-        className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none"
+        className="absolute inset-y-0 left-0 w-24 z-10 pointer-events-none"
         style={{
           background:
-            "linear-gradient(90deg, rgba(2,11,24,1), rgba(2,11,24,0))",
+            "linear-gradient(90deg, rgba(2,11,24,1) 0%, rgba(2,11,24,1) 45%, rgba(2,11,24,0) 100%)",
         }}
       />
       <div
         aria-hidden
-        className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none"
+        className="absolute inset-y-0 right-0 w-24 z-10 pointer-events-none"
         style={{
           background:
-            "linear-gradient(270deg, rgba(2,11,24,1), rgba(2,11,24,0))",
+            "linear-gradient(270deg, rgba(2,11,24,1) 0%, rgba(2,11,24,1) 45%, rgba(2,11,24,0) 100%)",
         }}
       />
 
@@ -1540,8 +1545,24 @@ function HowItWorks() {
             whileHover={{ y: -2 }}
             className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 overflow-hidden transition-[border-color,background-color] hover:border-white/25 hover:bg-white/[0.05]"
           >
+            {/* ENHANCE-02 — step numerals were a dim 10px mono
+                glyph in the corner, dwarfed by the bright toned Pill
+                on the opposite side. Upgrade to a tone-colored
+                numeric chip: monospace bold digits on a matching
+                translucent fill with a subtle border. Balances the
+                card header visually and reads as a numbered step,
+                not an internal ID string. */}
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-mono tracking-widest text-gray-500">
+              <span
+                className={`inline-flex items-center justify-center h-7 min-w-[1.75rem] px-2 rounded-md border text-[13px] font-mono font-bold tabular-nums ${
+                  c.tone === "cyan"
+                    ? "border-cyan-300/30 bg-cyan-300/[0.08] text-cyan-200"
+                    : c.tone === "violet"
+                      ? "border-violet-300/30 bg-violet-300/[0.08] text-violet-200"
+                      : "border-orange-300/30 bg-orange-300/[0.08] text-orange-200"
+                }`}
+                aria-label={`Step ${parseInt(c.idx, 10)}`}
+              >
                 {c.idx}
               </span>
               <Pill status={c.tone === "cyan" ? "demo" : c.tone === "violet" ? "beta" : "soon"}>
