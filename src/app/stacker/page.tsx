@@ -41,7 +41,38 @@ function parseSeedParam(raw: string | null): number | null {
 const StackerGame = dynamic(() => import("@/components/stacker/StackerGame"), {
   ssr: false,
   loading: () => (
-    <div className="mx-auto w-full max-w-[560px] aspect-[3/5] rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse" />
+    // SUPER-25 — was a flat animate-pulse rectangle. Now a faded
+    // silhouette of the game board: radial-glow background + grid
+    // dot pattern + soft 'preparing' eyebrow. Gives users a concrete
+    // preview of the layout during the ~200ms dynamic-import
+    // window instead of a mystery gray slab. Single-element
+    // animate-pulse on the outer card is fine here — no children
+    // carry their own pulse (POLISH-313 rule only applies when both
+    // layers animate).
+    <div
+      className="relative mx-auto w-full max-w-[560px] aspect-[3/5] rounded-2xl border border-white/10 overflow-hidden animate-pulse"
+      style={{
+        background:
+          "radial-gradient(600px 500px at 50% -10%, rgba(34,211,238,0.12), transparent 60%), linear-gradient(180deg,#071a2e,#020b18)",
+      }}
+      aria-label="Preparing the board"
+      role="status"
+    >
+      {/* Grid-dot pattern matches the actual board's 7×15 layout. */}
+      <div
+        aria-hidden
+        className="absolute inset-4"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.08) 0.8px, transparent 1px)",
+          backgroundSize: "calc(100% / 7) calc(100% / 15)",
+          backgroundPosition: "center",
+        }}
+      />
+      <div className="absolute top-3 left-3 text-[10px] uppercase tracking-widest text-cyan-300/60 font-mono">
+        Preparing · Stacker
+      </div>
+    </div>
   ),
 });
 
