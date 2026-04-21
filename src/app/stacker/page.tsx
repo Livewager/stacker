@@ -591,6 +591,28 @@ function StickyDepositRail() {
   );
 }
 
+/**
+ * Hash handle → deterministic "seconds ago" in [8, 420). Stable
+ * per-handle so the same chip always shows the same relative time
+ * across mounts within a page view, which keeps the marquee honest
+ * even though the data is fake. FNV-1a is overkill but cheap.
+ */
+function handleSecondsAgo(handle: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < handle.length; i++) {
+    h ^= handle.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  // 8s..7m spread — matches the feel of a live chat.
+  return 8 + (h % 412);
+}
+
+function formatRelative(s: number): string {
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  return `${m}m ago`;
+}
+
 function MarqueeChip({ entry }: { entry: MarqueeEntry }) {
   const toneCls =
     entry.tier === "big"
@@ -598,12 +620,14 @@ function MarqueeChip({ entry }: { entry: MarqueeEntry }) {
       : entry.tier === "mid"
         ? "border-cyan-300/40 bg-cyan-300/[0.08] text-cyan-200"
         : "border-white/15 bg-white/[0.04] text-gray-300";
+  const relTs = formatRelative(handleSecondsAgo(entry.handle));
   return (
     <span
       className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono ${toneCls}`}
     >
       <span className="font-semibold">@{entry.handle}</span>
       <span className="text-white/90">+{entry.amount} LWP</span>
+      <span className="text-white/40 hidden sm:inline">· {relTs}</span>
     </span>
   );
 }
