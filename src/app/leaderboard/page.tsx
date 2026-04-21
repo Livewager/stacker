@@ -632,12 +632,31 @@ function HallOfFame() {
             aria-label={`Show legend ${i + 1}`}
             className="flex-1 h-6 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60 rounded-sm"
           >
-            <span
-              aria-hidden
-              className={`block h-1.5 w-full rounded-full transition ${
-                i === idx ? "bg-yellow-300" : "bg-white/15 hover:bg-white/25"
-              }`}
-            />
+            {/* SUPER-23 — active dot now doubles as a fill bar that
+                sweeps left→right over 5s, matching the auto-cycle
+                interval. Shows progress within the current legend's
+                window rather than a flat uniform dot. Inactive dots
+                stay flat. Animation keyed off `idx` so each slide
+                restarts the sweep. Reduced-motion skips the sweep
+                (active dot stays fully filled). */}
+            {i === idx ? (
+              <span
+                aria-hidden
+                className="relative block h-1.5 w-full rounded-full bg-yellow-300/20 overflow-hidden"
+              >
+                <span
+                  key={idx}
+                  className={`block h-full rounded-full bg-yellow-300 origin-left ${
+                    reduced ? "w-full" : "lw-hof-fill"
+                  }`}
+                />
+              </span>
+            ) : (
+              <span
+                aria-hidden
+                className="block h-1.5 w-full rounded-full bg-white/15 hover:bg-white/25 transition"
+              />
+            )}
           </button>
         ))}
       </div>
@@ -645,6 +664,14 @@ function HallOfFame() {
         @keyframes fadeSlide {
           from { opacity: 0; transform: translateY(4px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes lw-hof-fill-kf {
+          from { transform: scaleX(0); }
+          to   { transform: scaleX(1); }
+        }
+        .lw-hof-fill {
+          width: 100%;
+          animation: lw-hof-fill-kf 5s linear forwards;
         }
       `}</style>
     </section>
