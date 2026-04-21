@@ -134,7 +134,11 @@ function StackerPageInner() {
         <ScrollProgress />
 
         <div className="max-w-7xl mx-auto px-5 md:px-8 py-3 md:py-4 flex items-center justify-between gap-3">
-          <Link href={ROUTES.stacker} className="flex items-center" aria-label="Livewager Stacker home">
+          <Link
+            href={ROUTES.stacker}
+            className="inline-flex items-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70"
+            aria-label="Livewager Stacker home"
+          >
             <Image
               src="/assets/logo43.png"
               alt="Livewager · Stacker"
