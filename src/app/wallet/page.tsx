@@ -464,8 +464,10 @@ export default function WalletPage() {
  * Intentionally branches on balance alone rather than balance+history:
  * zero balance is a stronger primary signal, ActivityFeed has its own
  * empty state for history, and reading the block log from this
- * component just to count events would duplicate work. The two /play
- * + /deposit CTAs are the shortest path for a new account.
+ * component just to count events would duplicate work. The two
+ * /deposit + /stacker CTAs are the shortest path for a new account
+ * (deposit funds the wallet directly; Stacker mints starter LWP via
+ * play, no real money required).
  */
 function WelcomeBanner({ balance }: { balance: bigint | null }) {
   const [dismissed, setDismissed] = useLocalPref<boolean>(
