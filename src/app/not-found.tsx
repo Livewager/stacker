@@ -104,8 +104,8 @@ export default function NotFound() {
       title="Nothing stacked at this address."
       body={
         <>
-          The page you were after doesn&apos;t exist or moved. Tap the games
-          hub for Stacker, or head straight to your wallet.
+          The page you were after doesn&apos;t exist or moved. Jump into
+          Stacker, or head to your wallet.
           {suggestion && (
             <>
               {" "}
@@ -123,7 +123,7 @@ export default function NotFound() {
           )}
         </>
       }
-      primary={{ href: ROUTES.play, label: "Games hub" }}
+      primary={{ href: ROUTES.stacker, label: "Play Stacker" }}
       secondary={{ href: ROUTES.wallet, label: "Open wallet" }}
     />
   );
