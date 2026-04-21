@@ -1112,6 +1112,133 @@ function HeroTower() {
               );
             })()
           )}
+
+          {/* SUPER-16 — drifting embers rising from the top of the
+              stack. 12 particles, each with its own deterministic
+              lifecycle seeded off its index so the loop reads as
+              natural turbulence rather than a looped pattern. Each
+              ember:
+                - spawns at a random-feeling column near the top
+                  block's center
+                - rises linearly, drifts horizontally on a slow sine
+                - fades out as a quadratic on life (slow start, fast
+                  end) so the bottom of the flame pool stays dense
+                - radius shrinks linearly from 1.0 → 0.3
+              Respects reduced-motion: lifecycle freezes at life=0.5
+              so a static halo remains. */}
+          {!reduced && frame.placed.length > 0 && (() => {
+            const top = frame.placed[frame.placed.length - 1];
+            const topX = top.col * 20 + (top.width * 20) / 2;
+            const topY = (HERO_GRID_ROWS - 1 - top.row) * 20;
+            const EMBER_COUNT = 12;
+            const EMBER_PERIOD = 3800;
+            return (
+              <g opacity={frame.fade * 0.85}>
+                {Array.from({ length: EMBER_COUNT }, (_, i) => {
+                  // Deterministic per-ember offset + drift seed.
+                  // (i * 0x9e3779b9) % 1 picks an evenly-spread hash
+                  // in [0..1] for the phase offset; separate seeds
+                  // drive the x-jitter and color bias.
+                  const phaseOff = ((i * 0x9e3779b9) >>> 0) / 2 ** 32;
+                  const xSeed = (((i + 1) * 0x85ebca6b) >>> 0) / 2 ** 32;
+                  const life = ((t / EMBER_PERIOD + phaseOff) % 1);
+                  // Rise 22 svg units above the top block
+                  const rise = life * 22;
+                  // Horizontal drift: sine over the life, amplitude
+                  // proportional to xSeed so some embers barely
+                  // wobble and others trace a longer arc.
+                  const drift = Math.sin(life * Math.PI * 2 + xSeed * 6) * (2 + xSeed * 4);
+                  // Opacity: quadratic fade — ramps in for first
+                  // 15% of life, then decays as (1 - life)^2 so the
+                  // plume tightens as it rises.
+                  const alpha =
+                    life < 0.15
+                      ? (life / 0.15) * 0.9
+                      : Math.pow(1 - life, 1.6) * 0.9;
+                  const r = 1.0 - life * 0.7;
+                  // Color bias: cyan at the base, fading to yellow
+                  // at the tips. Linear interpolation between the
+                  // two endpoint RGBs.
+                  const cR = Math.round(34 + (250 - 34) * life);
+                  const cG = Math.round(211 + (204 - 211) * life);
+                  const cB = Math.round(238 + (21 - 238) * life);
+                  const cx = topX + drift + (xSeed - 0.5) * (top.width * 20) * 0.7;
+                  const cy = topY - rise;
+                  return (
+                    <circle
+                      key={`ember-${i}`}
+                      cx={cx}
+                      cy={cy}
+                      r={r}
+                      fill={`rgb(${cR},${cG},${cB})`}
+                      opacity={alpha}
+                      style={{
+                        filter: `drop-shadow(0 0 2px rgb(${cR},${cG},${cB}))`,
+                      }}
+                    />
+                  );
+                })}
+              </g>
+            );
+          })()}
+
+          {/* SUPER-16 — perfect-lock radial burst. When a row locks
+              cleanly (HERO_SCRIPT[row].perfect === true), emit a
+              brief radial-glow disc that expands and fades inside
+              the settle window. Layered over the existing ripple
+              so you get ring + fill + glow as a compound beat. */}
+          {frame.currentRow !== null &&
+            frame.lockT > 0 &&
+            HERO_SCRIPT[frame.currentRow]?.perfect &&
+            !reduced &&
+            (() => {
+              const row = HERO_SCRIPT[frame.currentRow];
+              const cx = row.lockCol * 20 + (row.width * 20) / 2;
+              const cy = (HERO_GRID_ROWS - 1 - frame.currentRow) * 20 + 10;
+              // Ease-out radial: bursts quickly then fades. 0..1 on
+              // lockT → radius 0..24 and opacity 0.9 → 0.
+              const burstR = frame.lockT * 24;
+              const burstA = Math.pow(1 - frame.lockT, 1.4) * 0.9;
+              return (
+                <g>
+                  {/* Outer soft halo */}
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={burstR}
+                    fill="rgba(250,204,21,0.18)"
+                    opacity={burstA}
+                  />
+                  {/* Inner tight core */}
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={burstR * 0.5}
+                    fill="rgba(253,224,71,0.45)"
+                    opacity={burstA}
+                  />
+                  {/* Four radial flare lines (N/E/S/W) */}
+                  {[0, 90, 180, 270].map((deg) => {
+                    const rad = (deg * Math.PI) / 180;
+                    const x2 = cx + Math.cos(rad) * burstR * 1.4;
+                    const y2 = cy + Math.sin(rad) * burstR * 1.4;
+                    return (
+                      <line
+                        key={deg}
+                        x1={cx}
+                        y1={cy}
+                        x2={x2}
+                        y2={y2}
+                        stroke="rgba(250,204,21,0.6)"
+                        strokeWidth={0.5}
+                        strokeLinecap="round"
+                        opacity={burstA}
+                      />
+                    );
+                  })}
+                </g>
+              );
+            })()}
         </svg>
 
         {/* Corner badges */}
